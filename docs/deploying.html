@@ -325,20 +325,60 @@ make deploy GROUP=waterloo</code></pre>
       </p>
     </div>
 
-    <h3>1. Register the app</h3>
+    <h3>1. Make the reCAPTCHA keys</h3>
+
+    <p>
+      This part is not in Firebase, which is what catches people out: Firebase&rsquo;s
+      <strong>Register</strong> button asks you to paste a key in, and you do not have one yet.
+      You create the pair first, in Google&rsquo;s own reCAPTCHA console.
+    </p>
+
     <ol>
-      <li>Firebase console &rarr; left sidebar <strong>Build</strong> &rarr;
-        <strong>App Check</strong>.</li>
-      <li><strong>Apps</strong> tab. Your web app is listed &mdash; the one you added when you
-        set the project up.</li>
-      <li>Click it, choose <strong>reCAPTCHA v3</strong>, and register. Google creates the
-        reCAPTCHA site for you and shows a <strong>site key</strong>.</li>
-      <li>Put that key in <code>.env.&lt;alias&gt;</code> as
-        <code>VITE_APPCHECK_SITE_KEY</code> and deploy again. It is compiled in, like the
-        rest of the Firebase settings, so it needs a build.</li>
+      <li>Go to <code>google.com/recaptcha/admin</code> and add a site (the <strong>+</strong>
+        button).</li>
+      <li>Label it anything &mdash; "Apple Day" will do.</li>
+      <li>Type: <strong>Score based (v3)</strong>. Not Challenge, and not Enterprise &mdash;
+        Enterprise wants billing enabled, which a free Firebase project does not have.</li>
+      <li>Domains: your hosting addresses, one per line.
+        <code>your-project.web.app</code> and <code>your-project.firebaseapp.com</code>, plus
+        any custom domain. You do not need <code>localhost</code>: this app skips App Check
+        entirely against the emulator.</li>
+      <li>Submit. You are given <strong>two</strong> keys, and which goes where is the whole
+        of the confusion:
+        <ul>
+          <li><strong>Site key</strong> &mdash; public, belongs in the built site.</li>
+          <li><strong>Secret key</strong> &mdash; belongs to Firebase, so it can check the
+            tokens the site sends.</li>
+        </ul>
+      </li>
     </ol>
 
-    <h3>2. Watch it before you switch it on</h3>
+    <h3>2. Give Firebase the secret key</h3>
+    <ol>
+      <li>Firebase console &rarr; left sidebar <strong>Build</strong> &rarr;
+        <strong>App Check</strong> &rarr; <strong>Apps</strong> tab.</li>
+      <li>Your web app is listed &mdash; the one you added when you set the project up. Click
+        it and choose <strong>reCAPTCHA v3</strong>.</li>
+      <li>Paste the <strong>secret key</strong> here. This is the field that was asking for
+        something a moment ago.</li>
+      <li>Save.</li>
+    </ol>
+
+    <h3>3. Give the site the site key</h3>
+    <ol>
+      <li>Put the <strong>site key</strong> &mdash; the other one &mdash; in
+        <code>.env.&lt;alias&gt;</code> as <code>VITE_APPCHECK_SITE_KEY</code>.</li>
+      <li>Deploy again. It is compiled into the bundle like the rest of the Firebase
+        settings, so it needs a build, not a config change on the server.</li>
+    </ol>
+
+    <p class="small muted">
+      If you paste them the wrong way round, nothing says so in an obvious place: the site
+      sends tokens Firebase cannot verify, and they show up as <em>unverified</em> in the next
+      step. That is what the next step is for.
+    </p>
+
+    <h3>4. Watch it before you switch it on</h3>
     <ol>
       <li>Use the deployed site normally for a day &mdash; sign in, open a screen or two.</li>
       <li>App Check &rarr; <strong>APIs</strong> tab &rarr; <strong>Cloud Firestore</strong>.
@@ -348,7 +388,7 @@ make deploy GROUP=waterloo</code></pre>
         are not looking at a cached page.</li>
     </ol>
 
-    <h3>3. Enforce</h3>
+    <h3>5. Enforce</h3>
     <ol>
       <li>Same <strong>APIs</strong> tab &rarr; <strong>Cloud Firestore</strong> &rarr;
         <strong>Enforce</strong>.</li>
