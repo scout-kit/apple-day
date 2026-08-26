@@ -121,10 +121,7 @@ export interface Location {
   siteContact: SiteContact | null
   insurance: string
   comments: string
-  /**
-   * Real opening hours, by day of week. A day that is absent (or null) is closed.
-   * Partial rather than complete so a location only carries the days that matter.
-   */
+  /** Partial, so a location carries only the days worth recording. */
   openHours: Partial<Record<Day, OpenRange | null>>
   aliases: string[]
   /**
@@ -158,8 +155,13 @@ export type ScheduledLocation = Location & {
 }
 
 /**
- * A person, stable across years. Contains PII: never expose this to unauthenticated
- * readers.
+ * A youth or an adult taking part, stored under the event they took part in.
+ *
+ * Not a register spanning years: two Apple Days may each hold somebody called Elliot, and
+ * nothing links them. That is the trade — no per-person history, and no child's contact
+ * details outliving the day they were collected for.
+ *
+ * Contains PII. Never expose this to unauthenticated readers.
  */
 export interface Person {
   id: string

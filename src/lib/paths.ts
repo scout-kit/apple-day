@@ -59,10 +59,9 @@ export const paths = {
    * The youth and leaders taking part in one event.
    *
    * Scoped to the event, not shared across years. A person is a fact about a particular
-   * Apple Day — who signed up, who was rostered, whose parent to ring — and keeping a
-   * system-wide register of children instead meant deleting somebody from this year left
-   * their name and their parent's phone number behind indefinitely. Deleting them here
-   * deletes them.
+   * Apple Day — who signed up, who was rostered, whose parent to ring — and a system-wide
+   * register of children would mean deleting somebody from this year leaves their name and
+   * their parent's phone number behind indefinitely. Deleting them here deletes them.
    *
    * The cost, accepted deliberately: there is no identity spanning years, so no per-person
    * record across events. Locations still have one, which is where year-over-year lives.
