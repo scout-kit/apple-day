@@ -24,6 +24,8 @@ vi.mock('../src/lib/session', () => ({
 }))
 
 vi.mock('../src/lib/firebase', () => ({
+  // A build with its config present, which is every case but a broken deploy.
+  missingConfig: [],
   auth: {},
   db: {},
   signInWithGoogle: vi.fn(),

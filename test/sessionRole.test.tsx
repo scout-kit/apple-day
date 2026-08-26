@@ -71,6 +71,8 @@ const deleteDoc = vi.fn(async (_ref: unknown) => undefined)
 let batchWrites: { ref: unknown; data: unknown }[] = []
 
 vi.mock('../src/lib/firebase', () => ({
+  // A build with its config present, which is every case but a broken deploy.
+  missingConfig: [],
   auth: {},
   // `db` is what the audit helpers hand to `writeBatch`. Absent, the batch threw inside the
   // clean-up's own try/catch and swallowed the delete with it.

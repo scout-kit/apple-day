@@ -91,6 +91,8 @@ vi.mock('firebase/firestore', () => ({
 }))
 
 vi.mock('../src/lib/firebase', () => ({
+  // A build with its config present, which is every case but a broken deploy.
+  missingConfig: [],
   db: {},
   auth: { currentUser: { uid: 'u-organizer', displayName: 'An Organizer', email: '' } },
   EVENT_ID: '2026',
