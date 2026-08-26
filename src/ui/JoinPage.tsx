@@ -4,7 +4,8 @@ import { Navigate, useParams } from 'react-router-dom'
 import { getDoc } from 'firebase/firestore'
 import { paths } from '../lib/paths'
 import { signInWithGoogle } from '../lib/firebase'
-import { rememberInvite, useSession } from '../lib/session'
+import { useSession } from '../lib/session'
+import { rememberInvite } from '../lib/pendingInvite'
 import { inviteIsLive } from '../domain/access'
 import { Loading } from './Bits'
 
@@ -27,15 +28,18 @@ export function JoinPage(): ReactNode {
   const [tier, setTier] = useState<'admin' | 'organizer'>('organizer')
 
   /*
-    Held before sign-in, not after.
+    Held before sign-in, not after, and only for somebody who could actually use it.
 
-    Signing in with Google leaves the page and comes back, and what it comes back to is the
-    app's own route rather than this one — so a code only in the URL is a code that is gone
-    by the time anybody can use it.
+    Signing in with Google leaves the page and comes back to the app's own route rather than
+    this one, so a code only in the URL is gone by the time anybody can claim it.
+
+    Nothing is stored for an account that already has access. It has nothing to claim, and a
+    code left in the tab is a grant waiting for whoever signs in next — an admin opening a
+    link to check it should not be arming it for the next person to use that laptop.
   */
   useEffect(() => {
-    if (code) rememberInvite(code)
-  }, [code])
+    if (code && !loading && role === 'none') rememberInvite(code)
+  }, [code, loading, role])
 
   useEffect(() => {
     if (!code) {

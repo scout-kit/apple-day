@@ -12,6 +12,7 @@ import {
   persistentLocalCache,
   persistentMultipleTabManager,
 } from 'firebase/firestore'
+import { forgetInvite } from './pendingInvite'
 
 /**
  * Firebase client.
@@ -97,5 +98,13 @@ export async function signInWithGoogle(): Promise<void> {
 }
 
 export async function signOutEverywhere(): Promise<void> {
+  /*
+    The invitation goes with them.
+
+    A code kept past a sign-out is a grant waiting for whoever signs in next on this browser
+    — which is how a brand-new account ends up an organizer with no link ever given to it.
+    Dropped before signing out, so it is gone even if that fails.
+  */
+  forgetInvite()
   await signOut(auth)
 }

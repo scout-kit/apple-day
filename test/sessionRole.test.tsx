@@ -48,17 +48,24 @@ vi.mock('firebase/firestore', () => ({
     that no longer happens the way it says it does.
   */
   writeBatch: () => {
+    // Each batch keeps its own operations, so "these two landed together" is a thing a test
+    // can actually ask — which is the whole claim being made about spending an invitation.
+    const ops: { kind: 'set' | 'delete'; ref: unknown; data?: unknown }[] = []
     const batch = {
       set: (ref: unknown, data: unknown) => {
         batchWrites.push({ ref, data })
+        ops.push({ kind: 'set', ref, data })
         return batch
       },
       update: () => batch,
       delete: (ref: unknown) => {
         deleteDoc(ref)
+        ops.push({ kind: 'delete', ref })
         return batch
       },
-      commit: async () => undefined,
+      commit: async () => {
+        commits.push(ops)
+      },
     }
     return batch
   },
@@ -72,8 +79,10 @@ const getDoc = vi.fn(async (_ref: unknown): Promise<Snap> => ({
 }))
 const setDoc = vi.fn(async (_ref: unknown, _data: unknown) => undefined)
 const deleteDoc = vi.fn(async (_ref: unknown) => undefined)
-/** Everything written through a batch — the audit entries, in practice. */
+/** Everything written through a batch: roster entries, and the audit lines beside them. */
 let batchWrites: { ref: unknown; data: unknown }[] = []
+/** Each committed batch, as its own list of operations. */
+let commits: { kind: 'set' | 'delete'; ref: unknown; data?: unknown }[][] = []
 
 vi.mock('../src/lib/firebase', () => ({
   // A build with its config present, which is every case but a broken deploy.
@@ -106,6 +115,11 @@ function Probe(): React.ReactElement {
 }
 
 const state = (): string => screen.getByTestId('state').textContent ?? ''
+
+/** A code put aside by the join page, stored the way that page stores it. */
+const holdInvite = (code: string, at = Date.now()): void => {
+  sessionStorage.setItem('apple-day:invite', JSON.stringify({ code, at }))
+}
 
 const entry = (level?: string): Snap => ({
   exists: () => true,
@@ -142,6 +156,7 @@ beforeEach(() => {
   signOutFallback.mockResolvedValue(undefined)
   sessionStorage.clear()
   batchWrites = []
+  commits = []
   vi.useFakeTimers({ shouldAdvanceTime: true })
   render(
     <SessionProvider>
@@ -359,20 +374,77 @@ describe('an account nobody invited', () => {
   })
 
   it('is kept when they arrived holding an invitation that works', async () => {
-    sessionStorage.setItem('apple-day:invite', 'abcdefghijklmnopqrstuv')
+    holdInvite('abcdefghijklmnopqrstuv')
     getDoc.mockResolvedValue({ exists: () => true, data: () => ({ level: 'organizer' }) })
 
     signIn()
     act(() => snapCallback?.({ exists: () => false, data: () => ({}) }))
     await settle()
 
-    expect(setDoc).toHaveBeenCalled()
+    const granted = batchWrites.find(
+      (w) => (w.data as { addedBy?: string }).addedBy === 'invitation',
+    )
+    expect(granted).toBeTruthy()
+    expect((granted!.data as { level: string }).level).toBe('organizer')
     expect(deleteUser).not.toHaveBeenCalled()
+  })
+
+  it('spends the invitation in the same commit that grants the access', async () => {
+    /*
+      What makes an invitation single-use, and it has to be one commit.
+
+      Granting first and deleting second leaves the invitation standing whenever the second
+      write fails — and it fails quietly: the account is in, the link still works, and the
+      next person to sign in on that browser is handed the same tier. Both writes are
+      permitted before either lands, so there is no reason to separate them.
+    */
+    holdInvite('abcdefghijklmnopqrstuv')
+    getDoc.mockResolvedValue({ exists: () => true, data: () => ({ level: 'organizer' }) })
+
+    signIn()
+    act(() => snapCallback?.({ exists: () => false, data: () => ({}) }))
+    await settle()
+
+    const together = commits.find((ops) =>
+      ops.some((o) => o.kind === 'set' && (o.data as { addedBy?: string }).addedBy === 'invitation'),
+    )
+    expect(together, 'the roster entry was written in a batch').toBeTruthy()
+    expect(
+      together!.some((o) => o.kind === 'delete'),
+      'and the invitation was deleted in that same batch',
+    ).toBe(true)
+  })
+
+  it('forgets the code once it has been used', async () => {
+    // Left there it is a grant waiting for whoever signs in next on this browser.
+    holdInvite('abcdefghijklmnopqrstuv')
+    getDoc.mockResolvedValue({ exists: () => true, data: () => ({ level: 'organizer' }) })
+
+    signIn()
+    act(() => snapCallback?.({ exists: () => false, data: () => ({}) }))
+    await settle()
+
+    expect(sessionStorage.getItem('apple-day:invite')).toBeNull()
+  })
+
+  it('ignores a code that has been sitting there too long', async () => {
+    /*
+      Somebody opened a link, left, and the tab was used for something else an hour later.
+      Honouring it then hands the invitation to whoever happens to sign in.
+    */
+    holdInvite('abcdefghijklmnopqrstuv', Date.now() - 60 * 60 * 1000)
+    getDoc.mockResolvedValue({ exists: () => true, data: () => ({ level: 'organizer' }) })
+
+    signIn()
+    act(() => snapCallback?.({ exists: () => false, data: () => ({}) }))
+    await settle()
+
+    expect(deleteUser, 'no invitation in hand, so the account goes').toHaveBeenCalled()
   })
 
   it('is discarded when the invitation they arrived with is gone', async () => {
     // A link already used, or revoked. There is nothing to claim, so there is nothing to keep.
-    sessionStorage.setItem('apple-day:invite', 'abcdefghijklmnopqrstuv')
+    holdInvite('abcdefghijklmnopqrstuv')
     getDoc.mockResolvedValue({ exists: () => false, data: () => ({}) })
 
     signIn()

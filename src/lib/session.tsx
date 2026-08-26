@@ -1,16 +1,17 @@
 import { deleteUser, onAuthStateChanged, signOut } from 'firebase/auth'
 import type { User } from 'firebase/auth'
-import { getDoc, onSnapshot, setDoc } from 'firebase/firestore'
+import { getDoc, onSnapshot, writeBatch } from 'firebase/firestore'
 import { createContext, useContext, useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
-import { auditedDelete } from './audit'
-import { auth } from './firebase'
+import { recordInBatch } from './audit'
+import { auth, db } from './firebase'
 import { isFatalClientFailure } from '../domain/clientFailure'
 import { recoverFromFatalFailure } from './recover'
 import { toPass } from '../domain/passes'
 import type { PassData } from '../domain/passes'
 export type { PassData }
 import { paths } from './paths'
+import { forgetInvite, pendingInvite } from './pendingInvite'
 
 /**
  * Who is using the app, and what they may do.
@@ -105,45 +106,6 @@ const SessionContext = createContext<Session>({
 })
 
 /**
- * Turn an invitation into access, for the account that just signed in.
- *
- * Reads the invitation for this account's own verified address and writes the roster entry
- * it describes. The rules check the address against the token, the tier against the
- * invitation, and that the invitation is fresh — so the worst this can do is fail.
- */
-/**
- * The invitation code somebody arrived with, kept across signing in.
- *
- * Signing in with Google leaves the page and comes back, so the code cannot simply be held
- * in state. Session storage rather than local: an invitation is being accepted now, in this
- * tab, and a code still sitting there in a fortnight is a stale grant nobody meant to keep.
- */
-const PENDING_INVITE = 'apple-day:invite'
-
-export function rememberInvite(code: string): void {
-  try {
-    window.sessionStorage.setItem(PENDING_INVITE, code)
-  } catch {
-    /* Private browsing. The code is still in the address bar, which is the other copy. */
-  }
-}
-
-export function pendingInvite(): string {
-  try {
-    return window.sessionStorage.getItem(PENDING_INVITE) ?? ''
-  } catch {
-    return ''
-  }
-}
-
-function forgetInvite(): void {
-  try {
-    window.sessionStorage.removeItem(PENDING_INVITE)
-  } catch {
-    /* Nothing to do. */
-  }
-}
-
 /**
  * Turn an invitation code into access, for the account that just signed in.
  *
@@ -155,6 +117,21 @@ function forgetInvite(): void {
  * email could only be claimed by an account carrying that address, which is a guess about
  * somebody else's arrangements and wrong often enough to matter.
  */
+async function recordClaim(user: User, tier: 'admin' | 'organizer'): Promise<void> {
+  const batch = writeBatch(db)
+  recordInBatch(batch, {
+    action: 'created',
+    entity: 'access',
+    // Never the code. An audit entry is read by admins and kept for years, and an invitation
+    // code sitting in one would be a way in for anybody who could read the log.
+    entityId: user.uid,
+    eventId: null,
+    summary: `Accepted an invitation as ${tier}`,
+    changes: [{ field: 'level', from: '—', to: tier }],
+  })
+  await batch.commit()
+}
+
 async function claimInvite(user: User, code: string): Promise<boolean> {
   try {
     const invite = await getDoc(paths.invite(code))
@@ -163,36 +140,39 @@ async function claimInvite(user: User, code: string): Promise<boolean> {
     const tier =
       (invite.data() as { level?: string }).level === 'organizer' ? 'organizer' : 'admin'
 
-    await setDoc(paths.admin(user.uid), {
+    /*
+      Granted and spent in one commit, which is what makes an invitation single-use.
+
+      Both writes are permitted before either lands — the claim on the strength of the code,
+      the delete on being signed in at all — so there is no ordering to get right and no
+      window in between. Two writes with the delete second leaves the invitation standing
+      whenever the second one fails, and it fails quietly: the account is in, the link still
+      works, and the next person to sign in on that browser gets the tier too.
+    */
+    const batch = writeBatch(db)
+    batch.set(paths.admin(user.uid), {
       email: user.email ?? '',
       level: tier,
       addedAt: Date.now(),
       addedBy: 'invitation',
       via: code,
     })
+    batch.delete(paths.invite(code))
+    await batch.commit()
+
+    forgetInvite()
 
     /*
-      Spent, in a separate write and after the roster entry.
+      The line saying so, afterwards and on its own.
 
-      Batched with it, the delete would be evaluated against the database as it is before the
-      batch — where this account is nobody — and the refusal would take the roster write with
-      it. So access is granted first and the invitation cleared second. If the clear fails the
-      access stands, which is the right way round: an admin can revoke a leftover link, and
-      nobody is locked out by a failed tidy-up.
+      It cannot go in the batch above: writing to the log needs to be on the roster, and
+      before that batch commits this account is nobody. Losing the line is a gap in the
+      record and nothing worse — unlike losing the delete, which is a way in.
     */
-    forgetInvite()
     try {
-      await auditedDelete(paths.invite(code), {
-        entity: 'access',
-        // Never the code. An audit entry is read by admins and kept for years, and a live
-        // invitation code sitting in one is a way in.
-        entityId: user.uid,
-        eventId: null,
-        summary: `Accepted an invitation as ${tier}`,
-        fields: ['level'],
-      })
+      await recordClaim(user, tier)
     } catch {
-      /* The access stands. */
+      /* The access stands, and the invitation is spent. */
     }
 
     return true

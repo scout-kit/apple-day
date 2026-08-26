@@ -16,8 +16,9 @@ const rememberInvite = vi.fn()
 let session: { user: unknown; role: string; loading: boolean }
 let invite: { exists: boolean; level?: string; invitedAt?: number } | 'refused'
 
-vi.mock('../src/lib/session', () => ({
-  useSession: () => session,
+vi.mock('../src/lib/session', () => ({ useSession: () => session }))
+
+vi.mock('../src/lib/pendingInvite', () => ({
   rememberInvite: (...a: unknown[]) => rememberInvite(...a),
 }))
 
@@ -119,6 +120,21 @@ describe('arriving already signed in with access', () => {
     It is also where an admin lands after opening a link to check it, and where anybody signed
     in as the wrong account lands.
   */
+  it('does not put the code aside, which would arm it for the next sign-in', async () => {
+    /*
+      The hole this closes, and it was reachable by accident: an admin opens a link to check
+      it, gets sent to the app, and the code stays in the tab. Sign out, sign in as anybody
+      else, and that account silently takes the invitation and its tier.
+
+      Nothing to store for an account that already has access — there is nothing for it to
+      claim.
+    */
+    session = { user: { uid: 'u1' }, role: 'admin', loading: false }
+    show()
+    await waitFor(() => expect(screen.getByText('the app')).toBeTruthy())
+    expect(rememberInvite).not.toHaveBeenCalled()
+  })
+
   it('goes to the app rather than explaining itself', async () => {
     session = { user: { uid: 'u1' }, role: 'organizer', loading: false }
     show()
@@ -130,6 +146,13 @@ describe('arriving already signed in with access', () => {
     show()
     await waitFor(() => expect(screen.getByText('the app')).toBeTruthy())
     expect(screen.queryByText(/already have access/)).toBeNull()
+  })
+
+  it('stores nothing while the roster is still being read', async () => {
+    // The tier is not known yet, so whether there is anything to claim is not known either.
+    session = { user: { uid: 'u1' }, role: 'none', loading: true }
+    show()
+    expect(rememberInvite).not.toHaveBeenCalled()
   })
 
   it('waits for the roster before deciding, rather than flashing the invitation', async () => {
