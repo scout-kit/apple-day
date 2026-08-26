@@ -20,7 +20,7 @@ createRoot(root).render(
         shell and no session, needs it just the same. */}
     <ErrorBoundary>
       <ThemeProvider>
-        <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+        <BrowserRouter>
           <SessionProvider>
             <EventProvider>
               <SectionsProvider>

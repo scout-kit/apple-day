@@ -1466,17 +1466,25 @@ export async function reopenRequest(
 }
 
 /**
- * A year's shifts and jars, held for as long as the tab is open.
+ * A year's shifts and jars, held briefly.
  *
- * Every year but the one being run is finished — its shifts happened, its jars were counted
- * — so re-reading them on every visit to a location page buys nothing.
+ * Every year but the one being run is finished — its shifts happened, its jars were counted —
+ * so re-reading them on every visit to a location page buys little. The year being run is
+ * never held: it changes all afternoon, and a history screen quoting this morning's totals is
+ * worse than one that pauses to fetch them.
  *
- * The year being run is never held here. It changes all afternoon, and a history screen
- * quoting this morning's totals is worse than one that pauses to fetch them.
+ * "Finished" is not quite "immutable", which is why this expires. Correcting last year's jar
+ * count is a thing the money screen exists to let somebody do, and a cache with no way out
+ * would go on quoting the old figure for as long as the tab stayed open — on the one screen
+ * somebody opened to check it. Every write would have to remember to clear this, across a
+ * dozen call sites, and the day one forgets is silent.
  *
- * Module-level, so it lasts a session and no longer.
+ * So it is held for minutes rather than for the session: long enough to make paging around
+ * the history screens cheap, short enough that a correction cannot hide behind it.
  */
-const finishedYears = new Map<string, EventData>()
+const HISTORY_HELD_MS = 5 * 60 * 1000
+
+const finishedYears = new Map<string, { at: number; data: EventData }>()
 
 async function readYear(event: AppleDayEvent): Promise<EventData> {
   const [assignments, jars] = await Promise.all([
@@ -1543,10 +1551,10 @@ export function useEventHistory(ids: string[]): Loadable<EventData[]> {
 
         const finished = id !== eventId
         const held = finished ? finishedYears.get(id) : undefined
-        if (held) return held
+        if (held && Date.now() - held.at < HISTORY_HELD_MS) return held.data
 
         const year = await readYear(event)
-        if (finished) finishedYears.set(id, year)
+        if (finished) finishedYears.set(id, { at: Date.now(), data: year })
         return year
       }),
     )
@@ -1571,7 +1579,8 @@ export function useEventHistory(ids: string[]): Loadable<EventData[]> {
 /**
  * Forget what is held, so the next read goes to Firestore.
  *
- * For tests, and for an event being deleted or its shifts rewritten wholesale.
+ * Called when an event is deleted: there is nothing left to be a cached answer about, and an
+ * id can be reused. Otherwise the hold expires on its own.
  */
 export function forgetEventHistory(): void {
   finishedYears.clear()
@@ -1854,4 +1863,11 @@ export async function removeEvent(event: AppleDayEvent): Promise<void> {
   })
   last.delete(paths.event(event.id))
   await last.commit()
+
+  /*
+    Nothing cached is an answer about this event any more, and event ids can be reused — a
+    group deleting "2026" and creating it again would otherwise read the deleted year's
+    shifts and jars out of a cache in a tab nobody reloaded.
+  */
+  forgetEventHistory()
 }

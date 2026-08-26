@@ -51,7 +51,7 @@ help: ## List available targets
 doctor: ## Check that the local prerequisites are present
 	@ok=1; \
 	if command -v node >/dev/null; then \
-	  if node -e "const[a,b]=process.versions.node.split('.').map(Number);process.exit(((a===20&&b>=19)||(a===22&&b>=13)||a>=24)?0:1)"; then \
+	  if $(NODE_OK); then \
 	    echo "  node      $$(node -v)"; \
 	  else \
 	    echo "  node      $$(node -v)  UNSUPPORTED"; \
@@ -70,11 +70,23 @@ doctor: ## Check that the local prerequisites are present
 # ------------------------------------------------------------------- install
 
 # A stamp file, so this only reruns when the lockfile actually changes.
+# The supported Node versions, as one expression rather than two that drift. Matches
+# `engines.node` in package.json: ^20.19 || ^22.13 || >=24.
+NODE_OK = node -e "const[a,b]=process.versions.node.split('.').map(Number);process.exit(((a===20&&b>=19)||(a===22&&b>=13)||a>=24)?0:1)"
+
 node_modules: package-lock.json
 	# `ci`, not `install`. `npm install` is free to resolve something newer than the
 	# lockfile and rewrite it, which is how two machines end up on different versions of
 	# the same dependency from the same checkout — and how a test suite starts passing in
 	# one place and failing in another for reasons nothing in git can explain.
+	# Checked here rather than by `engine-strict` in .npmrc, which would also refuse an
+	# install because some transitive dev dependency has not caught up with a current Node.
+	@$(NODE_OK) || { \
+	  echo "Node $$(node -v) is not supported by this project."; \
+	  echo "Needs $$(node -p "require('./package.json').engines.node")  —  'nvm use' reads .nvmrc."; \
+	  echo "Installing anyway fails much later, as two dozen storage tests."; \
+	  exit 1; \
+	}
 	@$(NPM) ci --no-audit --no-fund
 	@touch node_modules
 

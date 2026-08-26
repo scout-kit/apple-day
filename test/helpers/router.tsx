@@ -12,10 +12,7 @@ export function MemoryRoute({
   children: ReactNode
 }): ReactNode {
   return (
-    <MemoryRouter
-      initialEntries={[url]}
-      future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
-    >
+    <MemoryRouter initialEntries={[url]}>
       <Routes>
         <Route path={path} element={children} />
       </Routes>

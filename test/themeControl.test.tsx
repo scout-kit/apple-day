@@ -303,9 +303,24 @@ describe('the Node this project runs on', () => {
     expect(MAKEFILE).toMatch(/process\.versions\.node/)
   })
 
-  it('is enforced by npm, so a wrong one cannot even install', () => {
-    // `engines` alone is advisory: npm prints a warning nobody reads and installs anyway.
-    expect(readFileSync('.npmrc', 'utf8')).toMatch(/engine-strict\s*=\s*true/)
+  it('cannot get as far as installing on the wrong one', () => {
+    /*
+      `engines` alone is advisory: npm prints a warning nobody reads and installs anyway. So
+      the install target checks before it runs `npm ci`, and says which version is wanted.
+
+      Not `engine-strict` in .npmrc, which reads like the obvious answer and is too blunt: it
+      applies to every transitive dependency too, so one dev dependency that has not caught up
+      with a current Node blocks every install in the project.
+    */
+    const install = MAKEFILE.slice(MAKEFILE.indexOf('node_modules: package-lock.json'))
+    expect(install).toMatch(/NODE_OK/)
+    expect(install.indexOf('NODE_OK')).toBeLessThan(install.indexOf('ci --no-audit'))
+    expect(readFileSync('.npmrc', 'utf8')).not.toMatch(/^\s*engine-strict\s*=\s*true/m)
+  })
+
+  it('checks the version in one place, so the two cannot disagree', () => {
+    // doctor and the install guard read the same expression; two copies drift.
+    expect(MAKEFILE.match(/process\.versions\.node/g) ?? []).toHaveLength(1)
   })
 
   it('names one version to use, so nobody has to read a range', () => {
