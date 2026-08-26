@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 // @vitest-environment-options { "url": "http://localhost/" }
+import { useMemoryStorage } from './helpers/storage'
 import { readFileSync } from 'node:fs'
 import { act, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
@@ -35,6 +36,7 @@ const press = (): void => {
 }
 
 beforeEach(() => {
+  useMemoryStorage()
   window.localStorage.clear()
   root().removeAttribute('data-theme')
 })
@@ -198,6 +200,19 @@ describe('the test environment is the same on every machine', () => {
       const head = readFileSync(file, 'utf8').split('\n').slice(0, 4).join('\n')
       expect(head, file).toMatch(/@vitest-environment jsdom/)
       expect(head, file).toMatch(/@vitest-environment-options .*"url": *"https?:\/\//)
+    }
+  })
+
+  it('brings its own store, so the environment cannot decide the outcome', () => {
+    /*
+      Two layers, and neither covers the other. The docblock keeps the environment alive —
+      without it vitest throws while populating globals and the file dies before a test
+      runs. The memory store keeps the tests honest once it is alive, for the machines where
+      storage exists but does not behave.
+    */
+    for (const file of ['test/themeControl.test.tsx', 'test/eventProvider.test.tsx']) {
+      const text = readFileSync(file, 'utf8')
+      expect(text, file).toMatch(/useMemoryStorage\(\)/)
     }
   })
 

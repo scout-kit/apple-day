@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 // @vitest-environment-options { "url": "http://localhost/" }
+import { useMemoryStorage } from './helpers/storage'
 import { render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -74,6 +75,7 @@ const rerenderProvider = (
   )
 
 beforeEach(() => {
+  useMemoryStorage()
   onSnapshot.mockReset()
   onSnapshot.mockReturnValue(() => {})
   localStorage.clear()
