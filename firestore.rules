@@ -168,8 +168,9 @@ service cloud.firestore {
       and plenty of people sign in with an account nothing like the one their group has for
       them. Invited at one and refused at the other looks exactly like being refused outright.
 
-      So it is a code in a link, plus a label saying who it is for in the admin's own words.
-      Whoever opens the link is who it lets in, and it is spent the moment it is used.
+      So it is a code in a link, plus the address it was written for — which is how it gets
+      sent and how the waiting list reads, and is checked against nothing. Whoever opens the
+      link is who it lets in, and it is spent the moment it is used.
     */
     match /invites/{code} {
       /*

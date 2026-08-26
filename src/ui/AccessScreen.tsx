@@ -10,6 +10,7 @@ import {
   inviteMessage,
   inviteProblem,
   looksLikeEmail,
+  normaliseEmail,
   sortRoster,
 } from '../domain/access'
 import { GOOGLE_CLIENT_ID, originLooksPublic, publicOrigin } from '../lib/mail/config'
@@ -55,8 +56,7 @@ export function AccessScreen(): ReactNode {
   const roster = useRoster()
   const invites = useInvitations()
 
-  const [label, setLabel] = useState('')
-  const [sendTo, setSendTo] = useState('')
+  const [email, setEmail] = useState('')
   const [tier, setTierChoice] = useState<Tier>('organizer')
   const [note, setNote] = useState('')
   const [busy, setBusy] = useState(false)
@@ -65,41 +65,44 @@ export function AccessScreen(): ReactNode {
 
   const entries = useMemo(() => sortRoster(roster.data), [roster.data])
   const problem = useMemo(
-    () => inviteProblem(label, roster.data, invites.data),
-    [label, roster.data, invites.data],
+    () => inviteProblem(email, roster.data, invites.data),
+    [email, roster.data, invites.data],
   )
 
   /*
-    The link the last invitation produced, held so it can be copied.
+    The invitation just made, held so it can be copied or sent.
 
-    Shown once, here, because there is nowhere else it can come from: the code is the
+    Shown once, here, because there is nowhere else the link can come from: the code is the
     permission, and an admin who closes this screen without copying it has to make another.
   */
-  const [madeLink, setMadeLink] = useState<string | null>(null)
+  const [made, setMade] = useState<{ code: string; link: string; email: string; tier: Tier } | null>(
+    null,
+  )
+  const [sent, setSent] = useState<string | null>(null)
+  const [sending, setSending] = useState(false)
 
   /*
-    Emailing it is an extra, and the link is the thing.
+    Sending is a separate press, and only when Gmail is set up.
 
-    Sending needs an OAuth client id and a consent screen; copying a link needs nothing. So
-    the address is asked for only when Gmail is set up, it is optional even then, and it is
-    never stored — an invitation records no address, which is the point of a code. Whether
-    the mail arrives or not, the link is on screen and in the list below.
+    Making the invitation and sending it are two things: one needs nothing, the other needs
+    an OAuth client id and opens a consent popup — and a popup that appears without being
+    asked for is one a browser blocks. Plenty of invitations go by text or in person anyway,
+    so the link is always the deliverable and the mail is an offer.
   */
   const canEmail = GOOGLE_CLIENT_ID !== ''
-  const [sent, setSent] = useState<string | null>(null)
 
   /*
     Offered against the emulator too, and warned about rather than withheld.
 
-    The same call the reminders screen makes. Sending is the part worth being able to try
-    before a real Apple Day depends on it — the consent screen, the scope, whether the
-    message reads properly on a phone — and none of that can be rehearsed if the field is
-    not there. What a local link cannot do is work for anybody else, so that is said plainly
-    beside it.
+    The same call the reminders screen makes. Sending is worth being able to try before a
+    real Apple Day depends on it — the consent screen, the scope, whether the message reads
+    properly on a phone. What a local link cannot do is work for anybody else, so that is
+    said plainly beside it.
   */
   const origin = publicOrigin()
   const originSafe = originLooksPublic(origin)
 
+  /** One way of sending, wherever it is sent from. */
   const emailIt = async (link: string, to: string, forTier: Tier): Promise<void> => {
     const sender = gmailSender(GOOGLE_CLIENT_ID)
     await sender.connect()
@@ -107,79 +110,61 @@ export function AccessScreen(): ReactNode {
     await sender.send({ to, subject, body })
   }
 
-  /*
-    Sending an invitation that already exists, to an address typed now.
-
-    Needed often enough to be a button: a message that went to the wrong address, one that
-    never arrived, one sent before somebody mentioned which account they actually use. The
-    link does not change — the invitation is the same invitation — so this is only ever
-    another copy of the same thing.
-
-    Asked for each time rather than remembered, because the invitation stores no address to
-    remember it in. It is readable by anyone holding the code, so an address written on it
-    would be one more thing a forwarded link gives away.
-  */
-  const [resendFor, setResendFor] = useState<string | null>(null)
-  const [resendTo, setResendTo] = useState('')
-  const [resendBusy, setResendBusy] = useState(false)
-  const [resent, setResent] = useState<Record<string, string>>({})
-
-  const openResend = (code: string): void => {
-    setResendFor(resendFor === code ? null : code)
-    setResendTo('')
+  const sendNow = (invitation: { link: string; email: string; tier: Tier }): void => {
+    if (!looksLikeEmail(invitation.email)) return
+    setSending(true)
     setError(null)
+
+    void emailIt(invitation.link, invitation.email, invitation.tier)
+      .then(() => setSent(invitation.email))
+      .catch((e: Error) =>
+        setError(
+          `Could not email it to ${invitation.email}: ${e.message}. The link is still good — ` +
+            'copy it and send it yourself.',
+        ),
+      )
+      .finally(() => setSending(false))
   }
 
+  /*
+    Sending one that already exists, from the list below.
+
+    A message that went astray, one that never arrived, one sent before somebody mentioned
+    which account they use. The link does not change — it is the same invitation — so this is
+    another copy of the same thing rather than a new grant, and the address is the one the
+    invitation was written for, so there is nothing to type.
+  */
+  const [resending, setResending] = useState<string | null>(null)
+  const [resent, setResent] = useState<Record<string, string>>({})
+
   const resend = (invitation: Invitation): void => {
-    const to = resendTo.trim()
-    if (!looksLikeEmail(to)) return
-    setResendBusy(true)
+    if (!looksLikeEmail(invitation.email)) return
+    setResending(invitation.code)
     setError(null)
 
-    void emailIt(inviteLink(origin, invitation.code), to, invitation.tier)
-      .then(() => {
-        setResent((was) => ({ ...was, [invitation.code]: to }))
-        setResendFor(null)
-        setResendTo('')
-      })
+    void emailIt(inviteLink(origin, invitation.code), invitation.email, invitation.tier)
+      .then(() => setResent((was) => ({ ...was, [invitation.code]: invitation.email })))
       .catch((e: Error) =>
-        setError(`Could not email it to ${to}: ${e.message}. The link itself still works.`),
+        setError(
+          `Could not email it to ${invitation.email}: ${e.message}. The link itself still works.`,
+        ),
       )
-      .finally(() => setResendBusy(false))
+      .finally(() => setResending(null))
   }
 
   const invite = (): void => {
-    if (!user || problem !== null || !canInvite(label)) return
+    if (!user || problem !== null || !canInvite(email)) return
     setBusy(true)
     setError(null)
-    setMadeLink(null)
+    setMade(null)
     setSent(null)
 
-    const to = sendTo.trim()
-    void inviteToTier(label, tier, user.email ?? user.uid, note)
-      .then(async (code) => {
-        const link = inviteLink(origin, code)
-        setMadeLink(link)
-        setLabel('')
+    const who = normaliseEmail(email)
+    void inviteToTier(who, tier, user.email ?? user.uid, note)
+      .then((code) => {
+        setMade({ code, link: inviteLink(origin, code), email: who, tier })
+        setEmail('')
         setNote('')
-        setSendTo('')
-
-        if (!canEmail || !looksLikeEmail(to)) return
-        /*
-          The invitation exists either way. A send that fails is worth saying so about, not
-          worth undoing anything over — the admin can copy the link and send it themselves,
-          which is what they would have done anyway.
-        */
-        try {
-          await emailIt(link, to, tier)
-          setSent(to)
-        } catch (e) {
-          setError(
-            `The invitation was created, but emailing it to ${to} failed: ${
-              e instanceof Error ? e.message : String(e)
-            }. Copy the link below and send it yourself.`,
-          )
-        }
       })
       .catch((e: Error) => setError(e.message))
       .finally(() => setBusy(false))
@@ -280,17 +265,18 @@ export function AccessScreen(): ReactNode {
       <div className="card">
         <h2>Invite somebody</h2>
         <p className="small muted" style={{ marginTop: 0 }}>
-          An invitation is a link. Send it however you like — whoever opens it and signs in
-          gets the access, with whatever Google account they have. It does not have to match
-          the address you know them by. Lasts {INVITE_DAYS} days, and works once.
+          Add them by address, then send them the link — or copy it and send it however you
+          like. Whoever opens it and signs in gets the access, with whatever Google account
+          they have. Lasts {INVITE_DAYS} days, and works once.
         </p>
         <div className="row">
           <label style={{ flex: '2 1 14rem' }}>
-            Who it is for
+            Their email address
             <input
-              value={label}
-              placeholder="Jo Bailey, or jo@example.org"
-              onChange={(e) => setLabel(e.target.value)}
+              type="email"
+              value={email}
+              placeholder="jo@example.org"
+              onChange={(e) => setEmail(e.target.value)}
             />
           </label>
           <label style={{ flex: '1 1 9rem' }}>
@@ -309,21 +295,6 @@ export function AccessScreen(): ReactNode {
             />
           </label>
         </div>
-        {canEmail && (
-          <label style={{ display: 'block', marginTop: '0.5rem' }}>
-            Email the link to (optional)
-            <input
-              type="email"
-              value={sendTo}
-              placeholder="jo@example.org"
-              onChange={(e) => setSendTo(e.target.value)}
-            />
-            <span className="small muted">
-              Only used to send this one message. Leave it blank and copy the link instead.
-            </span>
-          </label>
-        )}
-
         {canEmail && !originSafe && (
           <div className="note warning" style={{ marginTop: '0.5rem' }}>
             The link would point at <span className="mono">{origin}</span>, which nobody
@@ -338,27 +309,42 @@ export function AccessScreen(): ReactNode {
           </p>
         )}
         <p className="small muted">
-          A label for your own list — nothing is checked against it, and the person is not
-          told what you typed.
+          The address is how you send them the link and how this list stays readable. It is
+          not how they sign in — whichever Google account opens the link is the one that gets
+          the access, and it does not have to match.
         </p>
         <button
           className="primary"
-          disabled={busy || problem !== null || !canInvite(label)}
+          disabled={busy || problem !== null || !canInvite(email)}
           onClick={invite}
         >
           {busy ? 'Creating…' : 'Create invitation'}
         </button>
 
-        {madeLink && (
+        {made && (
           <div className="note info" style={{ marginTop: '0.6rem' }}>
             <p style={{ margin: 0 }}>
-              <strong>{sent ? `Emailed to ${sent}.` : 'Send them this link.'}</strong>
+              <strong>{sent ? `Emailed to ${sent}.` : 'Invitation ready.'}</strong>
             </p>
             <p className="small mono" style={{ margin: '0.3rem 0', overflowWrap: 'anywhere' }}>
-              {madeLink}
+              {made.link}
             </p>
             <div className="row" style={{ gap: '0.4rem' }}>
-              <CopyButton text={madeLink} label="Copy link" />
+              <CopyButton text={made.link} label="Copy link" />
+              {/*
+                Offered, not done automatically. Sending opens a Google consent popup, and one
+                that appears without being asked for is one a browser blocks — and plenty of
+                invitations go by text or in person anyway.
+              */}
+              {canEmail && !sent && (
+                <button
+                  className="tiny primary"
+                  disabled={sending}
+                  onClick={() => sendNow(made)}
+                >
+                  {sending ? 'Sending…' : `Email it to ${made.email}`}
+                </button>
+              )}
             </div>
             <p className="small muted" style={{ margin: '0.35rem 0 0' }}>
               It is also in the list below until it is used. Holding the link is the whole of
@@ -386,7 +372,9 @@ export function AccessScreen(): ReactNode {
               return (
                 <li key={i.code}>
                   <div style={{ minWidth: 0 }}>
-                    <strong className="small">{i.label}</strong>
+                    <strong className="small">
+                      {i.email || <span className="muted">no address</span>}
+                    </strong>
                     <div className="small muted">
                       {TIER_LABEL[i.tier]} · invited by {i.invitedBy}
                       {i.note && ` · ${i.note}`}
@@ -412,41 +400,25 @@ export function AccessScreen(): ReactNode {
                       </div>
                     )}
 
-                    {resendFor === i.code && (
-                      <div className="row" style={{ gap: '0.3rem', marginTop: '0.35rem' }}>
-                        <input
-                          type="email"
-                          autoFocus
-                          value={resendTo}
-                          placeholder="jo@example.org"
-                          style={{ flex: '1 1 12rem' }}
-                          // Enter sends it. A one-field form where Enter does nothing is a
-                          // form people fill in and then wonder about.
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') resend(i)
-                            if (e.key === 'Escape') setResendFor(null)
-                          }}
-                          onChange={(e) => setResendTo(e.target.value)}
-                        />
-                        <button
-                          className="tiny primary"
-                          disabled={resendBusy || !looksLikeEmail(resendTo)}
-                          onClick={() => resend(i)}
-                        >
-                          {resendBusy ? 'Sending…' : 'Send'}
-                        </button>
-                      </div>
-                    )}
                   </div>
                   <div className="row" style={{ gap: '0.3rem' }}>
                     {!stale && <CopyButton text={link} label="Copy link" />}
-                    {!stale && canEmail && (
+                    {/*
+                      One press, because the invitation knows who it is for. Sending it again
+                      is the ordinary fix for a message that went astray, and having to type
+                      the address back in is what made it feel like a new invitation.
+                    */}
+                    {!stale && canEmail && i.email && (
                       <button
                         className="tiny"
-                        aria-expanded={resendFor === i.code}
-                        onClick={() => openResend(i.code)}
+                        disabled={resending === i.code}
+                        onClick={() => resend(i)}
                       >
-                        Email it
+                        {resending === i.code
+                          ? 'Sending…'
+                          : resent[i.code]
+                            ? 'Send again'
+                            : 'Email it'}
                       </button>
                     )}
                     {/*

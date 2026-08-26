@@ -119,10 +119,15 @@ describe('who has access', () => {
 })
 
 describe('inviting somebody', () => {
-  const emailField = (): HTMLInputElement => screen.getByLabelText('Who it is for') as HTMLInputElement
+  const emailField = (): HTMLInputElement =>
+    screen.getByLabelText('Their email address') as HTMLInputElement
 
-  it('takes a label and a tier, with no uid and no address required', async () => {
-    // Which is the point: a uid does not exist until their first sign-in.
+  it('takes an address and a tier, and needs no uid', async () => {
+    /*
+      Which is the point: a uid does not exist until their first sign-in, so there is nothing
+      to look up and nothing to paste. The address is who it is for and where the link goes —
+      it is not what they sign in with.
+    */
     render(<AccessScreen />)
     await userEvent.type(emailField(), 'new@example.org')
     await userEvent.click(screen.getByRole('button', { name: 'Create invitation' }))
@@ -172,7 +177,7 @@ describe('inviting somebody', () => {
 describe('invitations waiting to be claimed', () => {
   it('lists them with who invited them and why', () => {
     invites = [
-      { code: 'c-new', label: 'new@example.org', tier: 'organizer', invitedAt: Date.now(), invitedBy: 'devin@example.org', note: 'Cub leader' },
+      { code: 'c-new', email: 'new@example.org', tier: 'organizer', invitedAt: Date.now(), invitedBy: 'devin@example.org', note: 'Cub leader' },
     ]
     render(<AccessScreen />)
     expect(screen.getByText('new@example.org')).toBeTruthy()
@@ -182,7 +187,7 @@ describe('invitations waiting to be claimed', () => {
   it('marks one that has gone stale', () => {
     invites = [
       {
-        code: 'c-old', label: 'old@example.org', tier: 'organizer',
+        code: 'c-old', email: 'old@example.org', tier: 'organizer',
         invitedAt: Date.now() - 40 * 86_400_000, invitedBy: 'devin@example.org', note: '',
       },
     ]
@@ -192,7 +197,7 @@ describe('invitations waiting to be claimed', () => {
 
   it('revokes one, which is the only way to take a sent link back', async () => {
     invites = [
-      { code: 'c-new', label: 'new@example.org', tier: 'admin', invitedAt: Date.now(), invitedBy: 'devin@example.org', note: '' },
+      { code: 'c-new', email: 'new@example.org', tier: 'admin', invitedAt: Date.now(), invitedBy: 'devin@example.org', note: '' },
     ]
     render(<AccessScreen />)
     await userEvent.click(screen.getByRole('button', { name: 'Revoke' }))
@@ -214,7 +219,7 @@ describe('the link an invitation is', () => {
   it('shows the link, so it can be sent', () => {
     invites = [
       {
-        code: 'k3Ns8pQ2', label: 'Jo Bailey', tier: 'organizer',
+        code: 'k3Ns8pQ2', email: 'Jo Bailey', tier: 'organizer',
         invitedAt: Date.now(), invitedBy: 'devin@example.org', note: '',
       },
     ]
@@ -225,7 +230,7 @@ describe('the link an invitation is', () => {
   it('offers to copy it rather than making somebody select it', () => {
     invites = [
       {
-        code: 'k3Ns8pQ2', label: 'Jo Bailey', tier: 'organizer',
+        code: 'k3Ns8pQ2', email: 'Jo Bailey', tier: 'organizer',
         invitedAt: Date.now(), invitedBy: 'devin@example.org', note: '',
       },
     ]
@@ -236,7 +241,7 @@ describe('the link an invitation is', () => {
   it('says how long is left, so a stale one is obvious before it expires', () => {
     invites = [
       {
-        code: 'k3Ns8pQ2', label: 'Jo Bailey', tier: 'organizer',
+        code: 'k3Ns8pQ2', email: 'Jo Bailey', tier: 'organizer',
         invitedAt: Date.now() - 29 * 86_400_000, invitedBy: 'devin@example.org', note: '',
       },
     ]
@@ -247,7 +252,7 @@ describe('the link an invitation is', () => {
   it('offers no link for an expired one, since sending it would be pointless', () => {
     invites = [
       {
-        code: 'k3Ns8pQ2', label: 'Jo Bailey', tier: 'organizer',
+        code: 'k3Ns8pQ2', email: 'Jo Bailey', tier: 'organizer',
         invitedAt: Date.now() - 40 * 86_400_000, invitedBy: 'devin@example.org', note: '',
       },
     ]

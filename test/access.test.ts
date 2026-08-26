@@ -59,16 +59,19 @@ describe('nobody may change their own access', () => {
 
 describe('inviting somebody', () => {
   /*
-    There is less to validate than there was. An invitation is no longer addressed to
-    anybody — it is a code somebody will be handed — so what is typed is a label, and a
-    label cannot be checked against reality.
+    An address, because that is what an admin has: somebody says "add Jo", and Jo's address
+    is the thing they can look up. It is also what makes "they already have access" a
+    question worth asking, and what lets the link be sent without it being typed twice.
+
+    It is not how the invitation is claimed. Whoever opens the link gets in with whatever
+    account they sign in with, which is the whole point of a code.
   */
   const roster = [entry('a', 'devin@example.org', 'admin')]
-  const invites = [{ label: 'Jo Bailey' }]
+  const invites = [{ email: 'jo@example.org' }]
 
-  it('accepts anything that names a person', () => {
-    expect(inviteProblem('Sam from Cubs', roster, invites)).toBeNull()
+  it('accepts an address nobody here has', () => {
     expect(inviteProblem('new@example.org', roster, invites)).toBeNull()
+    expect(canInvite('new@example.org')).toBe(true)
   })
 
   it('says nothing while the field is still empty', () => {
@@ -78,13 +81,13 @@ describe('inviting somebody', () => {
     expect(canInvite('   ')).toBe(false)
   })
 
-  it('does not complain about an address that is not one', () => {
+  it('refuses something that is not an address', () => {
     /*
-      It used to refuse anything that did not look like an email, which was right when the
-      address was the identity. It is a label now, and "Jo from Cubs" is a perfectly good
-      one.
+      A name would work as far as the invitation is concerned — nothing is checked against
+      it — but it cannot be sent to, and the list would not be comparable against the roster.
     */
-    expect(inviteProblem('Jo from Cubs', roster, invites)).toBeNull()
+    expect(inviteProblem('Jo from Cubs', roster, invites)).toMatch(/not look like an email/)
+    expect(canInvite('Jo from Cubs')).toBe(false)
   })
 
   it('catches somebody who plainly already has access', () => {
@@ -92,9 +95,9 @@ describe('inviting somebody', () => {
     expect(inviteProblem('DEVIN@example.org', roster, invites)).toMatch(/already have access/)
   })
 
-  it('catches a label already waiting', () => {
-    expect(inviteProblem('Jo Bailey', roster, invites)).toMatch(/already been invited|already an invitation/)
-    expect(inviteProblem('jo bailey', roster, invites)).toMatch(/already an invitation|already been invited/)
+  it('catches an address already waiting', () => {
+    expect(inviteProblem('jo@example.org', roster, invites)).toMatch(/already an invitation/)
+    expect(inviteProblem('  JO@Example.org  ', roster, invites)).toMatch(/already an invitation/)
   })
 })
 

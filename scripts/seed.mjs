@@ -142,7 +142,8 @@ async function createInvitation(level) {
   const code = Array.from({ length: 22 }, () => alphabet[randomInt(alphabet.length)]).join('')
 
   await put(`invites/${code}`, {
-    label: 'Local development',
+    // No address: nobody is being emailed this, it is being read off a terminal.
+    email: '',
     level,
     invitedAt: Date.now(),
     invitedBy: 'make admin',

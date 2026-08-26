@@ -40,10 +40,18 @@ export interface Invitation {
   /**
    * Who it was meant for, in the admin's own words — a name, an address, "Jo from Cubs".
    *
-   * A label, not an identity. Nothing is checked against it; it exists so the pending list
-   * reads as people rather than as a column of codes.
+   * Who it was written for.
+   *
+   * Not an identity, and nothing about the claim is checked against it: whoever opens the
+   * link gets in, with whatever account they sign in with. It is here so the pending list
+   * reads as people rather than codes, and so the link can be sent again without anybody
+   * typing the address a second time.
+   *
+   * It is on a document readable by whoever holds the code — which is the person whose
+   * address it is, or somebody they forwarded the link to. Worth knowing, and a small thing
+   * beside the link itself, which grants the access.
    */
-  label: string
+  email: string
   tier: Tier
   invitedAt: number
   invitedBy: string
@@ -94,36 +102,33 @@ export function changeProblem(entry: Pick<RosterEntry, 'uid'>, actingUid: string
 /**
  * Why an invitation cannot be created, or null when it can.
  *
- * Thin, because there is little to go on. An invitation is not addressed to anybody — it is
- * a code somebody will be handed — so what is typed here is a label, and a label cannot be
- * checked against reality.
+ * An address is asked for because it is what an admin has: somebody says "add Jo", and Jo's
+ * address is the thing they can look up. It also makes "they already have access" a question
+ * worth asking, and lets the link be sent without the address being typed twice.
  *
- * What it does catch is the honest mistake: nothing typed at all, which leaves a row of
- * codes nobody can tell apart, and inviting somebody plainly already here.
+ * It is not how the invitation is claimed. Whoever opens the link gets in with whatever
+ * account they sign in with, which is the point — plenty of people are reachable at one
+ * address and sign in with a Google account at another.
  */
 export function inviteProblem(
-  label: string,
+  email: string,
   roster: Pick<RosterEntry, 'email'>[],
-  invites: Pick<Invitation, 'label'>[],
+  invites: Pick<Invitation, 'email'>[],
 ): string | null {
-  const value = label.trim()
+  const value = normaliseEmail(email)
   if (!value) return null
 
-  const same = (a: string, b: string): boolean =>
-    a.trim().toLowerCase() === b.trim().toLowerCase()
-
-  if (roster.some((r) => same(r.email, value))) {
-    return 'They already have access.'
-  }
-  if (invites.some((i) => same(i.label, value))) {
+  if (!looksLikeEmail(value)) return 'That does not look like an email address.'
+  if (roster.some((r) => normaliseEmail(r.email) === value)) return 'They already have access.'
+  if (invites.some((i) => normaliseEmail(i.email) === value)) {
     return 'There is already an invitation waiting for them.'
   }
   return null
 }
 
 /** Whether there is enough to create one at all. */
-export function canInvite(label: string): boolean {
-  return label.trim().length > 0
+export function canInvite(email: string): boolean {
+  return looksLikeEmail(email)
 }
 
 /** Roster entries, admins first, then by address — the order the list is read in. */
@@ -166,7 +171,7 @@ export function inviteLink(origin: string, code: string): string {
  * because they have no Google account there, and gives up — which is the failure the codes
  * were meant to end, arriving by a different door.
  *
- * Plain text, and no name in the subject. It is read on a phone, and an admin's label for
+ * Plain text, and no name in the subject. It is read on a phone, and the admin's note about
  * somebody is not something to mail back to them.
  */
 export function inviteMessage(link: string, tier: Tier, from: string): OutgoingInvite {

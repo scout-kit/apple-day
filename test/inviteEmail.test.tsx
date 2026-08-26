@@ -17,6 +17,8 @@ import type { Invitation, RosterEntry } from '../src/domain/access'
 
 const inviteToTier = vi.fn()
 const connect = vi.fn()
+/** The client id each sender was built with — what actually carries it. */
+let madeWith: string[] = []
 const send = vi.fn()
 let clientId = 'client-123'
 let origin = 'https://appleday.example.org'
@@ -41,7 +43,8 @@ vi.mock('../src/lib/mail/config', () => ({
 }))
 
 vi.mock('../src/lib/mail/gmail', () => ({
-  gmailSender: () => ({
+  gmailSender: (id: string) => ({
+    ...(madeWith.push(id), {}),
     channel: 'gmail',
     label: 'Gmail',
     connect: (...a: unknown[]) => connect(...a),
@@ -69,6 +72,7 @@ beforeEach(() => {
   invites = []
   inviteToTier.mockReset()
   inviteToTier.mockResolvedValue('abcdefghijklmnopqrstuv')
+  madeWith = []
   connect.mockReset()
   connect.mockResolvedValue(undefined)
   send.mockReset()
@@ -77,19 +81,19 @@ beforeEach(() => {
 
 afterEach(cleanup)
 
-const inviteSomebody = async (to?: string): Promise<void> => {
+/** Add somebody by address, which is now the whole of the form. */
+const inviteSomebody = async (address = 'jo@example.org'): Promise<void> => {
   render(<AccessScreen />)
-  await userEvent.type(screen.getByLabelText('Who it is for'), 'Jo Bailey')
-  if (to) await userEvent.type(screen.getByLabelText(/Email the link to/), to)
+  await userEvent.type(screen.getByLabelText('Their email address'), address)
   await userEvent.click(screen.getByRole('button', { name: 'Create invitation' }))
 }
 
 describe('the message itself', () => {
   it('says any Google account will do, which is the thing people get wrong', () => {
     /*
-      The failure this whole change was meant to end, arriving by another door: somebody
-      invited at a work address assumes they must sign in with that address, has no Google
-      account there, and gives up. It is not obvious unless the message says it.
+      The failure the codes were meant to end, arriving by another door: somebody invited at
+      a work address assumes they must sign in with that address, has no Google account
+      there, and gives up. It is not obvious unless the message says it.
     */
     const { body } = inviteMessage('https://x.example/join/abc', 'organizer', 'Devin')
     expect(body).toMatch(/[Aa]ny Google account/)
@@ -110,101 +114,145 @@ describe('the message itself', () => {
     expect(asOrganizer).toMatch(/build the schedule/)
   })
 
-  it('never repeats the admin’s label for them back to them', () => {
-    // "Cub leader, does Saturday" is a note for the admin's own list, not something to mail
-    // to the person it is about.
+  it('never repeats the admin’s note about them back to them', () => {
+    // "Cub leader, does Saturday" is for the admin's own list, not for the person it is about.
     const { subject, body } = inviteMessage('https://x/join/a', 'organizer', 'Devin')
-    expect(subject).not.toMatch(/Jo Bailey/)
-    expect(body).not.toMatch(/Jo Bailey/)
+    expect(subject).not.toMatch(/Cub leader/)
+    expect(body).not.toMatch(/Cub leader/)
   })
 })
 
-describe('sending it', () => {
+describe('making one', () => {
+  it('takes an address and nothing else', async () => {
+    /*
+      One field, because it was one thing all along. Asking who it is for and then asking
+      again where to send it read as two separate jobs, and made sending look like part of
+      creating rather than the next thing you do.
+    */
+    render(<AccessScreen />)
+    expect(screen.getByLabelText('Their email address')).toBeTruthy()
+    expect(screen.queryByLabelText(/Email the link to/)).toBeNull()
+  })
+
+  it('does not send anything by itself', async () => {
+    // Sending opens a consent popup, and one that appears without being asked for is one a
+    // browser blocks.
+    await inviteSomebody()
+    await waitFor(() => expect(inviteToTier).toHaveBeenCalled())
+    expect(send).not.toHaveBeenCalled()
+  })
+
+  it('records the address on the invitation, so it can be sent later', async () => {
+    await inviteSomebody()
+    await waitFor(() => expect(inviteToTier).toHaveBeenCalled())
+    expect(inviteToTier.mock.calls[0]![0]).toBe('jo@example.org')
+  })
+
+  it('will not create one for something that is not an address', async () => {
+    render(<AccessScreen />)
+    await userEvent.type(screen.getByLabelText('Their email address'), 'Jo from Cubs')
+    expect(
+      (screen.getByRole('button', { name: 'Create invitation' }) as HTMLButtonElement).disabled,
+    ).toBe(true)
+    expect(screen.getByText(/not look like an email/)).toBeTruthy()
+  })
+
+  it('offers the link straight away, whatever else happens', async () => {
+    // The deliverable. Plenty of invitations go by text or in person.
+    await inviteSomebody()
+    await waitFor(() =>
+      expect(
+        screen.getByText('https://appleday.example.org/join/abcdefghijklmnopqrstuv'),
+      ).toBeTruthy(),
+    )
+    expect(screen.getByRole('button', { name: 'Copy link' })).toBeTruthy()
+  })
+})
+
+describe('then sending it', () => {
+  const emailButton = (): HTMLElement =>
+    screen.getByRole('button', { name: /Email it to jo@example.org/ })
+
+  it('offers to send it to the address it was made for', async () => {
+    await inviteSomebody()
+    await waitFor(() => expect(emailButton()).toBeTruthy())
+  })
+
   it('asks for consent before composing anything', async () => {
-    await inviteSomebody('jo@example.org')
+    /*
+      Two calls, in that order. Consent opens while somebody is looking at a button they
+      pressed — asking for it mid-run is where a popup blocker strands it.
+    */
+    await inviteSomebody()
+    await waitFor(() => expect(emailButton()).toBeTruthy())
+    await userEvent.click(emailButton())
+
     await waitFor(() => expect(send).toHaveBeenCalled())
+    expect(madeWith).toContain('client-123')
+    expect(connect).toHaveBeenCalled()
     expect(connect.mock.invocationCallOrder[0]!).toBeLessThan(send.mock.invocationCallOrder[0]!)
   })
 
-  it('sends the link it just made, to the address given', async () => {
-    await inviteSomebody('jo@example.org')
+  it('sends the link it just made, to that address', async () => {
+    await inviteSomebody()
+    await waitFor(() => expect(emailButton()).toBeTruthy())
+    await userEvent.click(emailButton())
+
     await waitFor(() => expect(send).toHaveBeenCalled())
     const message = send.mock.calls[0]![0] as { to: string; body: string }
     expect(message.to).toBe('jo@example.org')
-    expect(message.body).toContain(
-      'https://appleday.example.org/join/abcdefghijklmnopqrstuv',
-    )
+    expect(message.body).toContain('https://appleday.example.org/join/abcdefghijklmnopqrstuv')
   })
 
-  it('says where it went', async () => {
-    await inviteSomebody('jo@example.org')
+  it('says where it went, and stops offering to send it again', async () => {
+    await inviteSomebody()
+    await waitFor(() => expect(emailButton()).toBeTruthy())
+    await userEvent.click(emailButton())
+
     await waitFor(() => expect(screen.getByText(/Emailed to jo@example.org/)).toBeTruthy())
+    expect(screen.queryByRole('button', { name: /Email it to/ })).toBeNull()
   })
 
-  it('does not send the address anywhere near the invitation', async () => {
-    /*
-      The invitation records a label, a tier and a note — no address. Writing one would
-      quietly put back the thing the codes replaced, and would mean an address stored for
-      somebody who has not agreed to anything yet.
-    */
-    await inviteSomebody('jo@example.org')
-    await waitFor(() => expect(inviteToTier).toHaveBeenCalled())
-    expect(inviteToTier.mock.calls[0]).not.toContain('jo@example.org')
-  })
-
-  it('creates the invitation anyway when the send fails, and says to copy the link', async () => {
+  it('keeps the invitation and the link when the send fails', async () => {
+    // Only a message failed. The link is on screen and in the list, and it still works.
     send.mockRejectedValue(new Error('Gmail said no'))
-    await inviteSomebody('jo@example.org')
+    await inviteSomebody()
+    await waitFor(() => expect(emailButton()).toBeTruthy())
+    await userEvent.click(emailButton())
 
     await waitFor(() => expect(screen.getByText(/Gmail said no/)).toBeTruthy())
-    expect(screen.getByText(/Copy the link below and send it yourself/)).toBeTruthy()
-    // Still there to copy, which is the point of not undoing anything.
+    expect(screen.getByText(/copy it and send it yourself/)).toBeTruthy()
     expect(
       screen.getByText('https://appleday.example.org/join/abcdefghijklmnopqrstuv'),
     ).toBeTruthy()
   })
 
-  it('sends nothing when the address is left blank', async () => {
-    await inviteSomebody('')
+  it('is not offered when sending is not set up', async () => {
+    clientId = ''
+    await inviteSomebody()
     await waitFor(() => expect(inviteToTier).toHaveBeenCalled())
-    expect(send).not.toHaveBeenCalled()
+    expect(screen.queryByRole('button', { name: /Email it to/ })).toBeNull()
     expect(screen.getByRole('button', { name: 'Copy link' })).toBeTruthy()
   })
-
-  it('sends nothing for something that is not an address', async () => {
-    // Rather than opening a consent popup and failing behind it.
-    await inviteSomebody('jo at example dot org')
-    await waitFor(() => expect(inviteToTier).toHaveBeenCalled())
-    expect(connect).not.toHaveBeenCalled()
-  })
-})
-
-describe('when sending is not set up', () => {
-  it('does not ask for an address it cannot use', () => {
-    clientId = ''
-    render(<AccessScreen />)
-    expect(screen.queryByLabelText(/Email the link to/)).toBeNull()
-    expect(screen.getByRole('button', { name: 'Create invitation' })).toBeTruthy()
-  })
-
 })
 
 describe('against the emulator', () => {
   /*
     Offered, and warned about. The same call the reminders screen makes.
 
-    Sending is the part worth trying before a real Apple Day depends on it — the consent
-    screen, the scope, whether the message reads properly on a phone — and none of that can
-    be rehearsed if the field is not there. What a local link cannot do is work for anybody
-    else, so that is what gets said.
+    Sending is worth trying before a real Apple Day depends on it — the consent screen, the
+    scope, whether the message reads properly on a phone. What a local link cannot do is
+    work for anybody else, so that is what gets said.
   */
   beforeEach(() => {
     origin = 'http://localhost:5173'
   })
 
-  it('still offers to send, so the whole path can be tried', () => {
-    render(<AccessScreen />)
-    expect(screen.getByLabelText(/Email the link to/)).toBeTruthy()
+  it('still offers to send, so the whole path can be tried', async () => {
+    await inviteSomebody()
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /Email it to jo@example.org/ })).toBeTruthy(),
+    )
   })
 
   it('says the link only works on this machine, and names the setting', () => {
@@ -215,7 +263,12 @@ describe('against the emulator', () => {
 
   it('sends the local link as it is, rather than inventing a public one', async () => {
     // Guessing at a real origin would send a link to somewhere that may not be this app.
-    await inviteSomebody('jo@example.org')
+    await inviteSomebody()
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /Email it to/ })).toBeTruthy(),
+    )
+    await userEvent.click(screen.getByRole('button', { name: /Email it to/ }))
+
     await waitFor(() => expect(send).toHaveBeenCalled())
     const message = send.mock.calls[0]![0] as { body: string }
     expect(message.body).toContain('http://localhost:5173/join/abcdefghijklmnopqrstuv')
@@ -228,15 +281,15 @@ describe('against the emulator', () => {
   })
 })
 
-describe('sending an invitation again', () => {
+describe('sending one that is already waiting', () => {
   /*
-    A message to the wrong address, one that never arrived, one sent before somebody
-    mentioned which account they actually use. The link does not change — it is the same
-    invitation — so this is another copy of the same thing, not a new grant.
+    A message that went astray, one that never arrived, one sent before somebody mentioned
+    which account they use. The link does not change — it is the same invitation — so this is
+    another copy of the same thing rather than a new grant.
   */
   const pending: Invitation = {
     code: 'abcdefghijklmnopqrstuv',
-    label: 'Jo Bailey',
+    email: 'jo@example.org',
     tier: 'organizer',
     invitedAt: Date.now(),
     invitedBy: 'devin@example.org',
@@ -247,34 +300,15 @@ describe('sending an invitation again', () => {
     invites = [pending]
   })
 
-  /*
-    Scoped to the pending list, because the create form's address field has the same
-    placeholder — two ways to send the same kind of thing, so they read alike on purpose.
-  */
   const waiting = (): HTMLElement => document.querySelector('.issue-list') as HTMLElement
 
-  const openResend = async (): Promise<HTMLElement> => {
-    render(<AccessScreen />)
-    await userEvent.click(screen.getByRole('button', { name: 'Email it' }))
-    return waiting()
-  }
-
-  const sendTo = async (list: HTMLElement, address: string): Promise<void> => {
-    await userEvent.type(within(list).getByPlaceholderText('jo@example.org'), address)
-    await userEvent.click(within(list).getByRole('button', { name: 'Send' }))
-  }
-
-  it('asks for an address, because the invitation stores none', async () => {
+  it('is one press, with nothing to type', async () => {
     /*
-      Deliberate rather than forgotten. The invitation is readable by anyone holding the
-      code, so an address written on it is one more thing a forwarded link gives away.
+      The invitation knows who it is for. Asking for the address again is what made resending
+      feel like making a new invitation.
     */
-    const list = await openResend()
-    expect(within(list).getByPlaceholderText('jo@example.org')).toBeTruthy()
-  })
-
-  it('sends the same link, not a new invitation', async () => {
-    await sendTo(await openResend(), 'jo@example.org')
+    render(<AccessScreen />)
+    await userEvent.click(within(waiting()).getByRole('button', { name: 'Email it' }))
 
     await waitFor(() => expect(send).toHaveBeenCalled())
     const message = send.mock.calls[0]![0] as { to: string; body: string }
@@ -285,30 +319,25 @@ describe('sending an invitation again', () => {
 
   it('sends it at the tier that invitation actually grants', async () => {
     // Not whatever the create form happens to be set to, which is a different question.
-    await sendTo(await openResend(), 'jo@example.org')
+    render(<AccessScreen />)
+    await userEvent.click(within(waiting()).getByRole('button', { name: 'Email it' }))
 
     await waitFor(() => expect(send).toHaveBeenCalled())
-    const message = send.mock.calls[0]![0] as { body: string }
-    expect(message.body).toMatch(/build the schedule/)
+    expect((send.mock.calls[0]![0] as { body: string }).body).toMatch(/build the schedule/)
   })
 
-  it('says where it went', async () => {
-    await sendTo(await openResend(), 'jo@example.org')
+  it('says where it went, and offers to do it again', async () => {
+    render(<AccessScreen />)
+    await userEvent.click(within(waiting()).getByRole('button', { name: 'Email it' }))
+
     await waitFor(() => expect(screen.getByText(/Emailed to jo@example.org/)).toBeTruthy())
-  })
-
-  it('will not send to something that is not an address', async () => {
-    const list = await openResend()
-    await userEvent.type(within(list).getByPlaceholderText('jo@example.org'), 'jo at example')
-    expect(
-      (within(list).getByRole('button', { name: 'Send' }) as HTMLButtonElement).disabled,
-    ).toBe(true)
+    expect(within(waiting()).getByRole('button', { name: 'Send again' })).toBeTruthy()
   })
 
   it('keeps the link working when the send fails', async () => {
-    // The invitation is untouched by any of this — only a message failed.
     send.mockRejectedValue(new Error('Gmail said no'))
-    await sendTo(await openResend(), 'jo@example.org')
+    render(<AccessScreen />)
+    await userEvent.click(within(waiting()).getByRole('button', { name: 'Email it' }))
 
     await waitFor(() => expect(screen.getByText(/Gmail said no/)).toBeTruthy())
     expect(screen.getByText(/link itself still works/)).toBeTruthy()
@@ -317,15 +346,23 @@ describe('sending an invitation again', () => {
   it('is not offered when sending is not set up', () => {
     clientId = ''
     render(<AccessScreen />)
-    expect(screen.queryByRole('button', { name: 'Email it' })).toBeNull()
+    expect(within(waiting()).queryByRole('button', { name: 'Email it' })).toBeNull()
     // Copying it is always there, and needs nothing.
-    expect(screen.getByRole('button', { name: 'Copy link' })).toBeTruthy()
+    expect(within(waiting()).getByRole('button', { name: 'Copy link' })).toBeTruthy()
   })
 
-  it('is not offered for one that has expired', async () => {
-    // There is nothing worth sending: following it would only say it cannot be used.
+  it('is not offered for one that has expired', () => {
+    // Nothing worth sending: following it would only say it cannot be used.
     invites = [{ ...pending, invitedAt: Date.now() - 40 * 24 * 60 * 60 * 1000 }]
     render(<AccessScreen />)
-    expect(screen.queryByRole('button', { name: 'Email it' })).toBeNull()
+    expect(within(waiting()).queryByRole('button', { name: 'Email it' })).toBeNull()
+  })
+
+  it('is not offered for one made by hand, which names nobody to send to', () => {
+    // The console route types a tier and a date and no address at all.
+    invites = [{ ...pending, email: '' }]
+    render(<AccessScreen />)
+    expect(within(waiting()).queryByRole('button', { name: 'Email it' })).toBeNull()
+    expect(within(waiting()).getByText('no address')).toBeTruthy()
   })
 })

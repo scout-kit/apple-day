@@ -36,6 +36,7 @@ import type {
 } from '../domain/types'
 import { useEvent } from './eventContext'
 import { auth, db } from './firebase'
+import { normaliseEmail } from '../domain/access'
 import type { Invitation, RosterEntry, Tier } from '../domain/access'
 import { readAssignment } from '../domain/assignments'
 import { generateToken } from '../domain/publishing'
@@ -1649,9 +1650,17 @@ function toRosterEntry(uid: string, d: Record<string, unknown>): RosterEntry {
 function toInvitation(code: string, d: Record<string, unknown>): Invitation {
   return {
     code,
-    // Older invitations were keyed by address and carried no label; the address they were
-    // keyed by is the best label there is for one.
-    label: typeof d.label === 'string' && d.label.trim() ? d.label : code,
+    /*
+      Empty for one made by hand in the console, which carries only a tier and a date — the
+      screen shows those as "no address", because that is what they are. `label` is read as
+      well for any invitation written before the field was named for what it holds.
+    */
+    email:
+      typeof d.email === 'string' && d.email.trim()
+        ? d.email
+        : typeof d.label === 'string' && d.label.trim()
+          ? d.label
+          : '',
     tier: d.level === 'organizer' ? 'organizer' : 'admin',
     invitedAt: typeof d.invitedAt === 'number' ? d.invitedAt : 0,
     invitedBy: typeof d.invitedBy === 'string' ? d.invitedBy : '',
@@ -1675,7 +1684,7 @@ export const useInvitations = (): Loadable<Invitation[]> =>
  * and signs in gets the tier it names.
  */
 export async function inviteToTier(
-  label: string,
+  email: string,
   tier: Tier,
   invitedBy: string,
   note = '',
@@ -1687,11 +1696,12 @@ export async function inviteToTier(
     only thing protecting it is that it cannot be guessed.
   */
   const code = generateToken()
+  const who = normaliseEmail(email).slice(0, 120)
 
   await auditedSet(
     paths.invite(code),
     {
-      label: label.trim().slice(0, 120),
+      email: who,
       level: tier,
       invitedAt: Date.now(),
       invitedBy,
@@ -1699,11 +1709,11 @@ export async function inviteToTier(
     },
     {
       entity: 'access',
-      // The label, never the code. An audit entry is read by admins and kept for years, and
-      // a live invitation code in one is a way in sitting in the record.
-      entityId: label.trim() || 'invitation',
+      // The address, never the code. An audit entry is read by admins and kept for years,
+      // and a live invitation code in one is a way in sitting in the record.
+      entityId: who || 'invitation',
       eventId: null,
-      summary: `Invited ${label.trim() || 'somebody'} as ${tier}`,
+      summary: `Invited ${who || 'somebody'} as ${tier}`,
       fields: ['level'],
     },
     {},
