@@ -119,7 +119,7 @@ describe('checking in, then issuing a jar', () => {
     const shift = await shiftOf(db)
     // The headcount and the no-jar warning read whereabouts.
     expect(shift.whereabouts).toBe('out')
-    // And attendance is untouched — writing it here is what used to erase the check-in.
+    // And attendance is untouched: writing it here at all is what erases the check-in.
     expect(shift.status).toBe('checkedIn')
     expect(shift.checkedInAt).toBe(1)
   })

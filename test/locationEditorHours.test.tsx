@@ -7,14 +7,12 @@ import type { Location } from '../src/domain/types'
 /**
  * The day switches in the location editor.
  *
- * Rendered rather than reasoned about, because the bug this covers was a comparison in
- * JSX — `range !== null`, which is true for a day that is simply absent — so every
- * unrecorded day showed an "open" switch directly above the word "Closed". A domain test
- * alone would not have caught it.
+ * Rendered rather than reasoned about, because the failure lives in JSX: `range !== null` is
+ * true for a day that is simply absent, which shows an "open" switch directly above the word
+ * "Closed". A domain test alone cannot catch that.
  *
- * The editor is rendered on its own. It used to be reached by pressing Edit in the library
- * list, which is gone — a location is edited on its own page now, so that route said more
- * about the library than about the thing under test.
+ * The editor is rendered on its own rather than reached through the library list, which would
+ * say more about the library than about the thing under test.
  */
 
 const saveLocation = vi.fn()

@@ -20,10 +20,10 @@ import type { EventLike } from '../src/domain/history'
 /*
   Three fields, not a loaded year.
 
-  Which years a lookback covers is answerable from the event list alone, and that is the
-  whole point of it being answerable that way: the selection is made before anything is
-  read, so only the selected years are ever fetched. It used to take fully loaded shifts and
-  jars, which meant reading every year in order to decide which two to show.
+  Which years a lookback covers is answerable from the event list alone, and that is the whole
+  point of it being answerable that way: the selection is made before anything is read, so only
+  the selected years are ever fetched. Taking fully loaded shifts and jars would mean reading
+  every year in order to decide which two to show.
 */
 const event = (id: string, year: number, fridayDate = ''): EventLike => ({
   id,
@@ -123,8 +123,8 @@ describe('which years get read at all', () => {
   /*
     The reason the selection moved onto the light event list.
 
-    Both screens that compare years used to read every year that had ever run, whatever
-    they went on to show — and the location page, which shows one year against the one
+    Both screens that compare years would otherwise read every year that has ever run,
+    whatever they go on to show — and the location page, which shows one year against the one
     before, is reached by clicking a shop name from the board, the day-of table or the
     money screen.
   */

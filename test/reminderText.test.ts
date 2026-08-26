@@ -143,9 +143,9 @@ describe('a parent with two children', () => {
 
   it('never puts a verb that must agree in number after the children', () => {
     /*
-      The defaults are worded number-neutrally on purpose. They used to be functions that
-      could pick "has" or "have"; now they are text an organizer can edit, and plain text
-      cannot agree in number — a placeholder for it would be a grammar engine nobody asked
+      The defaults are worded number-neutrally on purpose. They are text an organizer can
+      edit, not functions that could pick "has" or "have", and plain text cannot agree in
+      number — a placeholder for it would be a grammar engine nobody asked
       for. So the wording sidesteps the question: "the shifts for Elliot" reads as well as
       "the shifts for Elliot and Nadia".
 

@@ -300,8 +300,9 @@ describe('the thing this page was worth building for', () => {
   it('reads only the years it shows', () => {
     /*
       This page is reached by clicking a shop name from the board, the day-of table or the
-      money screen, so it is opened far more often than the history screen — and it used to
-      read every year the group had ever run, every time, to show the one before this.
+      money screen, so it is opened far more often than the history screen. Reading every year
+      the group has ever run, every time, to show the one before this is the cost worth
+      avoiding.
     */
     render(<LocationScreen />)
     expect(asked).toEqual(['2025', '2026'])
@@ -497,8 +498,8 @@ describe('correcting a location from its own page', () => {
 
   it('lets an organizer correct it', async () => {
     /*
-      This used to expect nothing here, on the grounds that the library is shared across
-      every year. It is — but finding an address wrong happens standing outside the shop,
+      The library is shared across every year, which is an argument for keeping this to
+      admins and not a good one: finding an address wrong happens standing outside the shop,
       and the person standing there should be able to fix it. Renames do not lose history:
       the roll-ups resolve old spellings through `aliases`, and the edit is on the log.
 

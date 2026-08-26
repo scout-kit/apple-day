@@ -34,7 +34,7 @@ describe('every state survives the round trip', () => {
   })
 
   it('keeps the two independent of each other', () => {
-    // The combination that used to be unrepresentable: turned up *and* out collecting.
+    // Two facts, so both can be true at once: turned up *and* out collecting.
     const a = readAssignment('a1', stored({ status: 'checkedIn', whereabouts: 'out' }))
     expect(a.status).toBe('checkedIn')
     expect(a.whereabouts).toBe('out')
@@ -63,8 +63,8 @@ describe('defaults for what is not there', () => {
 
 describe('documents written before the two states were split', () => {
   it('reads a legacy out as checked in and out collecting', () => {
-    // No `whereabouts` field at all, `status: 'out'` — exactly what is sitting in the
-    // database from before the split, and what used to come back as `planned`.
+    // No `whereabouts` field at all and `status: 'out'` — a shape that is really sitting in
+    // the database, and must not read back as `planned`.
     const a = readAssignment('a1', {
       slotId: 'fri-1700',
       locationId: 'braemar',

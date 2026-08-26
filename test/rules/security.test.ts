@@ -114,13 +114,14 @@ describe('PII is not reachable without an organizer account', () => {
 
 describe('nothing is publicly readable any more', () => {
   /*
-    There was a redacted public schedule at /public — first name and last initial, no
-    contact details — served to anyone who had the link. The page is gone and so is the
-    collection, which takes a whole class of exposure with it: the only thing reachable
-    without an account is now a single pass, by a token nobody can guess.
+    There is no public collection at all — no redacted schedule, nothing served to somebody
+    holding no link. That takes a whole class of exposure off the table: the only thing
+    reachable without an account is a single pass, by a token nobody can guess.
+
+    Pinned shut here so it cannot reappear by accident.
   */
 
-  it('refuses the collection that used to be world-readable', async () => {
+  it('refuses a world-readable collection', async () => {
     await assertFails(getDoc(doc(anon(), 'public', 'schedule')))
     await assertFails(setDoc(doc(anon(), 'public', 'schedule'), { rows: [] }))
   })
@@ -173,10 +174,9 @@ describe('passes are capability documents', () => {
 
 describe('a device cannot give itself a role', () => {
   /*
-    There used to be a `claims` collection: a device that could name a pass token wrote
-    itself a role, and the rules validated the write against the pass. It is gone —
-    anybody who works a screen holds an account on the roster, and the roster is
-    admin-written. These pin the collection shut so it cannot come back by accident.
+    Anybody who works a screen holds an account on the roster, and the roster is
+    admin-written. There is no `claims` collection — no device naming a pass token to write
+    itself a role. These pin it shut so it cannot appear by accident.
   */
 
   it('cannot write a claim naming a real pass', async () => {
@@ -222,8 +222,7 @@ describe('jars — who may touch the money', () => {
 
   it('lets an organizer take a jar back', async () => {
     // A mis-issued number, the wrong person, a miscount. Correcting money is organizers'
-    // work; this used to be split, with base-ops counters allowed to delete only jars
-    // that were still out.
+    // work, whole rather than split by whether the jar is still out.
     const { deleteDoc } = await import('firebase/firestore')
     await assertSucceeds(deleteDoc(doc(admin(), 'events', EVENT, 'jars', 'fri-jar-1')))
   })
@@ -310,9 +309,9 @@ describe('jars — who may touch the money', () => {
     )
   })
 
-  it('refuses the statuses that used to double as whereabouts', async () => {
-    // `out` and `returned` are no longer attendance values. A client still writing them
-    // would be parking two facts in one field again.
+  it('refuses statuses that would double as whereabouts', async () => {
+    // `out` and `returned` are not attendance values. A client writing them there parks two
+    // facts in one field.
     for (const status of ['out', 'returned']) {
       await assertFails(
         updateDoc(doc(admin(), 'events', EVENT, 'assignments', 'a1'), { status }),
@@ -558,10 +557,8 @@ describe('revealing a location on a pass', () => {
     A pass names a location only once an organizer has checked that person in — everybody
     reports to base first. The reveal follows the check-in in both directions.
 
-    This used to be writable by base-ops counters under a rule that let them flip
-    `revealShifts` and nothing else, so a counter could not rewrite somebody's shifts.
-    With counters gone the whole pass is organizer-written, and the narrow rule went
-    with them.
+    The whole pass is organizer-written. There is no narrower rule letting somebody flip
+    `revealShifts` alone, because there is nobody left who needs one.
   */
 
   const seedPass = async (): Promise<void> => {

@@ -62,10 +62,10 @@ let baseId: string | null = 'hall'
 /**
  * Whether the data is still arriving.
  *
- * Controllable because every mock here used to report `loading: false` forever, so the
- * screen's loading branch never rendered — and a hook placed *after* that early return was
- * therefore never counted twice. React throws when the hook count changes between renders,
- * which broke the whole page on the first real load while no test noticed.
+ * Controllable, so the screen's loading branch actually renders. A mock reporting
+ * `loading: false` forever never reaches it, and a hook placed after that early return is
+ * never counted twice — React throws when the hook count changes between renders, so the
+ * page breaks on its first real load with every test still green.
  */
 let loadingData = false
 
@@ -477,8 +477,8 @@ describe('a jar only goes to somebody who has arrived', () => {
     screen.getAllByRole('button').find((b) => b.textContent === label)! as HTMLButtonElement
 
   it('is not offered before check-in', () => {
-    // It used to be shown greyed out with an explanation. Absent is better: the row had
-    // seven controls, five of which did nothing yet.
+    // Absent rather than greyed out with an explanation: the row has seven controls, and
+    // five of them doing nothing yet is worse than five of them not being there.
     assignments = [{ ...assignments[0]!, status: 'confirmed' }]
     render(<DayOfScreen />)
     expect(screen.queryByRole('button', { name: 'Issue jar' })).toBeNull()
@@ -538,11 +538,11 @@ describe('out collecting without a jar', () => {
 
   it('offers no attendance button while somebody who has arrived is out', async () => {
     /*
-      This used to be written against `confirmed` + `out`, and passing was the bug.
+      Written against `checkedIn` + `out`, because `confirmed` + `out` is not a state.
 
-      Nobody un-checks-in somebody standing at a location — that part was right, and is kept
-      here. But the state it was written against is not one: "out collecting" is a fact about
-      a person who has arrived, and a shift that says `confirmed` + `out` is a check-in that
+      Nobody un-checks-in somebody standing at a location, which is what this pins down. But
+      "out collecting" is a fact about a person who has arrived, and a shift saying
+      `confirmed` + `out` is a check-in that
       was taken back and a whereabouts nobody cleared. Guarding the attendance buttons on it
       is what left a row that was expected and out with nothing on it but "Back".
     */
@@ -713,8 +713,8 @@ describe('finding a location from the table', () => {
     /*
       Here it matters: somebody is being sent out and the answer they wanted was a route.
 
-      It does not matter on a location's own page, where the question is only where the
-      place is — and there it used to claim no base was set for an event that had one.
+      It does not matter on a location's own page, where the question is only where the place
+      is.
     */
     baseId = null
     render(<DayOfScreen />)
@@ -806,7 +806,7 @@ describe('back-to-back shifts at one location are one stretch of work', () => {
   it('is one row, not two', () => {
     backToBack()
     render(<DayOfScreen />)
-    // Previously two rows, the second labelled "↳ same person" — two of everything to press.
+    // Not two, the second labelled "↳ same person" — that is two of everything to press.
     expect(screen.getAllByRole('row', { name: /Alpha One/ })).toHaveLength(1)
   })
 
@@ -1113,9 +1113,9 @@ describe('knowing whether somebody can be rung', () => {
 
   it('never puts a parent’s phone number on the board', () => {
     /*
-      It used to sit under the name. That is a parent's phone number on a screen open on a
-      table in a shop doorway all day, for the sake of a call almost nobody makes — and the
-      person's own page has it, one click away.
+      Under the name would put a parent's phone number on a screen open on a table in a shop
+      doorway all day, for the sake of a call almost nobody makes. The person's own page has
+      it, one click away.
     */
     people = [{ ...alpha, parentPhone: '519-555-0100' }]
     render(<DayOfScreen />)

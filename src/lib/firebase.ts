@@ -94,14 +94,19 @@ export const auth = getAuth(app)
   Firebase config out of the bundle — it is in there, by design — can talk to the project
   with their own script and is bound only by the rules.
 
-  Off unless VITE_APPCHECK_SITE_KEY is set, and never against the emulator, which does not
-  enforce it. That ordering matters on the way in: the client has to be sending tokens
-  *before* enforcement is switched on in the console, or the app locks itself out the moment
-  it is. So this ships first, quietly, and the console switch comes after.
+  What it costs is worth knowing before switching it on, because it is not a detail: on the
+  web the only providers are reCAPTCHA v3 and reCAPTCHA Enterprise, so this loads Google's
+  reCAPTCHA and lets it score every visitor. This module is reached from a volunteer's pass
+  page too, so that includes a fourteen-year-old opening a link on a borrowed phone. Weigh
+  that against what it protects: rules that already gate every write behind the roster and
+  serve nothing publicly but one pass at a time.
 
-  Tokens refresh themselves; a failure here is not worth taking the app down for, because
-  with enforcement off nothing depends on it yet and with enforcement on the rejection will
-  say so plainly.
+  So it is off unless VITE_APPCHECK_SITE_KEY is set, and never against the emulator. The
+  ordering matters on the way in: the client has to be sending tokens *before* enforcement is
+  switched on in the console, or the app locks itself out the moment it is.
+
+  Tokens refresh themselves. A failure here is not worth taking the app down for — with
+  enforcement off nothing depends on it, and with enforcement on the rejection says so.
 */
 const appCheckSiteKey = (import.meta.env.VITE_APPCHECK_SITE_KEY as string | undefined) ?? ''
 

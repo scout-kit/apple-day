@@ -22,9 +22,9 @@ vi.mock('../src/lib/repo', () => ({
     /*
       The mock honours the ids, because the ids are the thing under test.
 
-      Narrowing used to happen after the fetch, in the screen. It happens before it now —
-      the screen decides which years it needs and only those are read — so a mock that
-      returned every year regardless would let that wiring be cut and still pass.
+      Narrowing happens before the fetch: the screen decides which years it needs and only
+      those are read. A mock returning every year regardless would let that wiring be cut and
+      still pass.
     */
     asked = ids
     return {
@@ -276,9 +276,8 @@ describe('hours, year by year', () => {
 
   it('narrows to one location, which is the question worth asking', async () => {
     /*
-      "What is five o'clock at Braemar worth, year on year" is the thing this is for, and it
-      is not answerable from a total. It used to be a checkbox per location with everything
-      ticked summed together — a sum of six doors cannot be read as any one of them.
+      "What is five o'clock at Braemar worth, year on year" is the thing this is for, and it is
+      not answerable from a total. A sum of six doors cannot be read as any one of them.
     */
     render(<HistoryScreen />)
     await pickLocation('Kelmont')

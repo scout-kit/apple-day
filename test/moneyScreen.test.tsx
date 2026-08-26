@@ -63,9 +63,8 @@ const jar = (over: Partial<Jar> & { id: string }): Jar => ({
 /*
   Rebuilt for every test.
 
-  It used to be a shared const that individual tests pushed to and popped from, so a test
-  that failed part-way left its extra jar behind and took two later tests down with it — a
-  single failure reported as three.
+  Not a shared const that tests push to and pop from: one that fails part-way leaves its extra
+  jar behind and takes two later tests down with it, so a single failure is reported as three.
 */
 let jars: Jar[] = []
 
@@ -133,7 +132,7 @@ describe('every location that saw money is listed', () => {
     const table = within(byLocationTable())
 
     expect(table.getByText('Braemar')).toBeDefined()
-    // Previously only in the warning above, never in the table.
+    // In the table, not only in the warning above it.
     expect(table.getByText('Staff lounge')).toBeDefined()
     expect(table.getByText('$86.55')).toBeDefined()
   })

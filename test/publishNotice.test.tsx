@@ -241,9 +241,8 @@ describe('where the warning appears', () => {
 describe('an event published before any of this existed', () => {
   it('says nothing, because there is nothing left to compare', () => {
     /*
-      There used to be a fallback: such a publish still stored the public schedule's rows,
-      and those could be rebuilt from the board. The public page is gone and its rows with
-      it, so `unknown` is the honest answer — and one publish re-establishes the baseline.
+      There is nothing to fall back on: no published rows to rebuild from the board and
+      compare. `unknown` is the honest answer, and one publish re-establishes the baseline.
     */
     publishState = { publishedAt: 1, fingerprint: '', currentFingerprint: '' }
     assignments = []

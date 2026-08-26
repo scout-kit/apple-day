@@ -145,12 +145,12 @@ describe('an organizer runs the event', () => {
 
 describe('an organizer fixes what needs fixing on the day', () => {
   /*
-    The line moved, deliberately.
+    The line is drawn deliberately, and not at "shared between years".
 
-    It used to be "shared between years", which put the wrong things on the wrong side of it:
-    finding a shop's address is wrong happens standing outside the shop, and the person
-    standing there could not fix it. What an admin keeps is not the wide work — it is the
-    work that cannot be undone or noticed afterwards.
+    That would put the wrong things on the wrong side of it: finding a shop's address is wrong
+    happens standing outside the shop, and the person standing there should be able to fix it.
+    What an admin keeps is not the wide work — it is the work that cannot be undone or noticed
+    afterwards.
   */
   it('adds a shop and corrects an address', async () => {
     await assertSucceeds(
@@ -215,9 +215,9 @@ describe('an organizer does not undo what cannot be undone', () => {
 
   it('can delete somebody from this event, which is all that deleting them is now', async () => {
     /*
-      This used to be admin-only, because a person was a system-wide record and removing one
-      took every year's shifts with them. People are stored under their event now, so this is
-      a decision about one Apple Day — exactly the sort somebody running the day should make.
+      People are stored under their event, so removing one is a decision about a single Apple
+      Day rather than something that takes every year's shifts with it — exactly the sort of
+      call somebody running the day should be able to make.
     */
     await assertSucceeds(deleteDoc(doc(asOrganizer(), 'events', EVENT, 'people', 'p-one')))
   })
@@ -269,10 +269,10 @@ describe('somebody not on the roster at all', () => {
 describe('the roster itself', () => {
   it('is writable by an admin, but never for their own entry', async () => {
     /*
-      Access used to be granted only out of band, which kept this collection out of reach of
-      any signed-in session. Managing it in the app trades some of that away deliberately —
-      the console at nine on a Friday was the worse problem — and what is left in its place
-      is narrower: an admin may change anybody's entry except their own.
+      Managing access in the app rather than out of band trades something away deliberately:
+      the collection is reachable from a signed-in session. The console at nine on a Friday is
+      the worse problem. What guards it instead is narrower and holds: an admin may change
+      anybody's entry except their own.
 
       That is what bounds the damage. An account taken over can add accomplices, which is
       bad; it cannot quietly remove every other admin and keep itself, because it cannot

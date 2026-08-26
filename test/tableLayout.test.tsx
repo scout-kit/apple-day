@@ -405,9 +405,9 @@ describe('columns you navigate by keep their width', () => {
 
   it('counts the columns in the component, not with arithmetic buried in the CSS', () => {
     /*
-      `--cols` is every column after the frozen one. The rule used to take the hour count
-      and add one for the trailing total inside the calc, which goes wrong silently the day
-      a grid grows a second trailing column: the table comes out narrower than its columns
+      `--cols` is every column after the frozen one. Taking the hour count and adding one for
+      the trailing total inside the calc goes wrong silently the day a grid grows a second
+      trailing column: the table comes out narrower than its columns
       and they all squeeze.
     */
     expect(css).not.toMatch(/var\(--cols[^)]*\)\s*\+\s*1/)

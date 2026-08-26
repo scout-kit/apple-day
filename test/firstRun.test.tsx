@@ -5,9 +5,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 /**
  * What somebody sees when they sign in without access.
  *
- * Mostly people who should not be here at all, in a deployed app. So it says who to ask and
- * nothing else: it used to spell out the collection and fields an admin document needs,
- * which is no use to a volunteer and a description of the internals handed to a stranger.
+ * Mostly people who should not be here at all, in a deployed app. So it says the fact and
+ * nothing else. Spelling out the collection and fields an admin document needs is no use to a
+ * volunteer and a description of the internals handed to a stranger.
  *
  * Granting the first account is a deployment step, done once by somebody holding the
  * console, and it lives in the README where they are.

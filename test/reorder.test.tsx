@@ -209,11 +209,11 @@ describe('failures', () => {
 
 describe('what an organizer does here', () => {
   /*
-    The line moved.
+    Where the line falls, and why not with the admins.
 
-    Which locations the year uses, and in what order, used to be an admin's on the grounds
-    that it was the shape of the event rather than the running of it. It is not: it is this
-    year's schedule, decided by the same person who decides which hour somebody works, often
+    Which locations the year uses, and in what order, looks like the shape of the event rather
+    than the running of it. It is not: it is this year's schedule, decided by the same person
+    who decides which hour somebody works, often
     in the same sitting. It sat behind the cross-year gate because it is stored under the
     event alongside things that genuinely are shared.
   */

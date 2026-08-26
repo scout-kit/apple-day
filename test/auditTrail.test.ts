@@ -338,9 +338,9 @@ describe('taking a check-in back', () => {
   /*
     Where somebody is only means anything once they have arrived.
 
-    A check-in taken back used to leave "out collecting" behind it, which put a shift on the
-    record as expected *and* out — a pair the day-of screen had no state for and so offered
-    no button for, leaving a row that could only ever be brought back. The screen now reads
+    A check-in taken back has to take "out collecting" with it. Leaving it behind puts a shift
+    on the record as expected *and* out — a pair the day-of screen has no state for and so
+    offers no button for, leaving a row that can only ever be brought back. The screen reads
     such a pair as what it means, but the pair should not be written at all: it is read by
     more than one screen, and it is simply false.
   */

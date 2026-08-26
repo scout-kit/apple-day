@@ -8,8 +8,9 @@ import type { Location, Person } from '../src/domain/types'
 /**
  * Choosing a youth or a location, wherever it happens.
  *
- * Both used to be a native `<select>` on some screens and a type-to-search panel on others —
- * the same decision made two different ways, one of them a scroll through a hundred names.
+ * One control, not a native `<select>` on some screens and a type-to-search panel on others.
+ * That is the same decision made two ways, and one of them is a scroll through a hundred
+ * names.
  */
 
 const person = (id: string, first: string, last: string, section = 'cubs'): Person => ({

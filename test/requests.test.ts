@@ -9,8 +9,8 @@ import {
 /**
  * What a volunteer asked for from their pass.
  *
- * These used to be written into a collection no screen read: the volunteer saw "sent" and
- * the organizers never heard about it.
+ * The whole point is that somebody reads them. A collection no screen looks at means the
+ * volunteer sees "sent" and the organizers never hear about it.
  */
 
 describe('reading a request', () => {

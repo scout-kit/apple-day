@@ -227,10 +227,9 @@ describe('knowing when a published schedule has gone stale', () => {
 
   it('does not move when the event is given a different link', () => {
     /*
-      It used to. The event's link was the address the public schedule was published under,
-      so changing it changed what a visitor would find. There is no public schedule now, and
-      a pass is reached by its own unguessable token — the link names the event inside the
-      app and reaches nobody outside it.
+      The link names the event inside the app and reaches nobody outside it. A pass is found
+      by its own unguessable token, and there is no public schedule for the link to be the
+      address of, so changing it changes nothing a volunteer would see.
     */
     expect(publishedFingerprint({ ...input, slug: 'apple-day' } as typeof input)).toBe(
       publishedFingerprint(input),
@@ -253,10 +252,9 @@ describe('knowing when a published schedule has gone stale', () => {
       dropped in favour of the one derived from the address, because it ends up in an `href`
       on a volunteer's phone.
 
-      So this used to be tested with `mapsUrl: 'changed'`, which is not a link at all. That
-      now publishes exactly what it published before, and the fingerprint correctly does not
-      move: nothing a volunteer sees has changed. Testing it with a real link tests the
-      thing the fingerprint is for.
+      So this is tested with a real link. `mapsUrl: 'changed'` is not a link at all: it gets
+      dropped, exactly what was published before is published again, and the fingerprint
+      correctly does not move — which looks like a failure and is not one.
     */
     const edited = {
       ...input,
@@ -306,10 +304,9 @@ describe('what to say about a published schedule', () => {
 
   it('admits it cannot tell, rather than guessing, for a publish that predates this', () => {
     /*
-      There used to be a fallback here: a publish from before fingerprints existed still
-      stored the public schedule's rows, and those could be rebuilt from the board and
-      compared. The public page is gone and so are its rows, so there is genuinely nothing
-      left to compare and saying so is the only honest answer.
+      A publish that stored no fingerprint leaves nothing to compare against — there are no
+      published rows to rebuild from the board and check. Saying so is the only honest answer;
+      guessing would put a confident "unchanged" on a board nobody has checked.
     */
     expect(publishStatus({ publishedAt: 1, fingerprint: '' }, 'abc')).toBe('unknown')
   })

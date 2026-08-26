@@ -690,8 +690,8 @@ describe('creating an event', () => {
 
   it('says a name is taken while the form is still open', async () => {
     /*
-      It used to accept the name, close the dialog, and only then say the event already
-      existed — a message about work that had not happened, on a form that had gone.
+      Said while the form is open. Accepting the name, closing the dialog and only then saying
+      the event exists is a message about work that never happened, on a form that has gone.
     */
     await openCreate()
     fireEvent.change(screen.getByLabelText('Name'), {

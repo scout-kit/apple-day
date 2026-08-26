@@ -41,7 +41,7 @@ describe('the rest of a pass', () => {
   })
 
 
-  it('still understands the single phone number passes used to carry', () => {
+  it('still understands a lone phone number stored on a pass', () => {
     expect(toPass({ supportPhone: '519-555-0100' }).support).toEqual([
       { name: '', phone: '519-555-0100', email: '' },
     ])

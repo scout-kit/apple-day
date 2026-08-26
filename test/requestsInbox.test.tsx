@@ -100,8 +100,8 @@ describe('when nothing is waiting', () => {
   })
 
   it('renders nothing even when there is a history', () => {
-    // It used to say "No requests waiting · 4 already dealt with", which is a permanent box
-    // telling somebody there is nothing to do.
+    // "No requests waiting · 4 already dealt with" is a permanent box telling somebody there
+    // is nothing to do.
     requests = [request({ id: 'done', handledAt: 5, handledBy: 'organizer' })]
     const { container } = render(<RequestsInbox />)
     expect(container.textContent).toBe('')

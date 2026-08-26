@@ -61,7 +61,7 @@ beforeEach(() => {
 })
 
 describe('the list shows the open days, not the closed ones', () => {
-  /** The cell that used to read "Sun closed / Mon closed / …" for seven rows. */
+  /** The cell that must not read "Sun closed / Mon closed / …" for seven rows. */
   const openCell = (): HTMLElement =>
     screen.getByRole('row', { name: /Braemar/ }).querySelectorAll('td')[2] as HTMLElement
 

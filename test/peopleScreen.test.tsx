@@ -156,7 +156,7 @@ describe('the roster', () => {
 
   it('counts the two gaps apart, because they go wrong at different times', () => {
     /*
-      This used to assert silence here, and passing was the blind spot.
+      Counted apart, because silence here is the blind spot.
 
       Ben has a phone and no email; Freda has an email and no phone. Neither is missing
       *both*, which was the only thing being counted — so the screen said nothing, while
@@ -248,9 +248,9 @@ describe('the person editor: filling in what the form never asked for', () => {
   /*
     Rendered on its own rather than reached from the list.
 
-    It used to be opened by an Edit button on the row, which is gone — a person's details
-    are changed on their own page now, where their shifts and history are in front of you
-    while you change them. The editor itself is unchanged, so the tests are too; only the
+    A person's details are changed on their own page, where their shifts and history are in
+    front of you while you change them, rather than from an Edit button on a roster row. The
+    editor itself is the same component either way; only the
     way in is.
   */
   const openEditor = async (name: string): Promise<void> => {

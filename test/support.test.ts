@@ -9,9 +9,9 @@ import {
 /**
  * Who a volunteer can reach on the day.
  *
- * The event used to carry one phone number and no email at all. The interesting part of
- * having several is the fallback: every event in the database, and every pass already
- * printed, carries the old single string.
+ * Several contacts, each with a phone and an email. The interesting part is the fallback: an
+ * event stored as a single phone number and no email is still a real record in the database,
+ * and still printed on passes that have already gone out.
  */
 
 describe('reading what is stored', () => {
@@ -27,7 +27,7 @@ describe('reading what is stored', () => {
     ])
   })
 
-  it('falls back to the single phone number every event used to carry', () => {
+  it('falls back to a lone phone number stored on the event', () => {
     // No migration: last year's event and every pass already published keep working.
     expect(readSupport(undefined, '519-555-0100')).toEqual([
       { name: '', phone: '519-555-0100', email: '' },

@@ -7,9 +7,9 @@ import type { HourPoint } from '../src/ui/HourChart'
 /**
  * The axis of the by-hour chart.
  *
- * A tick has about one column of width. It used to be given the whole slot label —
- * "5:00 PM – 6:00 PM" — in roughly fifty pixels, so the labels ran into each other however
- * they were angled. The range belongs in the readout; the axis gets the start time.
+ * A tick has about one column of width. The whole slot label — "5:00 PM – 6:00 PM" — in
+ * roughly fifty pixels means the labels run into each other however they are angled. The
+ * range belongs in the readout; the axis gets the start time.
  */
 
 const hour = (start: string, range: string, revenue: number, dayLabel?: string): HourPoint => ({

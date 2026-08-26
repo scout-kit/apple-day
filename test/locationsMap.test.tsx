@@ -325,8 +325,8 @@ describe('the locations panel does not freeze the page', () => {
     Reported: with the panel open the page would not scroll, so opening it anywhere but the
     bottom left most of it below the fold and no way to reach it.
 
-    The cause was the sheet used to catch an outside click — `position: fixed; inset: 0`
-    over the whole viewport, which catches every wheel and swipe as well.
+    The cause is the sheet that catches an outside click — `position: fixed; inset: 0` over
+    the whole viewport catches every wheel and swipe with it.
   */
   const SOURCE = readFileSync('src/ui/LocationsField.tsx', 'utf8')
 

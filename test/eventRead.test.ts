@@ -53,7 +53,7 @@ describe('day-of contacts', () => {
     ).toEqual([{ name: 'Devin', phone: '519-555-0100', email: '' }])
   })
 
-  it('reads the single phone number every event used to carry', () => {
+  it('reads a lone phone number stored on the event', () => {
     expect(readEvent('2026', { supportPhone: '519-555-0100' }).support).toEqual([
       { name: '', phone: '519-555-0100', email: '' },
     ])

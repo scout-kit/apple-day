@@ -163,8 +163,8 @@ describe('a client that is finished', () => {
 
   it('survives subscribing itself throwing', () => {
     /*
-      Once the work queue has failed, onSnapshot throws where it used to call back. Inside
-      a React effect that escapes the render, so the page dies rather than showing why.
+      Once the work queue has failed, onSnapshot throws instead of calling back. Inside a
+      React effect that escapes the render, so the page dies rather than showing why.
     */
     throwOnAttach = new Error(
       'FIRESTORE (11.10.0) INTERNAL ASSERTION FAILED: Unexpected state (ID: b815)',

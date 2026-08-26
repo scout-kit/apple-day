@@ -2,9 +2,9 @@ import { describe, expect, it } from 'vitest'
 import { buildPathFor } from '../src/domain/eventLinks'
 
 /**
- * The bare path, and the loop it used to cause.
+ * The bare path, and the loop it can cause.
  *
- * Reported as "still getting a re-direct after logging in to /schedule-board", on a blank
+ * The shape of the failure: "still getting a re-direct after logging in to /schedule-board", on a blank
  * page. `/schedule-board` exists to forward to `/e/2026/schedule-board`. When the forward
  * target came back as `/schedule-board` again, it forwarded to itself, and kept going.
  *

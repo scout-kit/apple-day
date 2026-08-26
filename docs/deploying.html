@@ -290,9 +290,9 @@ make deploy GROUP=waterloo</code></pre>
     <h2>Locking it to your own app, with App Check</h2>
 
     <p>
-      Optional, and worth doing before a real Apple Day. The rules decide what a request is
-      allowed to do. App Check decides whether the request came from your app at all &mdash;
-      which the rules cannot know.
+      Optional, and a judgement call rather than a box to tick. The rules decide what a
+      request is allowed to do. App Check decides whether the request came from your app at
+      all &mdash; which the rules cannot know.
     </p>
 
     <p>
@@ -301,6 +301,21 @@ make deploy GROUP=waterloo</code></pre>
       project, and the only thing standing in the way is the rules. That is a real defence,
       not a paper one, but it is the last one.
     </p>
+
+    <div class="note">
+      <p style="margin:0"><strong>App Check on the web means reCAPTCHA.</strong></p>
+      <p class="small" style="margin:0.35rem 0 0">
+        There is no other provider &mdash; it is reCAPTCHA v3 or reCAPTCHA Enterprise. Turning
+        it on loads Google's reCAPTCHA on every page of the app, a volunteer's pass included,
+        and lets it score whoever opened the link. That will include children on borrowed
+        phones. Weigh it against what it is protecting: rules that already put every write
+        behind the roster and serve nothing publicly but one pass at a time.
+      </p>
+      <p class="small" style="margin:0.35rem 0 0">
+        Leaving <code>VITE_APPCHECK_SITE_KEY</code> unset loads none of it. That is a
+        defensible answer for a group this size, not a step you forgot.
+      </p>
+    </div>
 
     <div class="note">
       <p style="margin:0"><strong>Do these in order.</strong></p>

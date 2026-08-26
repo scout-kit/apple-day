@@ -212,7 +212,7 @@ describe('the wording and the filter', () => {
     const box = screen.getByLabelText(/Only those who have not checked in/) as HTMLInputElement
     expect(box.checked).toBe(true)
     expect(box.disabled).toBe(true)
-    // The reason moved out of the label — reading it used to toggle the thing it explained.
+    // The reason sits outside the label, so reading it does not toggle what it explains.
     expect(screen.getByText(/Always on for this wording/)).toBeTruthy()
   })
 
@@ -719,8 +719,8 @@ describe('the shape of the choices', () => {
 
   it('keeps the reason out of the checkbox label', async () => {
     /*
-      The label used to wrap the explanation as well, so the whole paragraph was a click
-      target: reading why the filter was on toggled it off.
+      A label wrapping the explanation makes the whole paragraph a click target, so reading
+      why the filter is on turns it off.
     */
     render(<RemindersScreen />)
     await userEvent.selectOptions(screen.getByLabelText('Covering'), 'day')

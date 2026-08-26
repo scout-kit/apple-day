@@ -112,8 +112,8 @@ describe('stated availability', () => {
   })
 
   it('warns when they signed up and offered nothing anywhere', () => {
-    // A form response with every box left unticked. Still worth saying, and it used to say
-    // nothing at all.
+    // A form response with every box left unticked. Worth saying rather than passing over in
+    // silence.
     const signups = signups2025.map((s) =>
       s.personId === 'y01' ? { ...s, availability: { fri: [], sat: [] } } : s,
     )

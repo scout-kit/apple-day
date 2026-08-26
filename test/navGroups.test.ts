@@ -114,9 +114,8 @@ describe('what an organizer is offered', () => {
 
   it('gets all of the records', () => {
     /*
-      The audit log used to sit here behind a flag. It is a record kept about the people
-      running the event rather than one of the event's own records, and it reads better
-      under the heading that says so.
+      The audit log belongs here rather than among the event's own records: it is kept about
+      the people running the event, and it reads better under the heading that says so.
     */
     expect(adminOnly('Records')).toEqual([])
   })

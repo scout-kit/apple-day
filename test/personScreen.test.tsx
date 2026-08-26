@@ -308,8 +308,8 @@ describe('correcting their details', () => {
   })
 
   it('offers the editor as the way to fix missing contact details', async () => {
-    // The warning used to be a dead end: it told you nobody could reach them and gave you
-    // nowhere to go.
+    // Otherwise the warning is a dead end: it says nobody can reach them and offers nowhere
+    // to go.
     people = [{ ...edsger, parentName: '', parentEmail: '', parentPhone: '' }]
     renderFor()
 

@@ -244,10 +244,10 @@ describe('opening one', () => {
   })
 
   /*
-    Three buttons do the same thing to different amounts of the board, and two of them
-    also close the request. The labels used to be "Off all 2", "Mark no-show" and "Off
-    this one" — which said neither how many shifts were affected nor whether the request
-    was being dealt with. Somebody clearing a queue on a Friday evening should not have to
+    Three buttons do the same thing to different amounts of the board, and two of them also
+    close the request. Labels like "Off all 2", "Mark no-show" and "Off this one" say neither
+    how many shifts are affected nor whether the request is being dealt with. Somebody
+    clearing a queue on a Friday evening should not have to
     work that out from a tooltip.
   */
 
@@ -314,8 +314,8 @@ describe('opening one', () => {
     await openFirst()
 
     const dialog = screen.getByRole('dialog')
-    // The header's ✕ and the footer's Close, as in every dialog in the app — and nothing
-    // else. There used to be a third, in the body.
+    // The header's ✕ and the footer's Close, as in every dialog in the app, and nothing else.
+    // A third in the body puts the same word on two buttons.
     const named = within(dialog)
       .getAllByRole('button')
       .filter((b) => /^close$/i.test((b.textContent ?? '').trim()))

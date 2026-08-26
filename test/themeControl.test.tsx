@@ -117,9 +117,9 @@ describe('a page with no bar on it', () => {
 describe('the stylesheet backs it up', () => {
   it('paints a chosen dark, not only a device-preferred one', () => {
     /*
-      The dark tokens used to exist only inside `@media (prefers-color-scheme: dark)`. A
-      preference the app holds cannot override a media query, so without a selector of its
-      own the button would set an attribute that changed nothing.
+      Dark tokens defined only inside `@media (prefers-color-scheme: dark)` cannot be
+      overridden by a preference the app holds, so without a selector of its own the button
+      sets an attribute that changes nothing.
     */
     const css = readFileSync('src/styles.css', 'utf8')
     expect(css).toContain(':root[data-theme="dark"]')

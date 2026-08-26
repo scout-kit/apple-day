@@ -236,9 +236,9 @@ describe('where they are going is not on the pass until they check in', () => {
 
   it('hides it on a pass that predates the field', async () => {
     /*
-      This test used to assert the opposite, and asserted it against a fixture that set
-      `revealShifts: true` by hand — so it proved nothing about what the reader does with
-      the field missing, which was the only thing it claimed to cover. The reader now
+      Asserted against a fixture that leaves `revealShifts` out entirely, because that is the
+      only way to cover what the reader does when the field is missing. Setting it by hand
+      proves nothing about that case. The reader
       treats absent as hidden; see the converter's own test for that.
     */
     const legacy: Record<string, unknown> = passWith({ revealShifts: true })
@@ -252,7 +252,7 @@ describe('where they are going is not on the pass until they check in', () => {
 })
 
 describe('instructions on a pass are the organizers’ own words', () => {
-  it('prints nothing where the app used to supply a sentence', async () => {
+  it('prints nothing of its own where there are no instructions', async () => {
     readPass.mockResolvedValue({
       eventId: '2026', base: BASE, personId: 'y01', role: 'volunteer',
       displayName: 'Alpha One', support: [], supportNote: '', arrivalNote: '',

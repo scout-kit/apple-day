@@ -10,8 +10,8 @@ import type { Jar, Person, ScheduledLocation } from '../src/domain/types'
  * Counting jars in, and the destructive actions beside them.
  *
  * Deleting a counted jar removes money from every total, so it asks first. Reopening one
- * clears the counted amount, which is the same loss by another route — a single misplaced
- * click on either used to be irreversible.
+ * clears the counted amount, which is the same loss by another route — one misplaced click on
+ * either would otherwise be irreversible.
  */
 
 const deleteJar = vi.fn()
@@ -225,8 +225,8 @@ describe('the counted list', () => {
   }
 
   it('gives the location and the person a column each', () => {
-    // They used to share one cell as "Braemar · Alpha One", which cannot be scanned down or
-    // sorted, and reads as one fact rather than two.
+    // One cell reading "Braemar · Alpha One" cannot be scanned down or sorted, and reads as
+    // one fact rather than two.
     threeJars()
     render(<JarsScreen />)
 
@@ -316,9 +316,9 @@ describe('correcting a jar', () => {
 
   it('opens with everything the jar already says', async () => {
     /*
-      Counting used to take an amount and a method only. Correcting a jar written against the
-      wrong shop meant deleting the record and typing it in again, which throws away the
-      audit trail for the sake of a typo.
+      An amount and a method alone would mean a jar written against the wrong shop can only be
+      corrected by deleting the record and typing it in again, which throws away the audit
+      trail for the sake of a typo.
     */
     await openCorrection()
     expect((screen.getByLabelText('Amount') as HTMLInputElement).value).toBe('100')

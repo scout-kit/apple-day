@@ -102,7 +102,7 @@ describe('clearing availability actually clears it', () => {
     await testEnv.withSecurityRulesDisabled(async (ctx) => {
       const db = ctx.firestore()
 
-      // A year that used to include Sunday.
+      // Availability stored while the event still ran on Sunday.
       await saveAvailability(db, { sun: ['sun-1000'], sat: ['sat-0900'] })
       // Sunday is dropped from the event, so it is no longer passed.
       await saveAvailability(db, { sat: ['sat-0900'] })

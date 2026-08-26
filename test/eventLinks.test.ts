@@ -106,9 +106,9 @@ describe('checking a link before it is saved', () => {
 
 describe('cleaning up a link as it is typed', () => {
   it('keeps a trailing dash, so a dash can be typed at all', () => {
-    // The bug this exists for: full slugification on every keystroke turns "apple-" into
-    // "apple", so the next letter lands against the previous word and a multi-word link is
-    // unreachable. Same failure as the "also known as" field eating commas.
+    // Full slugification on every keystroke turns "apple-" into "apple", so the next letter
+    // lands against the previous word and a multi-word link cannot be typed at all. The same
+    // failure as an "also known as" field that eats commas.
     expect(sanitiseEventLink('apple-')).toBe('apple-')
   })
 

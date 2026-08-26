@@ -367,9 +367,9 @@ describe('what a reminder must never say', () => {
 
   it('keeps a shift whose location has been removed from the library', () => {
     /*
-      It used to lose it. The shape came from `buildPassShifts`, which drops a shift it
-      cannot resolve a location for — so a shop deleted from the library quietly took its
-      shifts out of somebody's reminder. Now that no location is named, the time is all
+      `buildPassShifts` drops a shift it cannot resolve a location for, which would let a shop
+      deleted from the library quietly take its shifts out of somebody's reminder. No location
+      is named here, so the time is all
       that was ever needed.
     */
     const people = [person('p1', 'Elliot')]

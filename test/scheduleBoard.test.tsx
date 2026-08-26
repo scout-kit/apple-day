@@ -553,8 +553,8 @@ describe('locations that are not part of the day', () => {
 
 describe('when every location is hidden', () => {
   it('can still reveal them', async () => {
-    // The control used to live under the table, so a day where nothing had hours was a dead
-    // end: no table, therefore no way back.
+    // Above the table, not under it. Under it, a day where nothing has hours is a dead end:
+    // no table, therefore no way back.
     locations = locations.map((l) => ({ ...l, openHours: { fri: null, sat: null } }))
     render(<ScheduleScreen />)
 
@@ -587,9 +587,8 @@ describe('a name is a way to reach that person', () => {
 describe('the validation banner', () => {
   it('says nothing at all when the day is clean', () => {
     /*
-      It used to sit at the top saying "No conflicts." — a green bar reporting the ordinary
-      case, in the row with the least space to spare. The board below is the evidence that
-      nothing is wrong.
+      "No conflicts." is a green bar reporting the ordinary case, in the row with the least
+      space to spare. The board below is the evidence that nothing is wrong.
     */
     assignments = []
     render(<ScheduleScreen />)
@@ -685,9 +684,8 @@ describe('publishing, now that it has no page of its own', () => {
 
   it('confirms briefly, then takes the confirmation away again', async () => {
     /*
-      It used to say "Published 47 passes" and stay until the screen was left, so the board
-      carried a stale claim about something already finished — and the count, which nobody
-      asked for, read as though it were a figure to check.
+      A line that stays until the screen is left leaves the board carrying a stale claim about
+      something already finished, and a count nobody asked for reads as a figure to check.
     */
     vi.useFakeTimers({ shouldAdvanceTime: true })
     try {
