@@ -32,7 +32,7 @@ export interface Found {
  * Look up one address.
  *
  * Null for anything that is not a confident single answer. A geocoder asked for a shop it
- * does not know will happily return the town it is in, and a pin in the middle of Waterloo
+ * does not know will happily return the town it is in, and a pin in the middle of Elmbridge
  * standing in for a specific shop is worse than an admission that it is not known.
  */
 export async function lookupAddress(address: string): Promise<Found | null> {

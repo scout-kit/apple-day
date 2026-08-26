@@ -4,7 +4,7 @@
   "license": "Apache-2.0",
   "version": "0.1.0",
   "type": "module",
-  "description": "1st Waterloo Scouts Apple Day — scheduling, day-of operations and fundraising totals",
+  "description": "Apple Day — scheduling, day-of operations and fundraising totals for a Scout group fundraiser",
   "scripts": {
     "dev": "VITE_USE_EMULATOR=1 vite",
     "build": "tsc -b && vite build",

@@ -56,7 +56,7 @@ const LOCATION_SPECS: LocSpec[] = [
   { id: 'cactus-465', name: 'The Cactus — 465 Phillip St', priority: 17,
     aliases: ['The Cactus Mexican restaurant - 465 Phillip St', 'Cactus Restaurant - 465 Phillip St. (After 12 Sat)'] },
   { id: 'shoppers-northfield', name: 'Shoppers Drug Mart — 190 Northfield Dr W', priority: 11,
-    aliases: ['Shoppers Drug Mart - 640 Parkside Drive', 'Shoppers Drug Mart - 190 Northfield Dr W, Waterloo, ON N2L 0C7'] },
+    aliases: ['Shoppers Drug Mart - 640 Parkside Drive', 'Shoppers Drug Mart - 190 Northfield Dr W, Elmbridge, ON A1B 2C3'] },
 
   { id: 'jacks', name: "Jack's Family Restaurant — 200 Benjamin Road", priority: 2, aliases: [] },
   { id: 'walmart', name: 'Walmart — 335 Farmers Market Road', priority: 5, aliases: [] },

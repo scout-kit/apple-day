@@ -163,7 +163,7 @@ export function describeUnplaced(plan: MapPlan): string[] {
  * The queries to try for one address, in order.
  *
  * Addresses in the library are written the way a person writes them — "Brady's Meat & Deli,
- * 465 Phillip St, Waterloo, ON" — and a geocoder matching that whole string against its own
+ * 465 Phillip St, Elmbridge, ON" — and a geocoder matching that whole string against its own
  * records mostly finds nothing, because it does not know the shop by that name. The street
  * address on its own it knows perfectly well.
  *

@@ -220,7 +220,7 @@ data, and it looks entirely normal while it does so.
 That is why the build and the deploy take the same name, from one command:
 
 ```bash
-make deploy GROUP=waterloo
+make deploy GROUP=<alias>
 ```
 
 `GROUP` is an alias in `.firebaserc`, and each alias needs a matching `.env.<alias>`.

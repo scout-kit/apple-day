@@ -42,7 +42,7 @@ describe('a position worth drawing', () => {
   it('refuses Null Island', () => {
     /*
       A geocoder that failed and a field nobody filled in both tend to arrive as zero. A pin
-      in the Gulf of Guinea standing in for a shop in Waterloo is worse than no pin, because
+      in the Gulf of Guinea standing in for a shop in Elmbridge is worse than no pin, because
       it looks like data.
     */
     expect(isPlausiblePosition(0, 0)).toBe(false)
@@ -186,29 +186,29 @@ describe('what to ask a geocoder for', () => {
   it('tries the whole thing first', () => {
     // When the geocoder does know the shop by name, that is a better answer than the
     // building it sits in.
-    expect(addressAttempts('Sobeys, 640 Parkside Dr, Waterloo ON')[0]).toBe(
-      'Sobeys, 640 Parkside Dr, Waterloo ON',
+    expect(addressAttempts('Sobeys, 640 Parkside Dr, Elmbridge ON')[0]).toBe(
+      'Sobeys, 640 Parkside Dr, Elmbridge ON',
     )
   })
 
   it('falls back to the address without the shop name', () => {
-    expect(addressAttempts("Brady's Meat & Deli, 465 Phillip St, Waterloo, ON")).toEqual([
-      "Brady's Meat & Deli, 465 Phillip St, Waterloo, ON",
-      '465 Phillip St, Waterloo, ON',
+    expect(addressAttempts("Brady's Meat & Deli, 465 Phillip St, Elmbridge, ON")).toEqual([
+      "Brady's Meat & Deli, 465 Phillip St, Elmbridge, ON",
+      '465 Phillip St, Elmbridge, ON',
     ])
   })
 
   it('does not drop a leading segment that is a street', () => {
     // "640 Parkside Dr" starts with a number, so it is where the place is, not what it is
     // called — dropping it would throw away the only part that matters.
-    expect(addressAttempts('640 Parkside Dr, Waterloo, ON')).toEqual([
-      '640 Parkside Dr, Waterloo, ON',
+    expect(addressAttempts('640 Parkside Dr, Elmbridge, ON')).toEqual([
+      '640 Parkside Dr, Elmbridge, ON',
     ])
   })
 
   it('leaves a single-part address alone', () => {
-    expect(addressAttempts('Waterloo Memorial Complex')).toEqual([
-      'Waterloo Memorial Complex',
+    expect(addressAttempts('Elmbridge Memorial Complex')).toEqual([
+      'Elmbridge Memorial Complex',
     ])
   })
 
@@ -226,7 +226,7 @@ describe('what to ask a geocoder for', () => {
   it('never asks the same thing twice', () => {
     for (const address of [
       'Sobeys, 640 Parkside Dr',
-      '640 Parkside Dr, Waterloo',
+      '640 Parkside Dr, Elmbridge',
       'One Name Only',
       'Shop,,,',
     ]) {

@@ -62,11 +62,12 @@ data/local/
 # ---------------------------------------------------------------------------
 # One group's own setup, which is not this app.
 #
-# The shop list is 1st Waterloo's — eighteen real businesses, their pitches and
-# their group codes — and it is generated from the workbook by
-# `scripts/extract_workbook.py`, so it is not lost by being left out. Committing
-# it would hand every other group a location library it has to empty before it
-# can start, and put one group's arrangements in a public repository.
+# A shop list is real businesses, their pitches and their group codes — useful to
+# whoever wrote it and to nobody else. Committing one would hand every other group
+# a location library it has to empty before it can start.
+#
+# Write your own if you want the emulator pre-filled; `make seed` says what shape
+# it takes, and `make firstrun` needs none of it.
 data/locations.seed.json
 
 # Which Firebase projects to deploy to, and under what alias. Real project ids

@@ -8,8 +8,8 @@ import {
 
 describe('mapsSearchUrl', () => {
   it('builds a Google Maps search from a street address', () => {
-    expect(mapsSearchUrl('640 Parkside Dr, Waterloo ON')).toBe(
-      'https://www.google.com/maps/search/?api=1&query=640%20Parkside%20Dr%2C%20Waterloo%20ON',
+    expect(mapsSearchUrl('640 Parkside Dr, Elmbridge ON')).toBe(
+      'https://www.google.com/maps/search/?api=1&query=640%20Parkside%20Dr%2C%20Elmbridge%20ON',
     )
   })
 
@@ -50,8 +50,8 @@ describe('mapLink', () => {
 })
 
 describe('mapEmbedUrl', () => {
-  const sobeys = { name: 'Sobeys', address: '640 Parkside Dr, Waterloo ON' }
-  const hall = { name: 'Scout Hall', address: '123 Hall St, Waterloo ON' }
+  const sobeys = { name: 'Sobeys', address: '640 Parkside Dr, Elmbridge ON' }
+  const hall = { name: 'Scout Hall', address: '123 Hall St, Elmbridge ON' }
 
   it('shows directions from base when there is a base', () => {
     const url = mapEmbedUrl(sobeys, hall)
@@ -68,7 +68,7 @@ describe('mapEmbedUrl', () => {
 
   it('falls back to the name for a place with no address', () => {
     // Better than an empty map: the name alone is often enough for Google to find a
-    // Waterloo storefront.
+    // Elmbridge storefront.
     expect(mapEmbedUrl({ name: 'St Jacobs Market', address: '' }, null)).toContain(
       'q=St%20Jacobs%20Market',
     )

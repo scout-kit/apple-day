@@ -67,7 +67,7 @@ describe('ordering what matched', () => {
     { label: 'WalMart - 335 Farmers Market Road', tag: 'WM' },
     { label: "St. Jacob's Farmers market Loc.1", tag: 'SJFM1' },
     { label: "St. Jacob's Farmers market Loc.2", tag: 'SJFM2' },
-    { label: 'Sobeys - 640 Parkside Drive', tag: '640', note: '640 Parkside Dr, Waterloo' },
+    { label: 'Sobeys - 640 Parkside Drive', tag: '640', note: '640 Parkside Dr, Elmbridge' },
   ]
 
   const order = (query: string): string[] =>

@@ -67,7 +67,7 @@ async function withClock<T>(work: Promise<T>): Promise<T> {
 describe('looking up one address', () => {
   it('asks for a single result and reads it', async () => {
     fetchMock.mockResolvedValue(answer('43.47', '-80.52'))
-    const found = await lookupAddress('1 High Street, Waterloo ON')
+    const found = await lookupAddress('1 High Street, Elmbridge ON')
 
     expect(found).toEqual({ lat: 43.47, lng: -80.52, label: 'Somewhere' })
     const url = String(fetchMock.mock.calls[0]![0])
