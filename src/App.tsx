@@ -2,7 +2,7 @@ import { Suspense, lazy } from 'react'
 import type { ReactNode } from 'react'
 import { NavLink, Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { useEvent } from './lib/eventContext'
-import { signInWithGoogle, signOutEverywhere } from './lib/firebase'
+import { missingConfig, signInWithGoogle, signOutEverywhere } from './lib/firebase'
 import { runsTheEvent, useSession } from './lib/session'
 import { useRequestActions } from './ui/RequestActions'
 import type { Role } from './lib/session'
@@ -300,6 +300,34 @@ function Landing({ screen }: { screen: string }): ReactNode {
 
 export function SignInPrompt(): ReactNode {
   const { user } = useSession()
+
+  /*
+    A build that went out without its Firebase config.
+
+    Signing in then opens a popup and shuts it again, and the console says the API key is not
+    valid — an error about a key, on a screen with no keys on it. `make deploy` checks for
+    this before building, so reaching here means a build got out another way; say what is
+    wrong rather than leaving somebody to guess from a popup that flickered.
+  */
+  if (missingConfig.length > 0) {
+    return (
+      <div className="card">
+        <h1>This site was built without its Firebase settings</h1>
+        <p>
+          Signing in cannot work until it is built again. Nothing is wrong with your account.
+        </p>
+        <p className="small muted">
+          Missing from the build:{' '}
+          <span className="mono">{missingConfig.join(', ')}</span>
+        </p>
+        <p className="small muted">
+          Whoever deployed this needs to fill those into <span className="mono">.env</span>{' '}
+          for this group and run the deploy again. They are baked in when the site is built,
+          so there is nothing to change on the server.
+        </p>
+      </div>
+    )
+  }
 
   if (user) {
     return (

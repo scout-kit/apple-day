@@ -356,6 +356,7 @@ verify: typecheck test test-rules ## Everything CI would run, short of building
 deploy-one:
 	$(call need_group,deploy-one)
 	@echo "Building $(GROUP) from .env.$(GROUP)…"
+	@node scripts/check-env.mjs "$(GROUP)"
 	@npx vite build --mode "$(GROUP)"
 	@npx firebase deploy --project "$(GROUP)" --only hosting,firestore:rules,firestore:indexes
 	@echo "Deployed $(GROUP)."

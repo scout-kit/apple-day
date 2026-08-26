@@ -51,6 +51,31 @@ const config = useEmulator
       appId: import.meta.env.VITE_FIREBASE_APP_ID as string,
     }
 
+/**
+ * What is missing from this build's Firebase config, if anything.
+ *
+ * Vite inlines these at build time, so a blank one is a literal `''` compiled into the
+ * bundle rather than a setting to be supplied later. Firebase accepts that happily and then
+ * refuses at sign-in with `auth/api-key-not-valid` — an error about a key, on a screen with
+ * no keys on it, in an app that is already deployed.
+ *
+ * Exported so the sign-in screen can say what is actually wrong. `make deploy` checks the
+ * same thing before building, which is where it should be caught; this is for a build that
+ * got out anyway.
+ */
+export const missingConfig: string[] = useEmulator
+  ? []
+  : (
+      [
+        ['VITE_FIREBASE_API_KEY', config.apiKey],
+        ['VITE_FIREBASE_AUTH_DOMAIN', config.authDomain],
+        ['VITE_FIREBASE_PROJECT_ID', config.projectId],
+        ['VITE_FIREBASE_APP_ID', (config as { appId?: string }).appId],
+      ] as const
+    )
+      .filter(([, value]) => !value)
+      .map(([name]) => name)
+
 export const app = initializeApp(config)
 
 export const db = initializeFirestore(app, {
