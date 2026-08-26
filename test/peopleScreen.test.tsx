@@ -259,6 +259,64 @@ describe('the person editor: filling in what the form never asked for', () => {
     await Promise.resolve()
   }
 
+  const addSomeone = async (): Promise<void> => {
+    render(
+      <PersonEditor
+        adding
+        person={{
+          id: '', firstName: '', lastName: '', section: 'scouts',
+          parentName: '', parentEmail: '', parentPhone: '', pairWithPersonId: null,
+        }}
+        onClose={() => {}}
+      />,
+    )
+    await Promise.resolve()
+  }
+
+  it('gives a second person of the same name their own record', async () => {
+    /*
+      A section with two Lucas in it is an ordinary Tuesday. The derived id is the name and
+      the section, so the second one written landed on the first — one record, and a youth
+      off the board with nothing said.
+    */
+    const [existing] = people
+    await addSomeone()
+
+    await userEvent.type(screen.getByLabelText('First name'), existing!.firstName)
+    await userEvent.type(screen.getByLabelText('Last name'), existing!.lastName)
+    await userEvent.selectOptions(screen.getByLabelText('Section'), existing!.section)
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }))
+
+    const saved = savePersonWithPairing.mock.calls[0]![1] as { id: string }
+    expect(saved.id).not.toBe(existing!.id)
+    expect(saved.id).toBeTruthy()
+  })
+
+  it('says it is making a second one, rather than looking like nothing happened', async () => {
+    // How this went unnoticed: the save appeared to work and the roster did not grow.
+    const [existing] = people
+    await addSomeone()
+
+    await userEvent.type(screen.getByLabelText('First name'), existing!.firstName)
+    await userEvent.type(screen.getByLabelText('Last name'), existing!.lastName)
+    await userEvent.selectOptions(screen.getByLabelText('Section'), existing!.section)
+
+    expect(screen.getByText(/adds a second person of that name/)).toBeTruthy()
+  })
+
+  it('says nothing for a name nobody here has', async () => {
+    await addSomeone()
+    await userEvent.type(screen.getByLabelText('First name'), 'Nobody')
+    await userEvent.type(screen.getByLabelText('Last name'), 'Yet')
+    expect(screen.queryByText(/adds a second person of that name/)).toBeNull()
+  })
+
+  it('says nothing when editing the person who has that name', async () => {
+    // They are not their own namesake.
+    await openEditor('Freda Available')
+    expect(screen.queryByText(/adds a second person of that name/)).toBeNull()
+  })
+
   it('saves contact details', async () => {
     await openEditor('Freda Available')
 

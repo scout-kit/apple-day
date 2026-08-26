@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
-import { personId as derivePersonId } from '../domain/importer'
+import { freePersonId } from '../domain/importer'
 import { fullName } from '../domain/types'
 import type { Person } from '../domain/types'
 import { useEvent } from '../lib/eventContext'
@@ -49,7 +49,21 @@ export function PersonEditor({
     try {
       // Somebody added by hand gets the same derived id the CSV importer would give them,
       // so a later form import matches this record instead of creating a second one.
-      const id = draft.id || derivePersonId(draft.firstName, draft.lastName, draft.section)
+      /*
+        An id nobody else holds, for somebody being added.
+
+        The derived id is name plus section, and two people can share both — so adding a
+        second Luca to Scouts wrote over the first, and a youth vanished off the board with
+        nothing said. Editing keeps whatever id the person already has.
+      */
+      const id =
+        draft.id ||
+        freePersonId(
+          draft.firstName,
+          draft.lastName,
+          draft.section,
+          people.data.map((p) => p.id),
+        )
 
       // Anyone being dropped out of a pairing has to be cleared too: the person's previous
       // partner, and whoever the new partner was paired with before.
@@ -75,6 +89,22 @@ export function PersonEditor({
       setSaving(false)
     }
   }
+
+  /** Somebody already here with this name, in this section. Named so it can be said. */
+  const namesake = useMemo(() => {
+    const first = draft.firstName.trim().toLowerCase()
+    const last = draft.lastName.trim().toLowerCase()
+    if (!first && !last) return null
+
+    const match = people.data.find(
+      (p) =>
+        p.id !== draft.id &&
+        p.section === draft.section &&
+        p.firstName.trim().toLowerCase() === first &&
+        p.lastName.trim().toLowerCase() === last,
+    )
+    return match ? fullName(match) : null
+  }, [people.data, draft.firstName, draft.lastName, draft.section, draft.id])
 
   return (
     <Modal
@@ -129,6 +159,18 @@ export function PersonEditor({
             </select>
           </label>
         </div>
+
+        {/*
+          Said, not prevented. Two people sharing a name and a section is ordinary, and this
+          is the second record rather than an edit of the first — which is worth knowing at
+          the moment it happens, because on the board they are two rows reading the same.
+        */}
+        {adding && namesake && (
+          <p className="small" style={{ margin: 0, color: 'var(--warn)' }}>
+            There is already {namesake} here. This adds a second person of that name — open
+            the first from the roster if you meant to change them instead.
+          </p>
+        )}
 
         <div className="row">
           <label style={{ flex: '1 1 10rem' }}>

@@ -16,8 +16,12 @@ import type { Location } from '../src/domain/types'
  */
 
 const saveLocation = vi.fn()
+/** What the library already holds, so a new name can be checked against it. */
+let library: Location[] = []
+
 vi.mock('../src/lib/repo', () => ({
   saveLocation: (...args: unknown[]) => saveLocation(...args),
+  useLocations: () => ({ data: library, loading: false, error: null }),
 }))
 
 const { LocationEditor } = await import('../src/ui/LocationEditor')
@@ -50,6 +54,7 @@ let editing: Location = partiallyRecorded
 beforeEach(() => {
   saveLocation.mockReset()
   editing = partiallyRecorded
+  library = [partiallyRecorded]
 })
 
 async function openEditor(): Promise<void> {
@@ -293,5 +298,54 @@ describe('the map link comes from the address', () => {
     expect((saveLocation.mock.calls[0]![0] as Location).mapsUrl).toBe(
       'https://maps.app.goo.gl/sideEntrance',
     )
+  })
+})
+
+describe('adding one whose name is already taken', () => {
+  /*
+    Ids come from the name, so saving a second "Braemar — 640 Linden Drive" would merge onto
+    the first: its address, its opening hours and the past names holding four years of
+    takings on one row, replaced by whatever was just typed.
+
+    Two branches of the same chain are a real thing, and they have to be told apart on a
+    board anyway — so the answer is a different name, not a second identical one.
+  */
+  const addNamed = async (name: string): Promise<void> => {
+    editing = { ...partiallyRecorded, id: '', name: '', openHours: {} }
+    await openEditor()
+    await userEvent.type(screen.getByLabelText('Name'), name)
+  }
+
+  const saveButton = (): HTMLButtonElement =>
+    screen.getByRole('button', { name: 'Save' }) as HTMLButtonElement
+
+  it('says which one it would write over', async () => {
+    await addNamed(partiallyRecorded.name)
+    expect(screen.getByText(/already a location called/)).toBeTruthy()
+    expect(screen.getByText(partiallyRecorded.name)).toBeTruthy()
+  })
+
+  it('will not save over it', async () => {
+    await addNamed(partiallyRecorded.name)
+    expect(saveButton().disabled).toBe(true)
+  })
+
+  it('lets a name that tells them apart through', async () => {
+    await addNamed('Braemar — Aldergrove')
+    expect(screen.queryByText(/already a location called/)).toBeNull()
+    expect(saveButton().disabled).toBe(false)
+  })
+
+  it('catches a name that only differs by punctuation, because the id would not', async () => {
+    // The id is a slug, so "Braemar - 640 Linden Drive" lands on the same document.
+    await addNamed(partiallyRecorded.name.replace('—', '-'))
+    expect(screen.getByText(/already a location called/)).toBeTruthy()
+  })
+
+  it('says nothing when editing the location that has that name', async () => {
+    // It is not a clash with itself: editing keeps the id it already has.
+    await openEditor()
+    expect(screen.queryByText(/already a location called/)).toBeNull()
+    expect(saveButton().disabled).toBe(false)
   })
 })

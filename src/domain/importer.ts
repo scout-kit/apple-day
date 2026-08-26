@@ -106,6 +106,34 @@ export function personId(firstName: string, lastName: string, section: Section):
   return `p-${slug}-${section}`
 }
 
+/**
+ * The same, but never one that is already taken.
+ *
+ * Two people can genuinely share a name — a section with two Lucas in it is an ordinary
+ * Tuesday — and the derived id cannot tell them apart, so adding the second silently wrote
+ * over the first. One name, one record, and a youth who had disappeared from the board.
+ *
+ * Only for somebody being added by hand. The import wants the plain derived id: two rows
+ * landing on one is how a family resubmitting the form is recognised, and it reports that
+ * rather than quietly making a second person out of it.
+ */
+export function freePersonId(
+  firstName: string,
+  lastName: string,
+  section: Section,
+  taken: Iterable<string>,
+): string {
+  const base = personId(firstName, lastName, section)
+  const used = new Set(taken)
+  if (!used.has(base)) return base
+
+  // The second Luca is `-2`, which is what somebody would write on a name badge.
+  for (let n = 2; ; n += 1) {
+    const candidate = `${base}-${n}`
+    if (!used.has(candidate)) return candidate
+  }
+}
+
 // --------------------------------------------------------------------- mapping
 
 /**

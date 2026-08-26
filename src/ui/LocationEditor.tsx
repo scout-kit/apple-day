@@ -4,7 +4,7 @@ import { DAY_LABEL, hourOptions, hoursForNewDay, isOpenOn } from '../domain/slot
 import { mapsSearchUrl } from '../domain/maps'
 import { DAYS } from '../domain/types'
 import type { Location, OpenRange } from '../domain/types'
-import { saveLocation } from '../lib/repo'
+import { saveLocation, useLocations } from '../lib/repo'
 import { Modal } from './Modal'
 import { TagInput } from './TagInput'
 
@@ -46,6 +46,38 @@ export function LocationEditor({
   const options = hourOptions(15)
   const derived = mapsSearchUrl(draft.address)
 
+  /*
+    A new location whose name lands on one already in the library.
+
+    Ids come from the name, so saving would merge onto that record — quietly replacing its
+    address, its opening hours and the past names holding four years of takings on one row.
+    Two branches of the same chain are a real thing, and they need telling apart on a board
+    anyway, so the answer is a different name rather than a second identical one.
+
+    Only while adding. Editing a location keeps the id it already has.
+  */
+  const library = useLocations()
+  const clash = (() => {
+    if (draft.id || !draft.name.trim()) return null
+
+    const wanted = slugifyLocation(draft.name)
+
+    /*
+      Two questions, and both matter.
+
+      Landing on an existing id is the destructive one: that record would be merged over.
+      Reading the same as an existing name is the confusing one — a board with two rows saying
+      the same thing cannot be worked from, whatever the ids underneath say.
+
+      Both are asked through the slug, so "Braemar — 640" and "Braemar - 640" are the same
+      question. A location added here takes its id from its name; one that arrived by import
+      need not, so checking only ids would miss every location that came in that way.
+    */
+    return (
+      library.data.find((l) => l.id === wanted || slugifyLocation(l.name) === wanted) ?? null
+    )
+  })()
+
   const save = async (): Promise<void> => {
     const id = draft.id || slugifyLocation(draft.name)
     if (!id) return
@@ -80,7 +112,7 @@ export function LocationEditor({
             </button>
             <button
               className="primary"
-              disabled={saving || !draft.name.trim()}
+              disabled={saving || !draft.name.trim() || clash !== null}
               onClick={() => void save()}
             >
               {saving ? 'Saving…' : 'Save'}
@@ -90,6 +122,13 @@ export function LocationEditor({
       >
         <div className="stack">
           {error && <div className="note error">{error.message}</div>}
+          {clash && (
+            <div className="note warning">
+              There is already a location called <strong>{clash.name}</strong>. Saving this
+              would write over it, so give this one a name that tells them apart — or close
+              this and open that one to change it.
+            </div>
+          )}
           <div className="row">
             <label style={{ flex: '3 1 16rem' }}>
               Name
