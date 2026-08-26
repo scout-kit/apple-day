@@ -38,10 +38,10 @@ vi.mock('../src/lib/eventContext', () => ({
 
 const { LibraryScreen } = await import('../src/ui/LibraryScreen')
 
-const sobeys: Location = {
-  id: 'sobeys-640',
-  name: 'Sobeys — 640 Parkside Drive',
-  address: '640 Parkside Dr',
+const braemar: Location = {
+  id: 'braemar-640',
+  name: 'Braemar — 640 Linden Drive',
+  address: '640 Linden Dr',
   mapsUrl: '',
   lat: null,
   lng: null,
@@ -57,20 +57,20 @@ const sobeys: Location = {
 }
 
 beforeEach(() => {
-  library.data = [sobeys]
+  library.data = [braemar]
 })
 
 describe('the list shows the open days, not the closed ones', () => {
   /** The cell that used to read "Sun closed / Mon closed / …" for seven rows. */
   const openCell = (): HTMLElement =>
-    screen.getByRole('row', { name: /Sobeys/ }).querySelectorAll('td')[2] as HTMLElement
+    screen.getByRole('row', { name: /Braemar/ }).querySelectorAll('td')[2] as HTMLElement
 
   it('lists only the days with hours', () => {
     // What a record looks like after one round trip through the editor: every day present,
     // five of them explicitly closed.
     library.data = [
       {
-        ...sobeys,
+        ...braemar,
         openHours: {
           sun: null, mon: null, tue: null, wed: null, thu: null,
           fri: { openMin: 17 * 60, closeMin: 21 * 60 },
@@ -90,13 +90,13 @@ describe('the list shows the open days, not the closed ones', () => {
   })
 
   it('says nothing is recorded when nothing is', () => {
-    library.data = [{ ...sobeys, openHours: {} }]
+    library.data = [{ ...braemar, openHours: {} }]
     render(<LibraryScreen />)
     expect(openCell().textContent).toBe('not set')
   })
 
   it('distinguishes a place that is shut every day from one nobody has asked about', () => {
-    library.data = [{ ...sobeys, openHours: { fri: null, sat: null } }]
+    library.data = [{ ...braemar, openHours: { fri: null, sat: null } }]
     render(<LibraryScreen />)
     expect(openCell().textContent).toBe('closed all week')
   })
@@ -120,8 +120,8 @@ describe('editing is not offered here', () => {
 
   it('links the name to the place own page', () => {
     render(<LibraryScreen />)
-    expect(screen.getByRole('link', { name: /Sobeys/ }).getAttribute('href')).toContain(
-      'location/sobeys-640',
+    expect(screen.getByRole('link', { name: /Braemar/ }).getAttribute('href')).toContain(
+      'location/braemar-640',
     )
   })
 })

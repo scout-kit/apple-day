@@ -41,7 +41,7 @@ function open(): void {
   render(
     <PersonPicker
       anchor={anchor}
-      title="Sobeys · Friday 5:00 PM – 6:00 PM"
+      title="Braemar · Friday 5:00 PM – 6:00 PM"
       groups={[
         { label: 'Signed up for this hour', people: AVAILABLE },
         { label: 'Not signed up for this hour', people: OTHERS, hint: 'not available' },
@@ -84,7 +84,7 @@ describe('what it shows', () => {
 
   it('names the cell being filled, so the panel is not context-free', () => {
     open()
-    expect(screen.getByText(/Sobeys · Friday 5:00 PM/)).toBeDefined()
+    expect(screen.getByText(/Braemar · Friday 5:00 PM/)).toBeDefined()
   })
 
   it('counts what is on offer', () => {
@@ -252,7 +252,7 @@ describe('arrow keys with a list longer than the panel', () => {
     render(
       <PersonPicker
         anchor={anchor}
-        title="Sobeys · Friday"
+        title="Braemar · Friday"
         groups={[{ label: 'Signed up for this hour', people: MANY }]}
         onPick={onPick}
         onClose={onClose}

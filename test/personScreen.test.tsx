@@ -41,7 +41,7 @@ vi.mock('../src/lib/repo', () => ({
   useAssignments: () => ({ data: assignments, loading: false, error: null }),
   useJars: () => ({ data: jars, loading: false, error: null }),
   useLocations: () => ({
-    data: [{ id: 'sobeys', name: 'Sobeys' }],
+    data: [{ id: 'braemar', name: 'Braemar' }],
     loading: false,
     error: null,
   }),
@@ -72,7 +72,7 @@ vi.mock('../src/lib/sections', () => ({
 const { PersonScreen } = await import('../src/ui/PersonScreen')
 
 const shift = (id: string, slotId: string, over: Partial<Assignment> = {}): Assignment => ({
-  id, slotId, locationId: 'sobeys', personId: 'p-one',
+  id, slotId, locationId: 'braemar', personId: 'p-one',
   status: 'checkedIn', whereabouts: 'back', checkedInAt: 1, checkedOutAt: 2,
   ...over,
 })
@@ -100,7 +100,7 @@ beforeEach(() => {
   assignments = [shift('a1', 'fri-1700')]
   jars = [
     {
-      id: 'j1', jarNumber: 4, day: 'fri', locationId: 'sobeys', personId: 'p-one',
+      id: 'j1', jarNumber: 4, day: 'fri', locationId: 'braemar', personId: 'p-one',
       assignmentId: 'a1', assignmentIds: ['a1'], status: 'counted', issuedAt: 1,
       issuedBy: 'o', amount: 120.5, method: 'cash', note: '', countedBy: 'o', countedAt: 2,
     },
@@ -146,7 +146,7 @@ describe('this event', () => {
   it('lists their shifts with where, when and what state', () => {
     renderFor()
     const row = screen.getByRole('row', { name: /Friday 5:00 PM/ })
-    expect(row.textContent).toContain('Sobeys')
+    expect(row.textContent).toContain('Braemar')
     expect(row.textContent).toContain('back')
   })
 

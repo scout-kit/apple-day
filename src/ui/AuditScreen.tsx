@@ -137,7 +137,7 @@ export function AuditScreen(): ReactNode {
     Names, looked up when the log is read rather than stored on the entry.
 
     The entry keeps ids because they are exact and still mean something in three years. What
-    a reader wants is "Sobeys · Fri 5:00 PM · Elliot R", and where a location has since been
+    a reader wants is "Braemar · Fri 5:00 PM · Elliot R", and where a location has since been
     renamed or a person removed, the id shows through — which is the honest answer, and more
     use than a blank.
   */

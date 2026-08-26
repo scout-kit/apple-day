@@ -83,11 +83,11 @@ describe('keeping the view in the address bar', () => {
 
   it('leaves other parameters alone', async () => {
     // Several filters share one address bar.
-    window.history.replaceState(null, '', '/e/2026/day-of?find=sobeys')
+    window.history.replaceState(null, '', '/e/2026/day-of?find=braemar')
     render(<Probe />)
 
     await userEvent.click(screen.getByRole('button', { name: 'Saturday' }))
-    expect(url()).toContain('find=sobeys')
+    expect(url()).toContain('find=braemar')
     expect(url()).toContain('day=sat')
   })
 })

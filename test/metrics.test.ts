@@ -47,23 +47,23 @@ describe('defect 1 — one location, one row', () => {
     const rows = [...report.ranked, ...report.revenueWithoutHours]
 
     for (const id of [
-      'sobeys-640', 'canadian-tire-400', 'tim-hortons-465',
-      'pet-value-580', 'cactus-465', 'shoppers-northfield',
+      'braemar-640', 'ferndale-hardware-400', 'copperpot-465',
+      'pet-value-580', 'cactus-465', 'corner-chemist-aldergrove',
     ]) {
       expect(rows.filter((r) => r.locationId === id)).toHaveLength(1)
     }
   })
 
-  it('sums Sobeys across both days instead of splitting it in two', () => {
+  it('sums Braemar across both days instead of splitting it in two', () => {
     const report = locationMetrics(locations2025, assignments2025, jars2025, slots2025)
-    const sobeys = find(report.ranked, 'sobeys-640')
+    const braemar = find(report.ranked, 'braemar-640')
 
-    // The workbook reported Sobeys twice — $177.88/hr on Friday and $165.46/hr on
+    // The workbook reported Braemar twice — $177.88/hr on Friday and $165.46/hr on
     // Saturday — because the two sheets spelled the name differently.
-    expect(sobeys?.revenue).toBe(
-      Math.round((KNOWN.sobeysFridayRevenue + KNOWN.sobeysSaturdayRevenue) * 100) / 100,
+    expect(braemar?.revenue).toBe(
+      Math.round((KNOWN.braemarFridayRevenue + KNOWN.braemarSaturdayRevenue) * 100) / 100,
     )
-    expect(sobeys?.revenue).toBe(1526.41)
+    expect(braemar?.revenue).toBe(1526.41)
   })
 })
 
@@ -73,7 +73,7 @@ describe('defect 3 — hours count people, not filled cells', () => {
 
     // `Friday Breakdown!F4` said 3, because COUNTA saw three non-empty cells and the
     // 6pm cell held two siblings.
-    expect(hours.get('sobeys-640')).toBe(4)
+    expect(hours.get('braemar-640')).toBe(4)
     // `Friday Breakdown!F12` said 3; the 8pm cell held two brothers.
     expect(hours.get('little-caesars-465')).toBe(4)
   })
@@ -91,22 +91,22 @@ describe('defect 3 — hours count people, not filled cells', () => {
 
   it('changes the revenue-per-hour figure the location decision rests on', () => {
     const fri = locationMetrics(locations2025, fridayAssignments2025, fridayJars2025, slots2025)
-    const sobeys = find(fri.ranked, 'sobeys-640')
+    const braemar = find(fri.ranked, 'braemar-640')
 
     // Workbook: 533.65 / 3 = $177.88. Correct: 533.65 / 4 = $133.41.
-    expect(sobeys?.staffedHours).toBe(4)
-    expect(sobeys?.revenuePerHour).toBe(133.41)
-    expect(sobeys?.revenuePerHour).not.toBe(177.88)
+    expect(braemar?.staffedHours).toBe(4)
+    expect(braemar?.revenuePerHour).toBe(133.41)
+    expect(braemar?.revenuePerHour).not.toBe(177.88)
   })
 })
 
 describe('defect 5 — revenue with no hours is an anomaly, not a ranking', () => {
-  it('reports the Home Hardware jar as unrankable instead of 4th place', () => {
+  it('reports the Ravenhill Hardware jar as unrankable instead of 4th place', () => {
     const fri = locationMetrics(locations2025, fridayAssignments2025, fridayJars2025, slots2025)
 
-    expect(find(fri.ranked, 'home-hardware-lounge')).toBeUndefined()
+    expect(find(fri.ranked, 'ravenhill-hardware-lounge')).toBeUndefined()
 
-    const anomaly = find(fri.revenueWithoutHours, 'home-hardware-lounge')
+    const anomaly = find(fri.revenueWithoutHours, 'ravenhill-hardware-lounge')
     expect(anomaly).toBeDefined()
     expect(anomaly?.revenue).toBe(KNOWN.uncountedFridayJar)
     expect(anomaly?.staffedHours).toBe(0)
@@ -164,7 +164,7 @@ describe('defect 8 — one set of totals, derived from the jars', () => {
       fridayJars2025,
       slots2025,
     )
-    const anomaly = find(fri.revenueWithoutHours, 'home-hardware-lounge')
+    const anomaly = find(fri.revenueWithoutHours, 'ravenhill-hardware-lounge')
     expect(anomaly?.revenue).toBe(KNOWN.uncountedFridayJar)
     expect(anomaly?.revenuePerHour).toBeNull()
   })
@@ -206,12 +206,12 @@ describe('defect 4 — sections are values, not substrings', () => {
 describe('no-shows and integrity', () => {
   it('excludes a no-show from staffed hours, so revenue per hour is not diluted', () => {
     const withNoShow = fridayAssignments2025.map((a) =>
-      a.locationId === 'sobeys-640' && a.slotId === 'fri-1700'
+      a.locationId === 'braemar-640' && a.slotId === 'fri-1700'
         ? { ...a, status: 'noShow' as const }
         : a,
     )
     const hours = staffedHoursByLocation(withNoShow, buildSlots('fri'))
-    expect(hours.get('sobeys-640')).toBe(3)
+    expect(hours.get('braemar-640')).toBe(3)
   })
 
   it('rolls revenue up per person now that a person is an id', () => {

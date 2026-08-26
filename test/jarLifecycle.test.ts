@@ -37,7 +37,7 @@ import {
 
 const outJar = (over: Partial<Jar> & { id: string; jarNumber: number }): Jar => ({
   day: 'fri',
-  locationId: 'sobeys-640',
+  locationId: 'braemar-640',
   personId: 'y01',
   assignmentId: 'fa-1', assignmentIds: ['fa-1'],
   status: 'out',
@@ -66,7 +66,7 @@ describe('an outstanding jar is not zero', () => {
       outJar({ id: 'j1', jarNumber: 1 }),
       outJar({ id: 'j2', jarNumber: 2, status: 'counted', amount: 40 }),
     ])
-    expect(revenue.get('sobeys-640')).toBe(40)
+    expect(revenue.get('braemar-640')).toBe(40)
   })
 
   it('is reported as outstanding instead', () => {
@@ -75,14 +75,14 @@ describe('an outstanding jar is not zero', () => {
       outJar({ id: 'j2', jarNumber: 2 }),
       outJar({ id: 'j3', jarNumber: 3, status: 'counted', amount: 10 }),
     ])
-    expect(out.get('sobeys-640')).toBe(2)
+    expect(out.get('braemar-640')).toBe(2)
   })
 
   it('does not drag revenue per hour down while it is out', () => {
     // One counted jar over one staffed hour is $40/hr, whether or not more are still out.
     const assignments = [
       {
-        id: 'fa-1', slotId: 'fri-1700', locationId: 'sobeys-640', personId: 'y01',
+        id: 'fa-1', slotId: 'fri-1700', locationId: 'braemar-640', personId: 'y01',
         status: 'checkedIn' as const, whereabouts: 'out' as const,
         checkedInAt: 1, checkedOutAt: null,
       },
@@ -97,7 +97,7 @@ describe('an outstanding jar is not zero', () => {
       ],
       slots2025,
     )
-    const row = withOutstanding.ranked.find((r) => r.locationId === 'sobeys-640')!
+    const row = withOutstanding.ranked.find((r) => r.locationId === 'braemar-640')!
     expect(row.revenue).toBe(40)
     expect(row.revenuePerHour).toBe(40)
     // But the jars still out are surfaced, so nobody reads it as final.
@@ -122,14 +122,14 @@ describe('an outstanding jar is not zero', () => {
         locations2025,
         [
           {
-            id: 'a', slotId: 'fri-1700', locationId: 'sobeys-640', personId: 'y01',
+            id: 'a', slotId: 'fri-1700', locationId: 'braemar-640', personId: 'y01',
             status, whereabouts, checkedInAt: 1, checkedOutAt: null,
           },
         ],
         [outJar({ id: 'j1', jarNumber: 1, status: 'counted', amount: 30 })],
         slots2025,
       )
-      const row = report.ranked.find((r) => r.locationId === 'sobeys-640')!
+      const row = report.ranked.find((r) => r.locationId === 'braemar-640')!
       expect(row.staffedHours, `${status}/${whereabouts}`).toBe(1)
     }
   })
@@ -183,7 +183,7 @@ describe('money recorded by hand', () => {
   const manual = (over: Partial<Jar> & { id: string }): Jar => ({
     jarNumber: null,
     day: 'fri',
-    locationId: 'sobeys-640',
+    locationId: 'braemar-640',
     personId: null,
     assignmentId: null, assignmentIds: [],
     status: 'counted',
@@ -200,7 +200,7 @@ describe('money recorded by hand', () => {
   it('counts towards the location’s revenue', () => {
     // Money raised at a place is money raised at that place, jar or no jar.
     const revenue = revenueByLocation([manual({ id: 'm1' })])
-    expect(revenue.get('sobeys-640')).toBe(40)
+    expect(revenue.get('braemar-640')).toBe(40)
   })
 
   it('is not counted as a jar', () => {
@@ -210,14 +210,14 @@ describe('money recorded by hand', () => {
       locations2025,
       [
         {
-          id: 'a', slotId: 'fri-1700', locationId: 'sobeys-640', personId: 'y01',
+          id: 'a', slotId: 'fri-1700', locationId: 'braemar-640', personId: 'y01',
           status: 'confirmed', whereabouts: 'here', checkedInAt: null, checkedOutAt: null,
         },
       ],
       [manual({ id: 'm1' })],
       slots2025,
     )
-    const row = report.ranked.find((r) => r.locationId === 'sobeys-640')!
+    const row = report.ranked.find((r) => r.locationId === 'braemar-640')!
     expect(row.revenue).toBe(40)
     expect(row.jarCount).toBe(0)
   })
@@ -227,7 +227,7 @@ describe('money recorded by hand', () => {
       locations2025,
       [
         {
-          id: 'a', slotId: 'fri-1700', locationId: 'sobeys-640', personId: 'y01',
+          id: 'a', slotId: 'fri-1700', locationId: 'braemar-640', personId: 'y01',
           status: 'confirmed', whereabouts: 'here', checkedInAt: null, checkedOutAt: null,
         },
       ],
@@ -237,7 +237,7 @@ describe('money recorded by hand', () => {
       ],
       slots2025,
     )
-    const row = report.ranked.find((r) => r.locationId === 'sobeys-640')!
+    const row = report.ranked.find((r) => r.locationId === 'braemar-640')!
     expect(row.revenue).toBe(100)
     expect(row.jarCount).toBe(1)
   })
@@ -275,7 +275,7 @@ describe('money recorded by hand', () => {
 
 describe('the 2025 books reconcile from the table alone', () => {
   it('accounts for every dollar across ranked and unranked rows', () => {
-    // The Home Hardware jar is unrankable, so it lives in the second list. Together the two
+    // The Ravenhill Hardware jar is unrankable, so it lives in the second list. Together the two
     // lists have to account for the full $2,042.30 of Friday jars — that is the sum the
     // screen's headline figure claims, and the table is what explains it.
     const fri = locationMetrics(
@@ -290,9 +290,9 @@ describe('the 2025 books reconcile from the table alone', () => {
     expect(sum).toBe(KNOWN.fridayJarTotal)
     expect(fri.totalRevenue).toBe(KNOWN.fridayJarTotal)
     // And the unrankable row is genuinely only in the second list.
-    expect(fri.ranked.some((r) => r.locationId === 'home-hardware-lounge')).toBe(false)
+    expect(fri.ranked.some((r) => r.locationId === 'ravenhill-hardware-lounge')).toBe(false)
     expect(
-      fri.revenueWithoutHours.some((r) => r.locationId === 'home-hardware-lounge'),
+      fri.revenueWithoutHours.some((r) => r.locationId === 'ravenhill-hardware-lounge'),
     ).toBe(true)
   })
 
@@ -315,7 +315,7 @@ describe('the 2025 books reconcile from the table alone', () => {
 
 describe('the shifts a jar was out for', () => {
   const base = {
-    id: 'fri-jar-1-abc', jarNumber: 1, day: 'fri' as const, locationId: 'sobeys-640',
+    id: 'fri-jar-1-abc', jarNumber: 1, day: 'fri' as const, locationId: 'braemar-640',
     personId: 'y01', status: 'out' as const, issuedAt: 1, issuedBy: 'o',
     amount: null, method: 'cash' as const, note: '', countedBy: '', countedAt: 0,
   }

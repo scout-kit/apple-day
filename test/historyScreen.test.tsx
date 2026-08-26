@@ -35,8 +35,8 @@ vi.mock('../src/lib/repo', () => ({
   },
   useLocationLibrary: () => ({
     data: [
-      { id: 'sobeys', name: 'Sobeys' },
-      { id: 'walmart', name: 'Walmart' },
+      { id: 'braemar', name: 'Braemar' },
+      { id: 'kelmont', name: 'Kelmont' },
     ],
     loading: false,
     error: null,
@@ -103,19 +103,19 @@ const twoYears = (): EventData[] => [
   {
     event: event('2025', 2025),
     slots: SLOTS,
-    assignments: [shift('a', 'fri-1700', 'sobeys', 'y01')],
-    jars: [jar({ id: 'j1', locationId: 'sobeys', assignmentId: 'a', assignmentIds: ['a'], amount: 100 })],
+    assignments: [shift('a', 'fri-1700', 'braemar', 'y01')],
+    jars: [jar({ id: 'j1', locationId: 'braemar', assignmentId: 'a', assignmentIds: ['a'], amount: 100 })],
   },
   {
     event: event('2026', 2026),
     slots: SLOTS,
     assignments: [
-      shift('b', 'fri-1700', 'sobeys', 'y01'),
-      shift('c', 'fri-1800', 'walmart', 'y02'),
+      shift('b', 'fri-1700', 'braemar', 'y01'),
+      shift('c', 'fri-1800', 'kelmont', 'y02'),
     ],
     jars: [
-      jar({ id: 'j2', locationId: 'sobeys', assignmentId: 'b', assignmentIds: ['b'], amount: 150 }),
-      jar({ id: 'j3', locationId: 'walmart', assignmentId: 'c', assignmentIds: ['c'], amount: 50 }),
+      jar({ id: 'j2', locationId: 'braemar', assignmentId: 'b', assignmentIds: ['b'], amount: 150 }),
+      jar({ id: 'j3', locationId: 'kelmont', assignmentId: 'c', assignmentIds: ['c'], amount: 50 }),
     ],
   },
 ]
@@ -189,22 +189,22 @@ describe('locations across the years', () => {
 
   it('keeps one row per location, with a cell per event', () => {
     render(<HistoryScreen />)
-    const sobeys = gridRow('Sobeys')
-    const cells = Array.from(sobeys.querySelectorAll('td')).map((c) => c.textContent)
+    const braemar = gridRow('Braemar')
+    const cells = Array.from(braemar.querySelectorAll('td')).map((c) => c.textContent)
     expect(cells[1]).toBe('$100.00')
     expect(cells[2]).toBe('$150.00')
   })
 
   it('marks a year a location was not used differently from one it earned nothing in', () => {
     render(<HistoryScreen />)
-    // Walmart is new in 2026: 2025 is a dot, not a zero.
-    const cells = Array.from(gridRow('Walmart').querySelectorAll('td')).map((c) => c.textContent)
+    // Kelmont is new in 2026: 2025 is a dot, not a zero.
+    const cells = Array.from(gridRow('Kelmont').querySelectorAll('td')).map((c) => c.textContent)
     expect(cells[1]).toBe('·')
   })
 
   it('says which way each location is going', () => {
     render(<HistoryScreen />)
-    expect(gridRow('Sobeys').textContent).toContain('+50%')
+    expect(gridRow('Braemar').textContent).toContain('+50%')
   })
 })
 
@@ -276,17 +276,17 @@ describe('hours, year by year', () => {
 
   it('narrows to one location, which is the question worth asking', async () => {
     /*
-      "What is five o'clock at Sobeys worth, year on year" is the thing this is for, and it
+      "What is five o'clock at Braemar worth, year on year" is the thing this is for, and it
       is not answerable from a total. It used to be a checkbox per location with everything
       ticked summed together — a sum of six doors cannot be read as any one of them.
     */
     render(<HistoryScreen />)
-    await pickLocation('Walmart')
+    await pickLocation('Kelmont')
 
     const cells = Array.from(hourRow('Fri 6:00 PM').querySelectorAll('td')).map(
       (c) => c.textContent,
     )
-    // Walmart only earned in 2026, and only in the 6pm hour.
+    // Kelmont only earned in 2026, and only in the 6pm hour.
     expect(cells[1]).toBe('$0.00')
     expect(cells[2]).toBe('$50.00')
   })
@@ -295,8 +295,8 @@ describe('hours, year by year', () => {
     render(<HistoryScreen />)
     expect(screen.getByRole('heading', { name: 'Hour by hour' })).toBeTruthy()
 
-    await pickLocation('Walmart')
-    expect(screen.getByRole('heading', { name: 'Walmart, hour by hour' })).toBeTruthy()
+    await pickLocation('Kelmont')
+    expect(screen.getByRole('heading', { name: 'Kelmont, hour by hour' })).toBeTruthy()
   })
 
   it('explains why it groups by the clock rather than by shift', () => {
@@ -314,7 +314,7 @@ describe('what the locations table is measuring', () => {
 
   it('shows revenue to begin with', () => {
     render(<HistoryScreen />)
-    expect(cells('Sobeys')[1]).toBe('$100.00')
+    expect(cells('Braemar')[1]).toBe('$100.00')
   })
 
   it('offers takings and what an hour there was worth, and nothing else', () => {
@@ -332,13 +332,13 @@ describe('what the locations table is measuring', () => {
   it('switches to what an hour there was worth', async () => {
     render(<HistoryScreen />)
     await userEvent.click(screen.getByRole('button', { name: 'Per hour' }))
-    expect(cells('Sobeys')[1]).toBe('$100.00')
-    expect(cells('Sobeys')[2]).toBe('$150.00')
+    expect(cells('Braemar')[1]).toBe('$100.00')
+    expect(cells('Braemar')[2]).toBe('$150.00')
   })
 
   it('changes what the trend column compares, not just the cells', async () => {
     /*
-      The two measures have to be able to disagree for this to mean anything: Sobeys is
+      The two measures have to be able to disagree for this to mean anything: Braemar is
       staffed for twice as long in 2026 and takes half as much again, so its takings are up
       by half while an hour spent there is worth a quarter less. A trend column stuck on
       revenue would call that a good year.
@@ -348,14 +348,14 @@ describe('what the locations table is measuring', () => {
       y2025!,
       {
         ...y2026!,
-        assignments: [...y2026!.assignments, shift('b2', 'fri-1800', 'sobeys', 'y03')],
+        assignments: [...y2026!.assignments, shift('b2', 'fri-1800', 'braemar', 'y03')],
       },
     ]
     render(<HistoryScreen />)
-    expect(gridRow('Sobeys').textContent).toContain('+50%')
+    expect(gridRow('Braemar').textContent).toContain('+50%')
 
     await userEvent.click(screen.getByRole('button', { name: 'Per hour' }))
-    expect(gridRow('Sobeys').textContent).toContain('-25%')
+    expect(gridRow('Braemar').textContent).toContain('-25%')
   })
 
   it('says what the chosen measure means', async () => {
@@ -367,8 +367,8 @@ describe('what the locations table is measuring', () => {
   it('still marks a year a location was not used, whatever is being measured', async () => {
     render(<HistoryScreen />)
     await userEvent.click(screen.getByRole('button', { name: 'Per hour' }))
-    // Walmart is new in 2026: 2025 is a dot, not a zero.
-    expect(cells('Walmart')[1]).toBe('·')
+    // Kelmont is new in 2026: 2025 is a dot, not a zero.
+    expect(cells('Kelmont')[1]).toBe('·')
   })
 })
 
@@ -434,8 +434,8 @@ describe('the hour comparison as a chart', () => {
     render(<HistoryScreen />)
     expect(bar('5:00 PM', '2026').getAttribute('aria-label')).toContain('$150')
 
-    await pickLocation('Walmart')
-    // Walmart earned nothing at five, in either year.
+    await pickLocation('Kelmont')
+    // Kelmont earned nothing at five, in either year.
     expect(bar('5:00 PM', '2026').getAttribute('aria-label')).toContain('$0')
   })
 
@@ -462,7 +462,7 @@ describe('the every-event table', () => {
 describe('finding a location in the year-by-year table', () => {
   /*
     Twenty-one locations across four years is a wide table and a long one, and "how has
-    Sobeys done" was a question that could only be answered by reading down it.
+    Braemar done" was a question that could only be answered by reading down it.
   */
 
   const trendTable = (): HTMLElement =>
@@ -470,12 +470,12 @@ describe('finding a location in the year-by-year table', () => {
 
   it('narrows the rows to what was typed', async () => {
     render(<HistoryScreen />)
-    expect(within(trendTable()).getByText('Walmart')).toBeTruthy()
+    expect(within(trendTable()).getByText('Kelmont')).toBeTruthy()
 
-    await userEvent.type(screen.getByLabelText('Find a location'), 'sobeys')
+    await userEvent.type(screen.getByLabelText('Find a location'), 'braemar')
 
-    expect(within(trendTable()).getByText('Sobeys')).toBeTruthy()
-    expect(within(trendTable()).queryByText('Walmart')).toBeNull()
+    expect(within(trendTable()).getByText('Braemar')).toBeTruthy()
+    expect(within(trendTable()).queryByText('Kelmont')).toBeNull()
   })
 
   it('leaves the hour comparison below it alone', async () => {
@@ -485,7 +485,7 @@ describe('finding a location in the year-by-year table', () => {
       it without saying so.
     */
     render(<HistoryScreen />)
-    await userEvent.type(screen.getByLabelText('Find a location'), 'sobeys')
+    await userEvent.type(screen.getByLabelText('Find a location'), 'braemar')
 
     expect(screen.getByRole('heading', { name: 'Hour by hour' })).toBeTruthy()
   })
@@ -494,7 +494,7 @@ describe('finding a location in the year-by-year table', () => {
 describe('one hour at one door, year on year', () => {
   /*
     The question this section is for, in the words it was asked in: what is five o'clock at
-    Sobeys worth, against five o'clock at Sobeys last year.
+    Braemar worth, against five o'clock at Braemar last year.
 
     It could not be answered before. The control was a checkbox per location with everything
     ticked by default, and the figures were the sum of whatever was ticked — a total across
@@ -510,7 +510,7 @@ describe('one hour at one door, year on year', () => {
 
   it('shows one location’s hours against the same hours last year', async () => {
     render(<HistoryScreen />)
-    await pickLocation('Sobeys')
+    await pickLocation('Braemar')
 
     const cells = Array.from(row('Fri 5:00 PM').querySelectorAll('td')).map((c) => c.textContent)
     expect(cells[1]).toBe('$100.00')
@@ -519,21 +519,21 @@ describe('one hour at one door, year on year', () => {
 
   it('keeps the location in the address bar, so the comparison can be sent to somebody', async () => {
     render(<HistoryScreen />)
-    await pickLocation('Walmart')
-    expect(window.location.search).toContain('at=walmart')
+    await pickLocation('Kelmont')
+    expect(window.location.search).toContain('at=kelmont')
   })
 
   it('opens on the location the address bar names', () => {
-    window.history.replaceState(null, '', '/e/2026/history?at=walmart')
+    window.history.replaceState(null, '', '/e/2026/history?at=kelmont')
     render(<HistoryScreen />)
-    expect(screen.getByRole('heading', { name: 'Walmart, hour by hour' })).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'Kelmont, hour by hour' })).toBeTruthy()
   })
 
   it('adds every location together when none is chosen', () => {
     // Still worth having: the shape of the whole evening, rather than one door's.
     render(<HistoryScreen />)
     const cells = Array.from(row('Fri 6:00 PM').querySelectorAll('td')).map((c) => c.textContent)
-    // Walmart's $50 at six in 2026 is in the total; on its own it would be the only figure.
+    // Kelmont's $50 at six in 2026 is in the total; on its own it would be the only figure.
     expect(cells[2]).toBe('$50.00')
   })
 })
@@ -544,15 +544,15 @@ describe('one hour at one door, year on year', () => {
  * Every event at once was the wrong default. The question asked of this screen is almost
  * always "how are we doing against last year", and each passing year added a series nobody
  * asked about — the table got wider and the chart harder to read. The wide sweep is kept,
- * one click away, because "the year Sobeys doubled" is a real question, just not the first.
+ * one click away, because "the year Braemar doubled" is a real question, just not the first.
  */
 describe('what this year is held against', () => {
   const threeYears = (): EventData[] => [
     {
       event: event('2024', 2024),
       slots: SLOTS,
-      assignments: [shift('z', 'fri-1700', 'sobeys', 'y01')],
-      jars: [jar({ id: 'j0', locationId: 'sobeys', assignmentId: 'z', assignmentIds: ['z'], amount: 70 })],
+      assignments: [shift('z', 'fri-1700', 'braemar', 'y01')],
+      jars: [jar({ id: 'j0', locationId: 'braemar', assignmentId: 'z', assignmentIds: ['z'], amount: 70 })],
     },
     ...twoYears(),
   ]
@@ -648,42 +648,42 @@ describe('comparing several doors at once', () => {
       shops are one number that is neither of them.
     */
     render(<HistoryScreen />)
-    await pickLocation('Sobeys', 'Walmart')
+    await pickLocation('Braemar', 'Kelmont')
 
     const headings = hourHeadings()
-    expect(headings.some((h) => h.includes('Sobeys'))).toBe(true)
-    expect(headings.some((h) => h.includes('Walmart'))).toBe(true)
+    expect(headings.some((h) => h.includes('Braemar'))).toBe(true)
+    expect(headings.some((h) => h.includes('Kelmont'))).toBe(true)
   })
 
   it('carries the years alongside, so a door can be read against itself', async () => {
     // Both halves of the question at once — which door, and whether it is changing.
     render(<HistoryScreen />)
-    await pickLocation('Sobeys', 'Walmart')
+    await pickLocation('Braemar', 'Kelmont')
 
-    const sobeys = hourHeadings().filter((h) => h.includes('Sobeys'))
-    expect(sobeys).toHaveLength(2)
-    expect(sobeys.join(' ')).toContain('Apple Day 2025')
-    expect(sobeys.join(' ')).toContain('Apple Day 2026')
+    const braemar = hourHeadings().filter((h) => h.includes('Braemar'))
+    expect(braemar).toHaveLength(2)
+    expect(braemar.join(' ')).toContain('Apple Day 2025')
+    expect(braemar.join(' ')).toContain('Apple Day 2026')
   })
 
   it('says how many are being compared', async () => {
     render(<HistoryScreen />)
-    await pickLocation('Sobeys', 'Walmart')
+    await pickLocation('Braemar', 'Kelmont')
     expect(screen.getByRole('heading', { name: /2 locations, hour by hour/ })).toBeTruthy()
   })
 
   it('stays on the year comparison for a single door', async () => {
     // One location is still a question about years, and that chart was already right.
     render(<HistoryScreen />)
-    await pickLocation('Walmart')
+    await pickLocation('Kelmont')
     expect(hourHeadings().some((h) => h.includes('·'))).toBe(false)
-    expect(screen.getByRole('heading', { name: /Walmart, hour by hour/ })).toBeTruthy()
+    expect(screen.getByRole('heading', { name: /Kelmont, hour by hour/ })).toBeTruthy()
   })
 
   it('sends the whole comparison in the address bar', async () => {
     render(<HistoryScreen />)
-    await pickLocation('Sobeys', 'Walmart')
-    expect(window.location.search).toContain('at=sobeys%2Cwalmart')
+    await pickLocation('Braemar', 'Kelmont')
+    expect(window.location.search).toContain('at=braemar%2Ckelmont')
   })
 
   it('can be put back to every location', async () => {
@@ -692,8 +692,8 @@ describe('comparing several doors at once', () => {
       only thing the list offered was a different location.
     */
     render(<HistoryScreen />)
-    await pickLocation('Walmart')
-    expect(screen.getByRole('heading', { name: /Walmart, hour by hour/ })).toBeTruthy()
+    await pickLocation('Kelmont')
+    expect(screen.getByRole('heading', { name: /Kelmont, hour by hour/ })).toBeTruthy()
 
     await userEvent.click(screen.getByRole('button', { name: 'Locations' }))
     const panel = screen.getByRole('dialog', { name: 'Locations' })
@@ -704,10 +704,10 @@ describe('comparing several doors at once', () => {
 
   it('drops one without disturbing the others', async () => {
     render(<HistoryScreen />)
-    await pickLocation('Sobeys', 'Walmart')
+    await pickLocation('Braemar', 'Kelmont')
 
-    await userEvent.click(screen.getByRole('button', { name: 'Stop showing Walmart' }))
-    expect(screen.getByRole('heading', { name: /Sobeys, hour by hour/ })).toBeTruthy()
+    await userEvent.click(screen.getByRole('button', { name: 'Stop showing Kelmont' }))
+    expect(screen.getByRole('heading', { name: /Braemar, hour by hour/ })).toBeTruthy()
   })
 
   it('ignores an id for a location that is no longer there', async () => {
@@ -715,8 +715,8 @@ describe('comparing several doors at once', () => {
       A link sent last year naming a shop since removed from the library. Better to show the
       doors it still knows than a column with nothing at its head.
     */
-    window.history.replaceState(null, '', '/e/2026/history?at=sobeys,gone-away')
+    window.history.replaceState(null, '', '/e/2026/history?at=braemar,gone-away')
     render(<HistoryScreen />)
-    expect(screen.getByRole('heading', { name: /Sobeys, hour by hour/ })).toBeTruthy()
+    expect(screen.getByRole('heading', { name: /Braemar, hour by hour/ })).toBeTruthy()
   })
 })

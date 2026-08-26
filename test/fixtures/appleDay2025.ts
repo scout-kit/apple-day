@@ -4,8 +4,8 @@
  * Every dollar figure and every staffing placement here is taken verbatim from the
  * workbook's `Friday Jars`, `Saturday Jars`, `Friday Schedule` and `Saturday Schedule`
  * sheets. Locations use canonical ids, which is the point: Friday wrote
- * "Sobeys - 640 Parkside Drive" and Saturday wrote "Sobeys Northfield - 640 Parkside
- * Drive", and both are `sobeys-640` here.
+ * "Braemar - 640 Linden Drive" and Saturday wrote "Braemar Aldergrove - 640 Linden
+ * Drive", and both are `braemar-640` here.
  *
  * People are anonymised (`y01`, `y02`, …). The workbook holds minors' names and parent
  * contact details and none of that belongs in a git repository. What matters for these
@@ -45,31 +45,31 @@ interface LocSpec {
 const LOCATION_SPECS: LocSpec[] = [
   // The six locations the workbook's year-end QUERY split into two rows each, because
   // it grouped by display string. Their historical spellings are recorded as aliases.
-  { id: 'sobeys-640', name: 'Sobeys — 640 Parkside Drive', priority: 1,
-    aliases: ['Sobeys - 640 Parkside Drive', 'Sobeys Northfield - 640 Parkside Drive'] },
-  { id: 'canadian-tire-400', name: 'Canadian Tire — 400 Weber St N', priority: 8,
-    aliases: ['Canadian Tire - 400 Weber St', 'Canadian Tire Weber Street - 400 Weber St N'] },
-  { id: 'tim-hortons-465', name: 'Tim Hortons — 465 Phillip St', priority: 10,
-    aliases: ['Tim Hortons - 465 Phillip Street', 'Tim Hortons - 465 Phillip St.'] },
-  { id: 'pet-value-580', name: 'Pet Valu — 582 Weber St N', priority: 13,
-    aliases: ['Pet Value  - 582 Weber Street North', 'Pet Value - 582 Weber Street North'] },
+  { id: 'braemar-640', name: 'Braemar — 640 Linden Drive', priority: 1,
+    aliases: ['Braemar - 640 Linden Drive', 'Braemar Aldergrove - 640 Linden Drive'] },
+  { id: 'ferndale-hardware-400', name: 'Ferndale Hardware — 400 Marchmont St N', priority: 8,
+    aliases: ['Ferndale Hardware - 400 Marchmont St', 'Ferndale Hardware Marchmont Street - 400 Marchmont St N'] },
+  { id: 'copperpot-465', name: 'Copperpot Coffee — 465 Phillip St', priority: 10,
+    aliases: ['Copperpot Coffee - 465 Phillip Street', 'Copperpot Coffee - 465 Phillip St.'] },
+  { id: 'pet-value-580', name: 'Pet Valu — 582 Marchmont St N', priority: 13,
+    aliases: ['Pet Value  - 582 Marchmont Street North', 'Pet Value - 582 Marchmont Street North'] },
   { id: 'cactus-465', name: 'The Cactus — 465 Phillip St', priority: 17,
     aliases: ['The Cactus Mexican restaurant - 465 Phillip St', 'Cactus Restaurant - 465 Phillip St. (After 12 Sat)'] },
-  { id: 'shoppers-northfield', name: 'Shoppers Drug Mart — 190 Northfield Dr W', priority: 11,
-    aliases: ['Shoppers Drug Mart - 640 Parkside Drive', 'Shoppers Drug Mart - 190 Northfield Dr W, Elmbridge, ON A1B 2C3'] },
+  { id: 'corner-chemist-aldergrove', name: 'Corner Chemist — 190 Aldergrove Dr W', priority: 11,
+    aliases: ['Corner Chemist - 640 Linden Drive', 'Corner Chemist - 190 Aldergrove Dr W, Elmbridge, ON A1B 2C3'] },
 
   { id: 'jacks', name: "Jack's Family Restaurant — 200 Benjamin Road", priority: 2, aliases: [] },
-  { id: 'walmart', name: 'Walmart — 335 Farmers Market Road', priority: 5, aliases: [] },
-  { id: 'no-frills', name: "No Frills — 24 Forwell Creek Rd", priority: 7, aliases: [] },
-  { id: 'starbucks-640', name: 'Starbucks — 640 Parkside Drive', priority: 9, aliases: [] },
+  { id: 'kelmont', name: 'Kelmont — 335 Farmers Market Road', priority: 5, aliases: [] },
+  { id: 'pricewise', name: "Pricewise — 24 Forwell Creek Rd", priority: 7, aliases: [] },
+  { id: 'starbucks-640', name: 'Starbucks — 640 Linden Drive', priority: 9, aliases: [] },
   { id: 'little-caesars-465', name: "Little Caesars & Thirstys — 465 Phillip St", priority: 14, aliases: [] },
-  { id: 'sjfm-1', name: "St Jacobs Farmers Market — Loc. 1", priority: 3, aliases: [] },
-  { id: 'sjfm-2', name: "St Jacobs Farmers Market — Loc. 2", priority: 4, aliases: [] },
-  { id: 'sunset-grill-580', name: 'Sunset Grill — 580 Weber St N', priority: 6, aliases: [] },
+  { id: 'sjfm-1', name: "Ashfield Farmers Market — Loc. 1", priority: 3, aliases: [] },
+  { id: 'sjfm-2', name: "Ashfield Farmers Market — Loc. 2", priority: 4, aliases: [] },
+  { id: 'sunset-grill-580', name: 'Sunset Grill — 580 Marchmont St N', priority: 6, aliases: [] },
   { id: 'bradys-465', name: "Brady's Meats — 465 Phillip St", priority: 12, aliases: [] },
   // The staff lounge that took $86.55 with nobody rostered — the anomaly the old
   // revenue/hour formula turned into a 4th-place ranking.
-  { id: 'home-hardware-lounge', name: 'Home Hardware staff lounge', priority: 20, aliases: [] },
+  { id: 'ravenhill-hardware-lounge', name: 'Ravenhill Hardware staff lounge', priority: 20, aliases: [] },
 ]
 
 const ALL_FRI = ['fri-1700', 'fri-1800', 'fri-1900', 'fri-2000']
@@ -105,29 +105,29 @@ export const locations2025: ScheduledLocation[] = LOCATION_SPECS.map((spec) => (
 
 /** [locationId, ...amounts] exactly as recorded on the jar sheets. */
 const FRIDAY_JARS: [string, ...number[]][] = [
-  ['tim-hortons-465', 19.95, 68.90, 38.65],
+  ['copperpot-465', 19.95, 68.90, 38.65],
   ['jacks', 53.90, 167.60, 21.45, 14.05],
-  ['sobeys-640', 134.20, 131.05, 129.95, 32.20, 106.25],
-  ['no-frills', 54.85, 99.35],
-  ['shoppers-northfield', 50.25, 48.25, 94.60],
+  ['braemar-640', 134.20, 131.05, 129.95, 32.20, 106.25],
+  ['pricewise', 54.85, 99.35],
+  ['corner-chemist-aldergrove', 50.25, 48.25, 94.60],
   ['starbucks-640', 1.80],
   ['little-caesars-465', 94.40, 68.90, 1.05, 6.40],
   ['cactus-465', 88.55, 10.75],
-  ['walmart', 73.00, 224.15],
-  ['canadian-tire-400', 121.30],
-  ['home-hardware-lounge', 86.55],
+  ['kelmont', 73.00, 224.15],
+  ['ferndale-hardware-400', 121.30],
+  ['ravenhill-hardware-lounge', 86.55],
 ]
 
 const SATURDAY_JARS: [string, ...number[]][] = [
   ['sunset-grill-580', 39.85, 133.85, 0, 55.75],
-  ['sobeys-640', 78.20, 54.10, 229.40, 118.75, 95.45, 115.60, 301.26],
+  ['braemar-640', 78.20, 54.10, 229.40, 118.75, 95.45, 115.60, 301.26],
   ['jacks', 29.05, 96.15, 22.45, 27.00, 249.15, 67.45, 33.00],
   ['sjfm-2', 430.35],
   ['sjfm-1', 343.25, 86.40, 105.45, 127.75, 105.45, 114.35],
-  ['walmart', 112.40, 181.10, 88.35],
-  ['tim-hortons-465', 76.70, 39.30],
+  ['kelmont', 112.40, 181.10, 88.35],
+  ['copperpot-465', 76.70, 39.30],
   ['bradys-465', 92.75, 48.40],
-  ['no-frills', 51.95, 41.90],
+  ['pricewise', 51.95, 41.90],
 ]
 
 function buildJars(day: Day, specs: [string, ...number[]][]): Jar[] {
@@ -171,26 +171,26 @@ export const jars2025 = [...fridayJars2025, ...saturdayJars2025]
  * "Calvin and Norm" — that is two entries here. The old `COUNTA` hour count saw one.
  */
 const FRIDAY_PLACEMENTS: [string, string, ...string[]][] = [
-  ['sobeys-640', 'fri-1700', 'y01'],
-  ['sobeys-640', 'fri-1800', 'y02', 'y03'],
-  ['sobeys-640', 'fri-1900', 'y04'],
+  ['braemar-640', 'fri-1700', 'y01'],
+  ['braemar-640', 'fri-1800', 'y02', 'y03'],
+  ['braemar-640', 'fri-1900', 'y04'],
   ['jacks', 'fri-1700', 'y05'],
   ['jacks', 'fri-1800', 'y06'],
   ['jacks', 'fri-2000', 'y07'],
-  ['canadian-tire-400', 'fri-1900', 'y08'],
-  ['walmart', 'fri-1800', 'y09'],
-  ['walmart', 'fri-1900', 'y10'],
-  ['walmart', 'fri-2000', 'y10'],
-  ['shoppers-northfield', 'fri-1700', 'y11'],
-  ['shoppers-northfield', 'fri-1800', 'y12'],
-  ['shoppers-northfield', 'fri-1900', 'y13'],
+  ['ferndale-hardware-400', 'fri-1900', 'y08'],
+  ['kelmont', 'fri-1800', 'y09'],
+  ['kelmont', 'fri-1900', 'y10'],
+  ['kelmont', 'fri-2000', 'y10'],
+  ['corner-chemist-aldergrove', 'fri-1700', 'y11'],
+  ['corner-chemist-aldergrove', 'fri-1800', 'y12'],
+  ['corner-chemist-aldergrove', 'fri-1900', 'y13'],
   ['starbucks-640', 'fri-1700', 'y14'],
-  ['no-frills', 'fri-1700', 'y15'],
-  ['no-frills', 'fri-1900', 'y16'],
-  ['no-frills', 'fri-2000', 'y16'],
-  ['tim-hortons-465', 'fri-1700', 'y17'],
-  ['tim-hortons-465', 'fri-1800', 'y18'],
-  ['tim-hortons-465', 'fri-2000', 'y19'],
+  ['pricewise', 'fri-1700', 'y15'],
+  ['pricewise', 'fri-1900', 'y16'],
+  ['pricewise', 'fri-2000', 'y16'],
+  ['copperpot-465', 'fri-1700', 'y17'],
+  ['copperpot-465', 'fri-1800', 'y18'],
+  ['copperpot-465', 'fri-2000', 'y19'],
   ['little-caesars-465', 'fri-1700', 'y20'],
   ['little-caesars-465', 'fri-1800', 'y21'],
   ['little-caesars-465', 'fri-2000', 'y22', 'y23'],
@@ -224,19 +224,19 @@ const SATURDAY_PLACEMENTS: [string, string, ...string[]][] = [
   ['jacks', 'sat-1200', 'y41'],
   ['jacks', 'sat-1300', 'y42'],
   ['jacks', 'sat-1400', 'y43'],
-  ['walmart', 'sat-1000', 'y44'],
-  ['walmart', 'sat-1100', 'y45'],
-  ['walmart', 'sat-1400', 'y46'],
-  ['sobeys-640', 'sat-0900', 'y47', 'y48'],
-  ['sobeys-640', 'sat-1000', 'y49'],
-  ['sobeys-640', 'sat-1100', 'y50'],
-  ['sobeys-640', 'sat-1200', 'y51'],
-  ['sobeys-640', 'sat-1300', 'y52', 'y53'],
-  ['sobeys-640', 'sat-1400', 'y52', 'y53'],
-  ['no-frills', 'sat-1300', 'y12', 'y26'],
-  ['no-frills', 'sat-1400', 'y12', 'y26'],
-  ['tim-hortons-465', 'sat-1000', 'y54'],
-  ['tim-hortons-465', 'sat-1400', 'y55'],
+  ['kelmont', 'sat-1000', 'y44'],
+  ['kelmont', 'sat-1100', 'y45'],
+  ['kelmont', 'sat-1400', 'y46'],
+  ['braemar-640', 'sat-0900', 'y47', 'y48'],
+  ['braemar-640', 'sat-1000', 'y49'],
+  ['braemar-640', 'sat-1100', 'y50'],
+  ['braemar-640', 'sat-1200', 'y51'],
+  ['braemar-640', 'sat-1300', 'y52', 'y53'],
+  ['braemar-640', 'sat-1400', 'y52', 'y53'],
+  ['pricewise', 'sat-1300', 'y12', 'y26'],
+  ['pricewise', 'sat-1400', 'y12', 'y26'],
+  ['copperpot-465', 'sat-1000', 'y54'],
+  ['copperpot-465', 'sat-1400', 'y55'],
   ['bradys-465', 'sat-1400', 'y56'],
 ]
 
@@ -299,7 +299,7 @@ export const signups2025: Signup[] = people2025.map((p, i) => ({
  * The workbook also kept hand-assembled cash and card totals per day — Friday's said
  * $1,955.75 against $2,042.30 of jars, an $86.55 gap nobody spotted. Those totals are gone
  * now that every jar is counted once in the app: the second set of numbers was the problem,
- * not the detection. The Home Hardware jar that caused the gap is still caught, as revenue
+ * not the detection. The Ravenhill Hardware jar that caused the gap is still caught, as revenue
  * at a location with no staffed hours.
  */
 export const reconciliation2025: Reconciliation = {
@@ -313,6 +313,6 @@ export const KNOWN = {
   saturdayJarTotal: 3792.31,
   grandJarTotal: 5834.61,
   uncountedFridayJar: 86.55,
-  sobeysFridayRevenue: 533.65,
-  sobeysSaturdayRevenue: 992.76,
+  braemarFridayRevenue: 533.65,
+  braemarSaturdayRevenue: 992.76,
 } as const

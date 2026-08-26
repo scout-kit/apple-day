@@ -60,17 +60,17 @@ beforeEach(async () => {
       parentName: 'Parent One', parentEmail: 'parent@example.org',
       parentPhone: '519-555-0100', pairWithPersonId: null,
     })
-    await setDoc(doc(db, 'locations', 'sobeys-640'), { name: 'Sobeys', priority: 1 })
+    await setDoc(doc(db, 'locations', 'braemar-640'), { name: 'Braemar', priority: 1 })
     await setDoc(doc(db, 'events', EVENT), { year: 2026, status: 'published' })
     await setDoc(doc(db, 'passes', VOLUNTEER_TOKEN), {
       eventId: EVENT, personId: 'p-alpha-one-cubs', shifts: [],
     })
     await setDoc(doc(db, 'events', EVENT, 'assignments', 'a1'), {
-      slotId: 'fri-1700', locationId: 'sobeys-640', personId: 'p-alpha-one-cubs',
+      slotId: 'fri-1700', locationId: 'braemar-640', personId: 'p-alpha-one-cubs',
       status: 'planned', whereabouts: 'here', checkedInAt: null, checkedOutAt: null,
     })
     await setDoc(doc(db, 'events', EVENT, 'jars', 'fri-jar-1'), {
-      jarNumber: 1, day: 'fri', locationId: 'sobeys-640', personId: 'p-alpha-one-cubs',
+      jarNumber: 1, day: 'fri', locationId: 'braemar-640', personId: 'p-alpha-one-cubs',
       assignmentId: 'a1', assignmentIds: ['a1'], status: 'counted', issuedAt: 0, issuedBy: ADMIN_UID,
       amount: 19.95, method: 'cash', countedBy: ADMIN_UID, countedAt: 0,
     })
@@ -208,7 +208,7 @@ describe('nobody can promote themselves', () => {
 
 describe('jars — who may touch the money', () => {
   const validJar = {
-    jarNumber: 2, day: 'fri', locationId: 'sobeys-640', personId: 'p-alpha-one-cubs',
+    jarNumber: 2, day: 'fri', locationId: 'braemar-640', personId: 'p-alpha-one-cubs',
     assignmentId: 'a1', assignmentIds: ['a1'], status: 'counted', issuedAt: 0, issuedBy: ADMIN_UID,
     amount: 42.5, method: 'cash', countedBy: ADMIN_UID, countedAt: 0,
   }
@@ -232,7 +232,7 @@ describe('jars — who may touch the money', () => {
     const { deleteDoc } = await import('firebase/firestore')
     await testEnv.withSecurityRulesDisabled(async (ctx) => {
       await setDoc(doc(ctx.firestore(), 'events', EVENT, 'jars', 'fri-jar-13'), {
-        jarNumber: 13, day: 'fri', locationId: 'sobeys-640', personId: 'p-alpha-one-cubs',
+        jarNumber: 13, day: 'fri', locationId: 'braemar-640', personId: 'p-alpha-one-cubs',
         assignmentId: 'a1', assignmentIds: ['a1'], status: 'out', issuedAt: 1, issuedBy: ADMIN_UID,
         amount: null, method: 'cash', countedBy: '', countedAt: 0,
       })
@@ -250,7 +250,7 @@ describe('jars — who may touch the money', () => {
   it('lets an organizer issue a jar with no amount yet', async () => {
     await assertSucceeds(
       setDoc(doc(admin(), 'events', EVENT, 'jars', 'fri-jar-9'), {
-        jarNumber: 9, day: 'fri', locationId: 'sobeys-640', personId: 'p-alpha-one-cubs',
+        jarNumber: 9, day: 'fri', locationId: 'braemar-640', personId: 'p-alpha-one-cubs',
         assignmentId: 'a1', assignmentIds: ['a1'], status: 'out', issuedAt: 1, issuedBy: ADMIN_UID,
         amount: null, method: 'cash', countedBy: '', countedAt: 0,
       }),
@@ -395,9 +395,9 @@ describe('assignments', () => {
   })
 
   it('keeps locations off the public internet', async () => {
-    await assertSucceeds(getDoc(doc(admin(), 'locations', 'sobeys-640')))
-    await assertFails(getDoc(doc(stranger(), 'locations', 'sobeys-640')))
-    await assertFails(getDoc(doc(anon(), 'locations', 'sobeys-640')))
+    await assertSucceeds(getDoc(doc(admin(), 'locations', 'braemar-640')))
+    await assertFails(getDoc(doc(stranger(), 'locations', 'braemar-640')))
+    await assertFails(getDoc(doc(anon(), 'locations', 'braemar-640')))
   })
 })
 
@@ -526,18 +526,18 @@ describe('the group’s sections', () => {
 describe('per-year location settings', () => {
   it('are readable by organizers and closed to everybody else', async () => {
     await assertSucceeds(
-      setDoc(doc(admin(), 'events', EVENT, 'eventLocations', 'sobeys-640'), {
+      setDoc(doc(admin(), 'events', EVENT, 'eventLocations', 'braemar-640'), {
         active: true, priority: 1,
       }),
     )
     await assertSucceeds(
-      getDoc(doc(admin(), 'events', EVENT, 'eventLocations', 'sobeys-640')),
+      getDoc(doc(admin(), 'events', EVENT, 'eventLocations', 'braemar-640')),
     )
     await assertFails(
-      getDoc(doc(stranger(), 'events', EVENT, 'eventLocations', 'sobeys-640')),
+      getDoc(doc(stranger(), 'events', EVENT, 'eventLocations', 'braemar-640')),
     )
     await assertFails(
-      getDoc(doc(anon(), 'events', EVENT, 'eventLocations', 'sobeys-640')),
+      getDoc(doc(anon(), 'events', EVENT, 'eventLocations', 'braemar-640')),
     )
   })
 

@@ -20,36 +20,36 @@ const H = (h: number): number => h * 60
 
 describe('shifts that continue each other', () => {
   it('joins an exact handover at the same location', () => {
-    const runs = groupIntoRuns([shift('sobeys', H(17)), shift('sobeys', H(18))])
+    const runs = groupIntoRuns([shift('braemar', H(17)), shift('braemar', H(18))])
     expect(runs).toHaveLength(1)
-    expect(runs[0]!.items.map((s) => s.tag)).toEqual(['sobeys@1020', 'sobeys@1080'])
+    expect(runs[0]!.items.map((s) => s.tag)).toEqual(['braemar@1020', 'braemar@1080'])
     expect(runs[0]!.startMin).toBe(H(17))
     expect(runs[0]!.endMin).toBe(H(19))
   })
 
   it('joins a deliberate overlap', () => {
     // 60-minute shifts every 45, so the relief arrives before the last person leaves.
-    const runs = groupIntoRuns([shift('sobeys', H(17)), shift('sobeys', H(17) + 45)])
+    const runs = groupIntoRuns([shift('braemar', H(17)), shift('braemar', H(17) + 45)])
     expect(runs).toHaveLength(1)
     expect(runs[0]!.endMin).toBe(H(18) + 45)
   })
 
   it('does not join across a gap', () => {
-    const runs = groupIntoRuns([shift('sobeys', H(17)), shift('sobeys', H(19))])
+    const runs = groupIntoRuns([shift('braemar', H(17)), shift('braemar', H(19))])
     expect(runs).toHaveLength(2)
   })
 
   it('does not join different locations, however tidy the times', () => {
-    const runs = groupIntoRuns([shift('sobeys', H(17)), shift('walmart', H(18))])
+    const runs = groupIntoRuns([shift('braemar', H(17)), shift('kelmont', H(18))])
     expect(runs).toHaveLength(2)
-    expect(runs.map((r) => r.locationId)).toEqual(['sobeys', 'walmart'])
+    expect(runs.map((r) => r.locationId)).toEqual(['braemar', 'kelmont'])
   })
 
   it('joins three in a row', () => {
     const runs = groupIntoRuns([
-      shift('sobeys', H(17)),
-      shift('sobeys', H(18)),
-      shift('sobeys', H(19)),
+      shift('braemar', H(17)),
+      shift('braemar', H(18)),
+      shift('braemar', H(19)),
     ])
     expect(runs).toHaveLength(1)
     expect(runs[0]!.items).toHaveLength(3)
@@ -57,16 +57,16 @@ describe('shifts that continue each other', () => {
   })
 
   it('does not care what order they arrive in', () => {
-    const runs = groupIntoRuns([shift('sobeys', H(19)), shift('sobeys', H(17)), shift('sobeys', H(18))])
+    const runs = groupIntoRuns([shift('braemar', H(19)), shift('braemar', H(17)), shift('braemar', H(18))])
     expect(runs).toHaveLength(1)
     expect(runs[0]!.items.map((s) => s.startMin)).toEqual([H(17), H(18), H(19)])
   })
 
   it('handles a return to the same location later in the day', () => {
     const runs = groupIntoRuns([
-      shift('sobeys', H(17)),
-      shift('sobeys', H(18)),
-      shift('sobeys', H(21)),
+      shift('braemar', H(17)),
+      shift('braemar', H(18)),
+      shift('braemar', H(21)),
     ])
     expect(runs).toHaveLength(2)
     expect(runs[0]!.items).toHaveLength(2)
@@ -74,17 +74,17 @@ describe('shifts that continue each other', () => {
   })
 
   it('keeps a whole-day shift as one run', () => {
-    const runs = groupIntoRuns([shift('sobeys', H(8), 7 * 60)])
+    const runs = groupIntoRuns([shift('braemar', H(8), 7 * 60)])
     expect(runs).toHaveLength(1)
     expect(runs[0]!.endMin).toBe(H(15))
   })
 
   it('never loses a shift', () => {
     const all = [
-      shift('sobeys', H(17)),
-      shift('sobeys', H(18)),
-      shift('walmart', H(18)),
-      shift('sobeys', H(21)),
+      shift('braemar', H(17)),
+      shift('braemar', H(18)),
+      shift('kelmont', H(18)),
+      shift('braemar', H(21)),
     ]
     const runs = groupIntoRuns(all)
     expect(runs.flatMap((r) => r.items)).toHaveLength(all.length)
@@ -92,10 +92,10 @@ describe('shifts that continue each other', () => {
 })
 
 describe('a shift whose slot has gone', () => {
-  const unplaced = { locationId: 'sobeys', startMin: null, endMin: null, tag: 'broken' }
+  const unplaced = { locationId: 'braemar', startMin: null, endMin: null, tag: 'broken' }
 
   it('stands alone rather than joining a run it might not belong to', () => {
-    const runs = groupIntoRuns([shift('sobeys', H(17)), unplaced])
+    const runs = groupIntoRuns([shift('braemar', H(17)), unplaced])
     expect(runs).toHaveLength(2)
     expect(runs[1]!.items[0]!.tag).toBe('broken')
   })
@@ -106,7 +106,7 @@ describe('a shift whose slot has gone', () => {
 })
 
 describe('runTouches', () => {
-  const run = groupIntoRuns([shift('sobeys', H(17)), shift('sobeys', H(18))])[0]!
+  const run = groupIntoRuns([shift('braemar', H(17)), shift('braemar', H(18))])[0]!
 
   it('is true for an hour inside the run', () => {
     expect(runTouches(run, { startMin: H(18), endMin: H(19) })).toBe(true)

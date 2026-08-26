@@ -103,7 +103,7 @@ const { countJar, deleteJar, reopenJar, setAssignmentStatusMany } = await import
 )
 
 const jar = (over: Partial<Jar> = {}): Jar => ({
-  id: 'fri-12', jarNumber: 12, day: 'fri', locationId: 'sobeys', personId: 'y01',
+  id: 'fri-12', jarNumber: 12, day: 'fri', locationId: 'braemar', personId: 'y01',
   assignmentId: 'a1', assignmentIds: ['a1'], status: 'counted', issuedAt: 1, issuedBy: 'o',
   amount: 80, method: 'cash', note: '', countedBy: 'o', countedAt: 2,
   ...over,
@@ -126,7 +126,7 @@ beforeEach(() => {
 describe('correcting a jar amount', () => {
   it('writes the old number and the new one', async () => {
     await countJar('2026', jar({ amount: 80 }), {
-      amount: 180, method: 'cash', locationId: 'sobeys', personId: 'y01', note: '',
+      amount: 180, method: 'cash', locationId: 'braemar', personId: 'y01', note: '',
     }, 'u-organizer')
 
     expect(auditEntries()[0]!.changes).toEqual([
@@ -136,7 +136,7 @@ describe('correcting a jar amount', () => {
 
   it('names who typed it', async () => {
     await countJar('2026', jar(), {
-      amount: 180, method: 'cash', locationId: 'sobeys', personId: 'y01', note: '',
+      amount: 180, method: 'cash', locationId: 'braemar', personId: 'y01', note: '',
     }, 'u-organizer')
 
     const entry = auditEntries()[0]!
@@ -151,7 +151,7 @@ describe('correcting a jar amount', () => {
       both writes, so either the money and its record land together or neither does.
     */
     await countJar('2026', jar(), {
-      amount: 180, method: 'cash', locationId: 'sobeys', personId: 'y01', note: '',
+      amount: 180, method: 'cash', locationId: 'braemar', personId: 'y01', note: '',
     }, 'u-organizer')
 
     expect(committed()).toHaveLength(1)
@@ -163,7 +163,7 @@ describe('correcting a jar amount', () => {
   it('says nothing when nothing moved', async () => {
     // Opening a jar and pressing save is not an event, and a log of non-events is unread.
     await countJar('2026', jar({ amount: 80 }), {
-      amount: 80, method: 'cash', locationId: 'sobeys', personId: 'y01', note: '',
+      amount: 80, method: 'cash', locationId: 'braemar', personId: 'y01', note: '',
     }, 'u-organizer')
 
     expect(auditEntries()).toHaveLength(0)
@@ -180,7 +180,7 @@ describe('taking somebody off the schedule', () => {
   it('keeps who, where and when, on the way out', async () => {
     const { unassign } = await import('../src/lib/repo')
     getDocData = {
-      personId: 'y01', locationId: 'sobeys', slotId: 'fri-1700', status: 'planned',
+      personId: 'y01', locationId: 'braemar', slotId: 'fri-1700', status: 'planned',
     }
 
     await unassign('2026', 'a1')
@@ -188,13 +188,13 @@ describe('taking somebody off the schedule', () => {
     const entry = auditEntries()[0]!
     const changes = entry.changes as { field: string; from: string; to: string }[]
     expect(changes).toContainEqual({ field: 'personId', from: 'y01', to: '—' })
-    expect(changes).toContainEqual({ field: 'locationId', from: 'sobeys', to: '—' })
+    expect(changes).toContainEqual({ field: 'locationId', from: 'braemar', to: '—' })
     expect(changes).toContainEqual({ field: 'slotId', from: 'fri-1700', to: '—' })
   })
 
   it('removes and records in one commit', async () => {
     const { unassign } = await import('../src/lib/repo')
-    getDocData = { personId: 'y01', locationId: 'sobeys', slotId: 'fri-1700' }
+    getDocData = { personId: 'y01', locationId: 'braemar', slotId: 'fri-1700' }
 
     await unassign('2026', 'a1')
 

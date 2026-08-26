@@ -27,14 +27,14 @@ const person = (id: string, first: string): Person => ({
 })
 
 const known = {
-  locations: [location('sobeys', 'Sobeys'), location('walmart', 'Walmart')],
+  locations: [location('braemar', 'Braemar'), location('kelmont', 'Kelmont')],
   people: [person('p-edsger', 'Edsger')],
   slots,
 }
 
 const shift = (over: Partial<Assignment> & { id: string }): Assignment => ({
   slotId: 'fri-1700',
-  locationId: 'sobeys',
+  locationId: 'braemar',
   personId: 'p-edsger',
   status: 'planned',
   whereabouts: 'here',
@@ -44,7 +44,7 @@ const shift = (over: Partial<Assignment> & { id: string }): Assignment => ({
 })
 
 const jar = (over: Partial<Jar> & { id: string }): Jar => ({
-  jarNumber: 1, day: 'fri', locationId: 'sobeys', personId: null, assignmentId: null, assignmentIds: [],
+  jarNumber: 1, day: 'fri', locationId: 'braemar', personId: null, assignmentId: null, assignmentIds: [],
   status: 'counted', issuedAt: 1, issuedBy: 'o', amount: 40, method: 'cash',
   note: '', countedBy: 'o', countedAt: 2,
   ...over,
@@ -52,9 +52,9 @@ const jar = (over: Partial<Jar> & { id: string }): Jar => ({
 
 describe('parseAssignmentId', () => {
   it('splits a generated id back into its three parts', () => {
-    expect(parseAssignmentId('fri-1700_sobeys-640-parkside-drive_p-alan-turing-cubs')).toEqual({
+    expect(parseAssignmentId('fri-1700_braemar-640-linden-drive_p-alan-turing-cubs')).toEqual({
       slotId: 'fri-1700',
-      locationId: 'sobeys-640-parkside-drive',
+      locationId: 'braemar-640-linden-drive',
       personId: 'p-alan-turing-cubs',
     })
   })
@@ -63,7 +63,7 @@ describe('parseAssignmentId', () => {
     // Dashes are everywhere in these slugs; underscores separate the three fields and
     // appear nowhere else, so anything with the wrong count is not a generated id.
     expect(parseAssignmentId('orphan-1')).toBeNull()
-    expect(parseAssignmentId('fri-1700_sobeys')).toBeNull()
+    expect(parseAssignmentId('fri-1700_braemar')).toBeNull()
     expect(parseAssignmentId('a_b_c_d')).toBeNull()
     expect(parseAssignmentId('fri-1700__p-edsger')).toBeNull()
   })
@@ -71,7 +71,7 @@ describe('parseAssignmentId', () => {
 
 describe('a healthy schedule raises nothing', () => {
   it('is quiet', () => {
-    expect(findOrphanedRecords(known, [shift({ id: 'fri-1700_sobeys_p-edsger' })], [])).toEqual([])
+    expect(findOrphanedRecords(known, [shift({ id: 'fri-1700_braemar_p-edsger' })], [])).toEqual([])
   })
 
   it('says nothing about a jar with no youth against it', () => {
@@ -82,7 +82,7 @@ describe('a healthy schedule raises nothing', () => {
 })
 
 describe('a shift whose youth has been deleted', () => {
-  const orphan = shift({ id: 'fri-1700_sobeys_p-test', personId: 'p-test' })
+  const orphan = shift({ id: 'fri-1700_braemar_p-test', personId: 'p-test' })
 
   it('names what is wrong in words', () => {
     const [issue] = findOrphanedRecords(known, [orphan], [])
@@ -93,7 +93,7 @@ describe('a shift whose youth has been deleted', () => {
     const [issue] = findOrphanedRecords(known, [orphan], [])
     const byLabel = new Map(issue!.references.map((r) => [r.label, r]))
     // The parts that are fine are named, so it is clear what is being decided about.
-    expect(byLabel.get('Location')!.display).toBe('Sobeys')
+    expect(byLabel.get('Location')!.display).toBe('Braemar')
     expect(byLabel.get('Location')!.exists).toBe(true)
     expect(byLabel.get('Shift')!.display).toBe('5:00 PM')
     expect(byLabel.get('Youth')!.exists).toBe(false)
@@ -112,7 +112,7 @@ describe('a shift whose youth has been deleted', () => {
 describe('a shift that lost its fields but kept its name', () => {
   // What a half-finished write leaves behind: a document holding a status and nothing else.
   const stripped = shift({
-    id: 'fri-1700_sobeys_p-edsger',
+    id: 'fri-1700_braemar_p-edsger',
     slotId: '',
     locationId: '',
     personId: '',
@@ -122,7 +122,7 @@ describe('a shift that lost its fields but kept its name', () => {
     const [issue] = findOrphanedRecords(known, [stripped], [])
     expect(issue!.repair).toEqual({
       slotId: 'fri-1700',
-      locationId: 'sobeys',
+      locationId: 'braemar',
       personId: 'p-edsger',
     })
     expect(issue!.blocked).toBeNull()
@@ -157,7 +157,7 @@ describe('a shift at a location dropped from this year', () => {
     // schedule.
     const issues = findOrphanedRecords(
       known,
-      [shift({ id: 'fri-1700_walmart_p-edsger', locationId: 'walmart' })],
+      [shift({ id: 'fri-1700_kelmont_p-edsger', locationId: 'kelmont' })],
       [],
     )
     expect(issues).toEqual([])

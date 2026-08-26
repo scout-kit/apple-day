@@ -21,7 +21,7 @@ export interface AuditFacts {
   entity: AuditEntity
   entityId: string
   eventId: string | null
-  /** One line in the app's own words: "Counted jar 12 at Sobeys". */
+  /** One line in the app's own words: "Counted jar 12 at Braemar". */
   summary: string
   changes?: AuditChange[]
 }

@@ -39,7 +39,7 @@ const ENTRY = {
   entity: 'jar',
   entityId: 'jar-12',
   eventId: '2026',
-  summary: 'Counted jar 12 at Sobeys',
+  summary: 'Counted jar 12 at Braemar',
   changes: [{ field: 'amount', from: '80', to: '180' }],
 }
 

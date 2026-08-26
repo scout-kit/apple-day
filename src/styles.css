@@ -394,7 +394,7 @@ tbody tr:hover { background: var(--surface-2); }
  *
  * Locations: nineteen of them, 25 to 57 characters, median 32. At 0.9rem semibold plus the
  * cell's padding that is about 0.47rem a character, so 17.5rem carries a 34-character name
- * on one line — three quarters of the list, "Sobeys - 640 Parkside Drive" among them. The
+ * on one line — three quarters of the list, "Braemar - 640 Linden Drive" among them. The
  * four longest, up to "Little Caesar's and Thirstys Bar and Grill 465 Phillip St", still
  * wrap; a column wide enough for that one would be half the screen.
  *

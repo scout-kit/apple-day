@@ -13,7 +13,7 @@ import { mapLink, safeMapUrl } from '../src/domain/maps'
 
 describe('a link that is safe to put in an href', () => {
   it('keeps an ordinary https link', () => {
-    const url = 'https://maps.google.com/?q=Sobeys+Northfield'
+    const url = 'https://maps.google.com/?q=Braemar+Aldergrove'
     expect(safeMapUrl(url)).toBe(url)
   })
 
@@ -54,14 +54,14 @@ describe('a link that is safe to put in an href', () => {
   it('refuses something that is not a URL at all', () => {
     // Half-typed, or an address pasted into the wrong box.
     expect(safeMapUrl('maps.google.com')).toBe('')
-    expect(safeMapUrl('123 King St W')).toBe('')
+    expect(safeMapUrl('123 Market St W')).toBe('')
     expect(safeMapUrl('')).toBe('')
   })
 })
 
 describe('the link a place actually gets', () => {
   it('prefers a usable override', () => {
-    expect(mapLink({ address: '123 King St W', mapsUrl: 'https://maps.example/x' })).toBe(
+    expect(mapLink({ address: '123 Market St W', mapsUrl: 'https://maps.example/x' })).toBe(
       'https://maps.example/x',
     )
   })
@@ -72,9 +72,9 @@ describe('the link a place actually gets', () => {
       address, and a working link to it is better than none — the person holding the pass
       is standing in a car park trying to find a shop.
     */
-    const link = mapLink({ address: '123 King St W', mapsUrl: 'javascript:alert(1)' })
+    const link = mapLink({ address: '123 Market St W', mapsUrl: 'javascript:alert(1)' })
     expect(link).toMatch(/^https:\/\/www\.google\.com\/maps\/search/)
-    expect(link).toContain('123%20King%20St%20W')
+    expect(link).toContain('123%20Market%20St%20W')
   })
 
   it('has nothing to offer when there is neither', () => {

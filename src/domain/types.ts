@@ -4,8 +4,8 @@ import type { SupportContact } from './support'
  * Apple Day domain types.
  *
  * Everything references everything else by id. No entity is ever identified by a display
- * string, which is what keeps `Sobeys - 640 Parkside Drive` and `Sobeys Northfield - 640
- * Parkside Drive` from being two locations.
+ * string, which is what keeps `Braemar - 640 Linden Drive` and `Braemar Aldergrove - 640
+ * Linden Drive` from being two locations.
  */
 
 /**

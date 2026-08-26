@@ -90,10 +90,10 @@ describe('location hours are recorded, not inferred from the schedule', () => {
   })
 
   it('can describe hours well outside what we staff', () => {
-    // The Tim Hortons case: open long past when anyone is scheduled.
+    // The Copperpot Coffee case: open long past when anyone is scheduled.
     const allNight = { openMin: 0, closeMin: 24 * 60 }
     expect(buildAllSlots().every((s) => isOpenDuring(allNight, s))).toBe(true)
-    // Reads as the Tim Hortons note in the workbook did, rather than "12:00 PM".
+    // Reads as the Copperpot Coffee note in the workbook did, rather than "12:00 PM".
     expect(formatOpenRange(allNight)).toBe('Open 24 hours')
     expect(formatOpenRange({ openMin: 17 * 60, closeMin: 24 * 60 })).toBe('5:00 PM – midnight')
     expect(formatOpenRange(null)).toBe('Closed')

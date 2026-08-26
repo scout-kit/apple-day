@@ -15,7 +15,7 @@ import { ATTENDANCE_VALUES, WHEREABOUTS_VALUES, wasWorked } from '../src/domain/
 
 const stored = (over: Record<string, unknown> = {}): Record<string, unknown> => ({
   slotId: 'fri-1700',
-  locationId: 'sobeys',
+  locationId: 'braemar',
   personId: 'p-one',
   status: 'checkedIn',
   whereabouts: 'here',
@@ -67,7 +67,7 @@ describe('documents written before the two states were split', () => {
     // database from before the split, and what used to come back as `planned`.
     const a = readAssignment('a1', {
       slotId: 'fri-1700',
-      locationId: 'sobeys',
+      locationId: 'braemar',
       personId: 'p-one',
       status: 'out',
       checkedInAt: 5,

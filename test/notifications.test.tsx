@@ -27,7 +27,7 @@ const people: Person[] = [
 ]
 
 const shift = (id: string, slotId: string): Assignment => ({
-  id, slotId, locationId: 'sobeys', personId: 'p-one',
+  id, slotId, locationId: 'braemar', personId: 'p-one',
   status: 'confirmed', whereabouts: 'here', checkedInAt: null, checkedOutAt: null,
 })
 
@@ -48,7 +48,7 @@ vi.mock('../src/lib/repo', () => ({
   }),
   usePeople: () => ({ data: people, loading: false, error: null }),
   useAssignments: () => ({ data: assignments, loading: false, error: null }),
-  useLocations: () => ({ data: [{ id: 'sobeys', name: 'Sobeys' }], loading: false, error: null }),
+  useLocations: () => ({ data: [{ id: 'braemar', name: 'Braemar' }], loading: false, error: null }),
   markRequestHandled: (...a: unknown[]) => markRequestHandled(...a),
   setAssignmentStatusMany: (...a: unknown[]) => setAssignmentStatusMany(...a),
 }))
@@ -220,7 +220,7 @@ describe('opening one', () => {
     await openFirst()
 
     const dialog = screen.getByRole('dialog')
-    expect(within(dialog).getByText(/Friday 5:00 PM · Sobeys/)).toBeTruthy()
+    expect(within(dialog).getByText(/Friday 5:00 PM · Braemar/)).toBeTruthy()
     expect(dialog.querySelector('.shift-list li.is-named')).toBeTruthy()
   })
 

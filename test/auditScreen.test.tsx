@@ -22,7 +22,7 @@ let askedScope = ''
 
 /*
   The screen resolves ids to names as it reads, so the library and the roster come with it.
-  Nothing here is about Firestore: the entry stores `sobeys`, the reader wants "Sobeys".
+  Nothing here is about Firestore: the entry stores `braemar`, the reader wants "Braemar".
 */
 vi.mock('../src/lib/repo', () => ({
   useAuditLog: (window: number, scope: string) => {
@@ -37,7 +37,7 @@ vi.mock('../src/lib/repo', () => ({
     return { data: entries.slice(0, window), loading, error: null }
   },
   useLocationLibrary: () => ({
-    data: [{ id: 'sobeys', name: 'Sobeys' }],
+    data: [{ id: 'braemar', name: 'Braemar' }],
     loading: false,
     error: null,
   }),
@@ -143,7 +143,7 @@ describe('what an entry says it was about', () => {
         summary: 'Removed a shift from the board',
         changes: [
           { field: 'personId', from: 'y01', to: '—' },
-          { field: 'locationId', from: 'sobeys', to: '—' },
+          { field: 'locationId', from: 'braemar', to: '—' },
           { field: 'slotId', from: 'fri-1700', to: '—' },
         ],
       }),
@@ -152,7 +152,7 @@ describe('what an entry says it was about', () => {
 
   it('names the person, the place and the hour', () => {
     render(<AuditScreen />)
-    expect(screen.getByText('Elliot R · Sobeys · 5:00 PM')).toBeTruthy()
+    expect(screen.getByText('Elliot R · Braemar · 5:00 PM')).toBeTruthy()
   })
 
   it('labels the fields the way somebody would say them out loud', () => {
@@ -235,7 +235,7 @@ describe('a log with no end to it', () => {
     */
     entries = many(260)
     render(<AuditScreen />)
-    await userEvent.type(screen.getByLabelText('Search the log'), 'sobeys')
+    await userEvent.type(screen.getByLabelText('Search the log'), 'braemar')
     expect(screen.getByText(/Searching the .* most recent changes/)).toBeTruthy()
   })
 

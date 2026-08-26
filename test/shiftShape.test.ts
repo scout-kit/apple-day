@@ -118,18 +118,18 @@ describe('hours worked', () => {
     const hours = staffedHoursByLocation(
       [
         {
-          id: 'a', slotId: slots[0]!.id, locationId: 'sobeys', personId: 'p1',
+          id: 'a', slotId: slots[0]!.id, locationId: 'braemar', personId: 'p1',
           status: 'confirmed', whereabouts: 'here', checkedInAt: null, checkedOutAt: null,
         },
         {
-          id: 'b', slotId: slots[1]!.id, locationId: 'sobeys', personId: 'p2',
+          id: 'b', slotId: slots[1]!.id, locationId: 'braemar', personId: 'p2',
           status: 'confirmed', whereabouts: 'here', checkedInAt: null, checkedOutAt: null,
         },
       ],
       slots,
     )
     // 15 minutes of that is side by side, and both of them really did work an hour.
-    expect(hours.get('sobeys')).toBe(2)
+    expect(hours.get('braemar')).toBe(2)
   })
 })
 

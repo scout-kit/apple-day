@@ -26,7 +26,7 @@ import { RULES_PROJECT_ID } from './projectId'
 const PROJECT_ID = RULES_PROJECT_ID
 const EVENT = '2026'
 const ADMIN_UID = 'admin-uid'
-const ASSIGNMENT = 'fri-1700_sobeys_p-one'
+const ASSIGNMENT = 'fri-1700_braemar_p-one'
 
 let testEnv: RulesTestEnvironment
 
@@ -57,7 +57,7 @@ type Db = ReturnType<typeof admin>
 async function checkIn(db: Db): Promise<void> {
   await setDoc(doc(db, 'events', EVENT, 'assignments', ASSIGNMENT), {
     slotId: 'fri-1700',
-    locationId: 'sobeys',
+    locationId: 'braemar',
     personId: 'p-one',
     status: 'checkedIn',
     whereabouts: 'here',
@@ -72,7 +72,7 @@ async function issueJar(db: Db, jarId: string): Promise<void> {
   batch.set(doc(db, 'events', EVENT, 'jars', jarId), {
     jarNumber: 1,
     day: 'fri',
-    locationId: 'sobeys',
+    locationId: 'braemar',
     personId: 'p-one',
     assignmentId: ASSIGNMENT, assignmentIds: [ASSIGNMENT],
     status: 'out',
@@ -179,13 +179,13 @@ describe('checking in, then issuing a jar', () => {
 })
 
 describe('a jar carried through a stretch of shifts', () => {
-  const SECOND = 'fri-1800_sobeys_p-one'
+  const SECOND = 'fri-1800_braemar_p-one'
 
   async function twoShifts(db: Db): Promise<void> {
     for (const [id, slotId] of [[ASSIGNMENT, 'fri-1700'], [SECOND, 'fri-1800']]) {
       await setDoc(doc(db, 'events', EVENT, 'assignments', id!), {
         slotId,
-        locationId: 'sobeys',
+        locationId: 'braemar',
         personId: 'p-one',
         status: 'checkedIn',
         whereabouts: 'here',
@@ -201,7 +201,7 @@ describe('a jar carried through a stretch of shifts', () => {
     batch.set(doc(db, 'events', EVENT, 'jars', jarId), {
       jarNumber: 1,
       day: 'fri',
-      locationId: 'sobeys',
+      locationId: 'braemar',
       personId: 'p-one',
       assignmentId: ASSIGNMENT,
       assignmentIds: [ASSIGNMENT, SECOND],
@@ -277,7 +277,7 @@ describe('a jar carried through a stretch of shifts', () => {
       setDoc(doc(db, 'events', EVENT, 'jars', 'fri-jar-9-zzz'), {
         jarNumber: 9,
         day: 'fri',
-        locationId: 'sobeys',
+        locationId: 'braemar',
         personId: 'p-one',
         assignmentId: ASSIGNMENT,
         assignmentIds: Array.from({ length: 25 }, (_, i) => `shift-${i}`),

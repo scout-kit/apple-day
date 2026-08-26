@@ -13,7 +13,7 @@ import type { EventLike } from '../src/domain/history'
  *
  * Every event at once was the wrong default. The question asked of these screens is almost
  * always "how are we doing against last year", and four extra series answer it worse than
- * none. Wider comparisons stay available, because "the year Sobeys doubled" is a real
+ * none. Wider comparisons stay available, because "the year Braemar doubled" is a real
  * question — just not the first one.
  */
 

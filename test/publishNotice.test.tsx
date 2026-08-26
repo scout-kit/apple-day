@@ -21,7 +21,7 @@ const SLOTS: Slot[] = [
 
 let locations: ScheduledLocation[] = [
   {
-    id: 'sobeys', name: 'Sobeys', address: '640 Parkside', mapsUrl: '', lat: null, lng: null, groupCode: '',
+    id: 'braemar', name: 'Braemar', address: '640 Linden', mapsUrl: '', lat: null, lng: null, groupCode: '',
     siteContact: null, insurance: '', comments: '', aliases: [],
     active: true, priority: 1, openHours: { fri: { openMin: 17 * 60, closeMin: 21 * 60 }, sat: null },
   },
@@ -36,7 +36,7 @@ let people: Person[] = [
 
 let assignments: Assignment[] = [
   {
-    id: 'a1', slotId: 'fri-1700', locationId: 'sobeys', personId: 'p-one',
+    id: 'a1', slotId: 'fri-1700', locationId: 'braemar', personId: 'p-one',
     status: 'planned', whereabouts: 'here', checkedInAt: null, checkedOutAt: null,
   },
 ]

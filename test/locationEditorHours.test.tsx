@@ -26,9 +26,9 @@ const { LocationEditor } = await import('../src/ui/LocationEditor')
 
 /** As the workbook extract leaves them: Friday and Saturday only. */
 const partiallyRecorded: Location = {
-  id: 'sobeys-640',
-  name: 'Sobeys — 640 Parkside Drive',
-  address: '640 Parkside Dr',
+  id: 'braemar-640',
+  name: 'Braemar — 640 Linden Drive',
+  address: '640 Linden Dr',
   mapsUrl: '',
   lat: null,
   lng: null,
@@ -178,7 +178,7 @@ describe('the map link comes from the address', () => {
     expect(screen.queryByLabelText('Map link')).toBeNull()
     const link = screen.getByRole('link', { name: 'Check it' }) as HTMLAnchorElement
     expect(link.href).toBe(
-      'https://www.google.com/maps/search/?api=1&query=640%20Parkside%20Dr',
+      'https://www.google.com/maps/search/?api=1&query=640%20Linden%20Dr',
     )
   })
 

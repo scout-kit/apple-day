@@ -2,7 +2,7 @@
  * The one way this app searches a list.
  *
  * Every word typed must appear somewhere in the row, in any order and any field: "12 sob"
- * finds jar 12 at Sobeys, "no fri" finds No Frills.
+ * finds jar 12 at Braemar, "no fri" finds Pricewise.
  *
  * Not fuzzy. These lists are money and children, and somebody checking a figure needs to
  * know they are looking at the row they asked for.
@@ -28,7 +28,7 @@ export function matchesTerms(
  * How well a row answers what was typed, as a number to sort by. Lower is better.
  *
  * Filtering alone is not enough once a list is twenty long. Search "market" across the
- * shops and three match — two named "St. Jacob's Farmers market" and one called "WalMart -
+ * shops and three match — two named "Ashfield Farmers market" and one called "KelMont -
  * 335 Farmers Market Road" — and without ranking they come back in whatever order the
  * library happens to hold them, so the one that merely mentions a road can sit above the
  * two the query actually names.
@@ -69,7 +69,7 @@ export function rankMatch(row: Searchable, query: string): number {
 
   /*
     Nothing matched the query whole, so this row is here on the strength of its separate
-    words — "no fri" finding No Frills. Worth keeping and worth ranking below anything that
+    words — "no fri" finding Pricewise. Worth keeping and worth ranking below anything that
     matched outright.
   */
   return matchesTerms(searchTerms(q), [row.label, row.tag, row.note]) ? 6 * 1000 : NO_MATCH

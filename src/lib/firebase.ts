@@ -18,7 +18,7 @@ import { forgetInvite } from './pendingInvite'
 /**
  * Firebase client.
  *
- * Offline persistence is on deliberately, not as a nicety. St Jacobs Market and a couple
+ * Offline persistence is on deliberately, not as a nicety. Ashfield Market and a couple
  * of the plazas have poor coverage, and jar entry has to keep working with no signal and
  * sync when it comes back.
  */

@@ -15,23 +15,24 @@ const finds = (
 
 describe('searching a row', () => {
   it('matches a word in any field', () => {
-    expect(finds('sobeys', ['Sobeys - 640 Parkside', 'Alpha One'])).toBe(true)
-    expect(finds('alpha', ['Sobeys - 640 Parkside', 'Alpha One'])).toBe(true)
+    expect(finds('braemar', ['Braemar - 640 Linden', 'Alpha One'])).toBe(true)
+    expect(finds('alpha', ['Braemar - 640 Linden', 'Alpha One'])).toBe(true)
   })
 
   it('needs every word, but in no particular order', () => {
-    // The behaviour that makes "12 sob" useful.
-    expect(finds('12 sob', [12, 'Sobeys'])).toBe(true)
-    expect(finds('sob 12', [12, 'Sobeys'])).toBe(true)
-    expect(finds('12 walmart', [12, 'Sobeys'])).toBe(false)
+    // The behaviour that makes "12 brae" useful: a jar number and the start of a shop.
+    expect(finds('12 brae', [12, 'Braemar'])).toBe(true)
+    expect(finds('brae 12', [12, 'Braemar'])).toBe(true)
+    expect(finds('12 kelmont', [12, 'Braemar'])).toBe(false)
   })
 
   it('matches on part of a word, which is what makes it worth typing', () => {
-    expect(finds('no fri', ['Paul and Mallory’s No Frills'])).toBe(true)
+    expect(finds('pricew', ['Paul and Mallory’s Pricewise'])).toBe(true)
+    expect(finds('mal pric', ['Paul and Mallory’s Pricewise'])).toBe(true)
   })
 
   it('ignores case and stray spacing', () => {
-    expect(finds('  SOBEYS   ', ['sobeys'])).toBe(true)
+    expect(finds('  BRAEMAR   ', ['braemar'])).toBe(true)
   })
 
   it('matches everything when nothing is typed', () => {
@@ -41,62 +42,62 @@ describe('searching a row', () => {
   })
 
   it('searches numbers as they are written', () => {
-    expect(finds('640', ['Sobeys - 640 Parkside'])).toBe(true)
+    expect(finds('640', ['Braemar - 640 Linden'])).toBe(true)
     expect(finds('7', [7])).toBe(true)
   })
 
   it('skips fields that are not there rather than matching on “null”', () => {
     // A row with no note must not be found by searching for "null".
-    expect(finds('null', ['Sobeys', null, undefined])).toBe(false)
+    expect(finds('null', ['Braemar', null, undefined])).toBe(false)
   })
 
   it('does not match on a near miss', () => {
     // Deliberately not fuzzy: these lists are money and children.
-    expect(finds('sobys', ['Sobeys'])).toBe(false)
+    expect(finds('sobys', ['Braemar'])).toBe(false)
   })
 })
 
 describe('ordering what matched', () => {
   /*
-    Reported: searching the shops put "WalMart - 335 Farmers Market Road" above the two
-    actually called "St. Jacob's Farmers market". Nothing was wrong with the matching —
+    Reported: searching the shops put "KelMont - 335 Farmers Market Road" above the two
+    actually called "Ashfield Farmers market". Nothing was wrong with the matching —
     all three hold the word — but matches came back in whatever order the library held
     them, so where the word landed counted for nothing.
   */
   const shops = [
-    { label: 'WalMart - 335 Farmers Market Road', tag: 'WM' },
-    { label: "St. Jacob's Farmers market Loc.1", tag: 'SJFM1' },
-    { label: "St. Jacob's Farmers market Loc.2", tag: 'SJFM2' },
-    { label: 'Sobeys - 640 Parkside Drive', tag: '640', note: '640 Parkside Dr, Elmbridge' },
+    { label: 'KelMont - 335 Farmers Market Road', tag: 'WM' },
+    { label: "Ashfield Farmers market Loc.1", tag: 'SJFM1' },
+    { label: "Ashfield Farmers market Loc.2", tag: 'SJFM2' },
+    { label: 'Braemar - 640 Linden Drive', tag: '640', note: '640 Linden Dr, Elmbridge' },
   ]
 
   const order = (query: string): string[] =>
     ranked(shops, query).map((s) => s.label)
 
   it('puts a name that starts with what was typed first', () => {
-    expect(order('sobeys')[0]).toBe('Sobeys - 640 Parkside Drive')
+    expect(order('braemar')[0]).toBe('Braemar - 640 Linden Drive')
   })
 
   it('prefers the earlier word when two names both hold it', () => {
     // "Farmers" is the fourth word of one and the fifth of the other.
-    expect(order('farmers')[0]).toContain("St. Jacob's")
+    expect(order('farmers')[0]).toContain('Ashfield')
   })
 
   it('finds a shop by its group code', () => {
-    expect(order('sjfm1')).toEqual(["St. Jacob's Farmers market Loc.1"])
+    expect(order('sjfm1')).toEqual(["Ashfield Farmers market Loc.1"])
   })
 
   it('ranks a code match above a mention buried in an address', () => {
     const rows = [
       { label: 'Somewhere else', note: 'On the corner of WM Road' },
-      { label: 'WalMart', tag: 'WM' },
+      { label: 'KelMont', tag: 'WM' },
     ]
-    expect(ranked(rows, 'wm')[0]!.label).toBe('WalMart')
+    expect(ranked(rows, 'wm')[0]!.label).toBe('KelMont')
   })
 
   it('still finds a shop by an address that is not on the row', () => {
     // The address is searched and not shown, so this has to keep working.
-    expect(order('parkside')[0]).toBe('Sobeys - 640 Parkside Drive')
+    expect(order('linden')[0]).toBe('Braemar - 640 Linden Drive')
   })
 
   it('keeps the given order when nothing is typed', () => {
@@ -109,8 +110,8 @@ describe('ordering what matched', () => {
 
   it('keeps the given order between rows that rank the same', () => {
     expect(order('loc')).toEqual([
-      "St. Jacob's Farmers market Loc.1",
-      "St. Jacob's Farmers market Loc.2",
+      "Ashfield Farmers market Loc.1",
+      "Ashfield Farmers market Loc.2",
     ])
   })
 
@@ -121,16 +122,16 @@ describe('ordering what matched', () => {
   it('still finds a row by separate words, below anything matched whole', () => {
     const rows = [
       { label: 'Market Farmers Co-op' },
-      { label: "St. Jacob's Farmers market" },
+      { label: "Ashfield Farmers market" },
     ]
     // "farmers market" is one phrase in the second and two scattered words in the first.
-    expect(ranked(rows, 'farmers market')[0]!.label).toBe("St. Jacob's Farmers market")
+    expect(ranked(rows, 'farmers market')[0]!.label).toBe("Ashfield Farmers market")
   })
 
   it('is not confused by a query with regex in it', () => {
     // Typed into a search box, "loc.1" is four characters, not a pattern.
     expect(ranked(shops, 'loc.1').map((s) => s.label)).toEqual([
-      "St. Jacob's Farmers market Loc.1",
+      "Ashfield Farmers market Loc.1",
     ])
   })
 })

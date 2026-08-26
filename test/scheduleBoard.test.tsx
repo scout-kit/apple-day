@@ -28,13 +28,13 @@ const SLOTS = buildAllSlots()
 
 let locations: ScheduledLocation[] = [
   {
-    id: 'sobeys', name: 'Sobeys', address: '', mapsUrl: '', lat: null, lng: null, groupCode: '',
+    id: 'braemar', name: 'Braemar', address: '', mapsUrl: '', lat: null, lng: null, groupCode: '',
     siteContact: null, insurance: '', comments: '', aliases: [],
     active: true, priority: 1,
     openHours: { fri: { openMin: 17 * 60, closeMin: 21 * 60 }, sat: null },
   },
   {
-    id: 'walmart', name: 'Walmart', address: '', mapsUrl: '', lat: null, lng: null, groupCode: '',
+    id: 'kelmont', name: 'Kelmont', address: '', mapsUrl: '', lat: null, lng: null, groupCode: '',
     siteContact: null, insurance: '', comments: '', aliases: [],
     active: true, priority: 2,
     openHours: { fri: { openMin: 17 * 60, closeMin: 21 * 60 }, sat: null },
@@ -189,12 +189,12 @@ beforeEach(() => {
   // Rebuilt each test: several of them narrow a location's hours in place.
   locations = [
     {
-      id: 'sobeys', name: 'Sobeys', address: '', mapsUrl: '', lat: null, lng: null, groupCode: '',
+      id: 'braemar', name: 'Braemar', address: '', mapsUrl: '', lat: null, lng: null, groupCode: '',
       siteContact: null, insurance: '', comments: '', aliases: [],
       active: true, priority: 1, openHours: { ...OPEN_FRIDAY },
     },
     {
-      id: 'walmart', name: 'Walmart', address: '', mapsUrl: '', lat: null, lng: null, groupCode: '',
+      id: 'kelmont', name: 'Kelmont', address: '', mapsUrl: '', lat: null, lng: null, groupCode: '',
       siteContact: null, insurance: '', comments: '', aliases: [],
       active: true, priority: 2, openHours: { ...OPEN_FRIDAY },
     },
@@ -210,7 +210,7 @@ describe('adding someone while the write is still in flight', () => {
     render(<ScheduleScreen />)
     expect(pickers().length).toBeGreaterThan(4)
 
-    await addPerson('Sobeys', 0, 'p-one')
+    await addPerson('Braemar', 0, 'p-one')
     expect(assign).toHaveBeenCalledTimes(1)
 
     // The board must not be frozen behind one unacknowledged write.
@@ -223,20 +223,20 @@ describe('adding someone while the write is still in flight', () => {
     assign.mockReturnValue(new Promise(() => {}))
     render(<ScheduleScreen />)
 
-    await addPerson('Sobeys', 0, 'p-one')
+    await addPerson('Braemar', 0, 'p-one')
     // Different location, same hour — this is what locked before.
-    await addPerson('Walmart', 0, 'p-two')
+    await addPerson('Kelmont', 0, 'p-two')
 
     expect(assign).toHaveBeenCalledTimes(2)
     const [first, second] = assign.mock.calls
-    expect(first![1]).toMatchObject({ locationId: 'sobeys', personId: 'p-one' })
-    expect(second![1]).toMatchObject({ locationId: 'walmart', personId: 'p-two' })
+    expect(first![1]).toMatchObject({ locationId: 'braemar', personId: 'p-one' })
+    expect(second![1]).toMatchObject({ locationId: 'kelmont', personId: 'p-two' })
   })
 
   it('keeps the remove buttons live too', async () => {
     assignments = [
       {
-        id: 'a1', slotId: SLOTS[0]!.id, locationId: 'sobeys', personId: 'p-one',
+        id: 'a1', slotId: SLOTS[0]!.id, locationId: 'braemar', personId: 'p-one',
         status: 'planned', whereabouts: 'here', checkedInAt: null, checkedOutAt: null,
       },
     ]
@@ -256,8 +256,8 @@ describe('adding someone while the write is still in flight', () => {
     assign.mockReturnValue(new Promise(() => {}))
     render(<ScheduleScreen />)
 
-    await addPerson('Sobeys', 0, 'p-one')
-    await addPerson('Sobeys', 1, 'p-two')
+    await addPerson('Braemar', 0, 'p-one')
+    await addPerson('Braemar', 1, 'p-two')
 
     expect(assign).toHaveBeenCalledTimes(2)
     expect(assign.mock.calls[0]![1]).toMatchObject({ slotId: 'fri-1700' })
@@ -270,7 +270,7 @@ describe('when a write actually fails', () => {
     assign.mockRejectedValue(new Error('Missing or insufficient permissions.'))
     render(<ScheduleScreen />)
 
-    await addPerson('Sobeys', 0, 'p-one')
+    await addPerson('Braemar', 0, 'p-one')
 
     await waitFor(() =>
       expect(screen.getByText(/insufficient permissions/)).toBeDefined(),
@@ -288,8 +288,8 @@ describe('the fix holds for repeated adds', () => {
     render(<ScheduleScreen />)
 
     for (const hour of [0, 1, 2, 3]) {
-      await addPerson('Sobeys', hour, 'p-one')
-      await addPerson('Walmart', hour, 'p-two')
+      await addPerson('Braemar', hour, 'p-one')
+      await addPerson('Kelmont', hour, 'p-two')
     }
 
     expect(assign).toHaveBeenCalledTimes(8)
@@ -302,11 +302,11 @@ describe('the fix holds for repeated adds', () => {
       .mockReturnValue(new Promise(() => {}))
     render(<ScheduleScreen />)
 
-    await addPerson('Sobeys', 0, 'p-one')
+    await addPerson('Braemar', 0, 'p-one')
     await waitFor(() => expect(screen.getByText(/network hiccup/)).toBeDefined())
 
     // The error must not be a dead end.
-    await addPerson('Walmart', 0, 'p-two')
+    await addPerson('Kelmont', 0, 'p-two')
     expect(assign).toHaveBeenCalledTimes(2)
     // And it clears once a later write is attempted.
     expect(screen.queryByText(/network hiccup/)).toBeNull()
@@ -323,7 +323,7 @@ async function revealHidden(): Promise<void> {
 }
 
 describe('closed hours', () => {
-  /** Sobeys open 6–9pm Friday, so the 5pm hour is closed. Walmart hours unrecorded. */
+  /** Braemar open 6–9pm Friday, so the 5pm hour is closed. Kelmont hours unrecorded. */
   const withClosedHour = (): void => {
     locations[0] = {
       ...locations[0]!,
@@ -340,11 +340,11 @@ describe('closed hours', () => {
     render(<ScheduleScreen />)
     await revealHidden()
 
-    const closed = cellFor('Sobeys', 0)
+    const closed = cellFor('Braemar', 0)
     expect(closed.querySelector('button.cell-add')).toBeNull()
     expect(closed.textContent).toContain('closed')
     // The hours it is open still take a picker.
-    expect(cellFor('Sobeys', 1).querySelector('button.cell-add')).not.toBeNull()
+    expect(cellFor('Braemar', 1).querySelector('button.cell-add')).not.toBeNull()
   })
 
   it('still allows scheduling when hours were never recorded', async () => {
@@ -356,7 +356,7 @@ describe('closed hours', () => {
     await revealHidden()
 
     for (const hour of [0, 1, 2, 3]) {
-      expect(cellFor('Walmart', hour).querySelector('button.cell-add')).not.toBeNull()
+      expect(cellFor('Kelmont', hour).querySelector('button.cell-add')).not.toBeNull()
     }
   })
 
@@ -365,8 +365,8 @@ describe('closed hours', () => {
     render(<ScheduleScreen />)
     await revealHidden()
 
-    expect(cellFor('Sobeys', 0).title).toContain('closed at this hour')
-    expect(cellFor('Walmart', 0).title).toContain('No opening hours recorded')
+    expect(cellFor('Braemar', 0).title).toContain('closed at this hour')
+    expect(cellFor('Kelmont', 0).title).toContain('No opening hours recorded')
   })
 
   it('lets an organizer staff a closed hour deliberately', async () => {
@@ -375,18 +375,18 @@ describe('closed hours', () => {
     render(<ScheduleScreen />)
     await revealHidden()
 
-    const closed = cellFor('Sobeys', 0)
+    const closed = cellFor('Braemar', 0)
     await userEvent.click(closed.querySelector('button')!)
 
     // The trigger appears only for that cell, and is marked as an override.
-    const trigger = cellFor('Sobeys', 0).querySelector('button.cell-add')!
+    const trigger = cellFor('Braemar', 0).querySelector('button.cell-add')!
     expect(trigger).not.toBeNull()
     expect(trigger.textContent).toContain('closed')
 
-    await addPerson('Sobeys', 0, 'p-one')
+    await addPerson('Braemar', 0, 'p-one')
     expect(assign).toHaveBeenCalledTimes(1)
     expect(assign.mock.calls[0]![1]).toMatchObject({
-      slotId: 'fri-1700', locationId: 'sobeys', personId: 'p-one',
+      slotId: 'fri-1700', locationId: 'braemar', personId: 'p-one',
     })
   })
 
@@ -399,18 +399,18 @@ describe('closed hours', () => {
     render(<ScheduleScreen />)
     await revealHidden()
 
-    await userEvent.click(cellFor('Sobeys', 0).querySelector('button')!)
+    await userEvent.click(cellFor('Braemar', 0).querySelector('button')!)
 
-    expect(cellFor('Sobeys', 0).querySelector('button.cell-add')).not.toBeNull()
-    expect(cellFor('Sobeys', 1).querySelector('button.cell-add')).toBeNull()
-    expect(cellFor('Sobeys', 2).querySelector('button.cell-add')).toBeNull()
+    expect(cellFor('Braemar', 0).querySelector('button.cell-add')).not.toBeNull()
+    expect(cellFor('Braemar', 1).querySelector('button.cell-add')).toBeNull()
+    expect(cellFor('Braemar', 2).querySelector('button.cell-add')).toBeNull()
   })
 
   it('keeps an existing assignment removable in a closed hour', async () => {
     withClosedHour()
     assignments = [
       {
-        id: 'a1', slotId: 'fri-1700', locationId: 'sobeys', personId: 'p-one',
+        id: 'a1', slotId: 'fri-1700', locationId: 'braemar', personId: 'p-one',
         status: 'planned', whereabouts: 'here', checkedInAt: null, checkedOutAt: null,
       },
     ]
@@ -434,7 +434,7 @@ describe('a day marked closed all day', () => {
     await revealHidden()
 
     for (const hour of [0, 1, 2, 3]) {
-      const cell = cellFor('Sobeys', hour)
+      const cell = cellFor('Braemar', hour)
       expect(cell.querySelector('button.cell-add')).toBeNull()
       expect(cell.textContent).toContain('closed')
     }
@@ -442,17 +442,17 @@ describe('a day marked closed all day', () => {
 
   it('is not confused with a day nobody has recorded', async () => {
     locations[0] = { ...locations[0]!, openHours: { fri: null } }
-    // Walmart says nothing about Friday at all, so both are hidden and the board is empty
+    // Kelmont says nothing about Friday at all, so both are hidden and the board is empty
     // until they are revealed.
     locations[1] = { ...locations[1]!, openHours: {} }
     render(<ScheduleScreen />)
     await revealHidden()
 
-    expect(cellFor('Sobeys', 0).querySelector('button.cell-add')).toBeNull()
-    expect(cellFor('Sobeys', 0).title).toContain('closed at this hour')
+    expect(cellFor('Braemar', 0).querySelector('button.cell-add')).toBeNull()
+    expect(cellFor('Braemar', 0).title).toContain('closed at this hour')
 
-    expect(cellFor('Walmart', 0).querySelector('button.cell-add')).not.toBeNull()
-    expect(cellFor('Walmart', 0).title).toContain('No opening hours recorded')
+    expect(cellFor('Kelmont', 0).querySelector('button.cell-add')).not.toBeNull()
+    expect(cellFor('Kelmont', 0).title).toContain('No opening hours recorded')
   })
 
   it('can still be overridden for a single hour', async () => {
@@ -461,13 +461,13 @@ describe('a day marked closed all day', () => {
     render(<ScheduleScreen />)
     await revealHidden()
 
-    await userEvent.click(cellFor('Sobeys', 1).querySelector('button')!)
+    await userEvent.click(cellFor('Braemar', 1).querySelector('button')!)
     // Overriding one hour leaves it as the row's only trigger, so it is index 0 here.
-    await addPerson('Sobeys', 0, 'p-one')
+    await addPerson('Braemar', 0, 'p-one')
 
     expect(assign.mock.calls[0]![1]).toMatchObject({ slotId: 'fri-1800' })
     // The other hours of that closed day stay shut.
-    expect(cellFor('Sobeys', 0).querySelector('button.cell-add')).toBeNull()
+    expect(cellFor('Braemar', 0).querySelector('button.cell-add')).toBeNull()
   })
 
   it('treats a zero-length range as closed too', async () => {
@@ -477,7 +477,7 @@ describe('a day marked closed all day', () => {
     }
     render(<ScheduleScreen />)
     await revealHidden()
-    expect(cellFor('Sobeys', 1).querySelector('button.cell-add')).toBeNull()
+    expect(cellFor('Braemar', 1).querySelector('button.cell-add')).toBeNull()
   })
 })
 
@@ -488,15 +488,15 @@ describe('locations that are not part of the day', () => {
     locations[1] = { ...locations[1]!, openHours: { fri: null, sat: null } }
     render(<ScheduleScreen />)
 
-    expect(rowExists('Sobeys')).toBe(true)
+    expect(rowExists('Braemar')).toBe(true)
     // A row of hatching for a shut location is noise.
-    expect(rowExists('Walmart')).toBe(false)
+    expect(rowExists('Kelmont')).toBe(false)
   })
 
   it('leaves out a location whose hours nobody recorded', () => {
     locations[1] = { ...locations[1]!, openHours: {} }
     render(<ScheduleScreen />)
-    expect(rowExists('Walmart')).toBe(false)
+    expect(rowExists('Kelmont')).toBe(false)
   })
 
   it('mentions the count quietly, without a warning', () => {
@@ -525,7 +525,7 @@ describe('locations that are not part of the day', () => {
 
     await userEvent.click(screen.getByRole('button', { name: 'Show them' }))
     // Back in the table, and still blocked from taking a shift without an override.
-    expect(rowFor('Walmart').querySelector('button.cell-add')).toBeNull()
+    expect(rowFor('Kelmont').querySelector('button.cell-add')).toBeNull()
   })
 
   it('keeps a closed location that already has someone scheduled', () => {
@@ -534,13 +534,13 @@ describe('locations that are not part of the day', () => {
     locations[1] = { ...locations[1]!, openHours: { fri: null } }
     assignments = [
       {
-        id: 'a1', slotId: 'fri-1700', locationId: 'walmart', personId: 'p-one',
+        id: 'a1', slotId: 'fri-1700', locationId: 'kelmont', personId: 'p-one',
         status: 'confirmed', whereabouts: 'here', checkedInAt: null, checkedOutAt: null,
       },
     ]
     render(<ScheduleScreen />)
 
-    expect(rowExists('Walmart')).toBe(true)
+    expect(rowExists('Kelmont')).toBe(true)
     expect(screen.getByTitle('Remove from this shift')).toBeDefined()
   })
 
@@ -562,8 +562,8 @@ describe('when every location is hidden', () => {
     const reveal = screen.getByRole('button', { name: 'Show them' })
     await userEvent.click(reveal)
 
-    expect(hasRow('Sobeys')).toBe(true)
-    expect(hasRow('Walmart')).toBe(true)
+    expect(hasRow('Braemar')).toBe(true)
+    expect(hasRow('Kelmont')).toBe(true)
   })
 })
 
@@ -573,7 +573,7 @@ describe('a name is a way to reach that person', () => {
     // what else that person is doing.
     assignments = [
       {
-        id: 'a1', slotId: SLOTS[0]!.id, locationId: 'sobeys', personId: 'p-one',
+        id: 'a1', slotId: SLOTS[0]!.id, locationId: 'braemar', personId: 'p-one',
         status: 'planned', whereabouts: 'here', checkedInAt: null, checkedOutAt: null,
       },
     ]
@@ -602,11 +602,11 @@ describe('the validation banner', () => {
     // Somebody in two places at once, which is what the banner exists for.
     assignments = [
       {
-        id: 'a1', slotId: SLOTS[0]!.id, locationId: 'sobeys', personId: 'p-one',
+        id: 'a1', slotId: SLOTS[0]!.id, locationId: 'braemar', personId: 'p-one',
         status: 'planned', whereabouts: 'here', checkedInAt: null, checkedOutAt: null,
       },
       {
-        id: 'a2', slotId: SLOTS[0]!.id, locationId: 'walmart', personId: 'p-one',
+        id: 'a2', slotId: SLOTS[0]!.id, locationId: 'kelmont', personId: 'p-one',
         status: 'planned', whereabouts: 'here', checkedInAt: null, checkedOutAt: null,
       },
     ]

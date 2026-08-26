@@ -29,9 +29,9 @@ const PEOPLE = [
 ]
 
 const LOCATIONS = [
-  location('sobeys-640', 'Sobeys', '640 Parkside Dr', '640'),
-  location('sobeys-north', 'Sobeys Northfield', '450 Northfield Dr'),
-  location('walmart', 'Walmart', '335 Farmers Market Rd'),
+  location('braemar-640', 'Braemar', '640 Linden Dr', '640'),
+  location('braemar-north', 'Braemar Aldergrove', '450 Aldergrove Dr'),
+  location('kelmont', 'Kelmont', '335 Farmers Market Rd'),
 ]
 
 describe('choosing a youth', () => {
@@ -93,15 +93,15 @@ describe('choosing a youth', () => {
 describe('choosing a location', () => {
   it('shows the chosen one by name', () => {
     render(
-      <LocationField label="Location" locations={LOCATIONS} value="walmart" onChange={vi.fn()} />,
+      <LocationField label="Location" locations={LOCATIONS} value="kelmont" onChange={vi.fn()} />,
     )
-    expect(screen.getByRole('button', { name: 'Location' }).textContent).toContain('Walmart')
+    expect(screen.getByRole('button', { name: 'Location' }).textContent).toContain('Kelmont')
   })
 
-  it('searches the address, which is what tells two Sobeys apart', async () => {
+  it('searches the address, which is what tells two Braemar apart', async () => {
     /*
       An `<option>` has nowhere to put an address, so a dropdown of twenty shops showed two
-      entries called Sobeys and no way to tell which was which.
+      entries called Braemar and no way to tell which was which.
     */
     const onChange = vi.fn()
     render(<LocationField label="Location" locations={LOCATIONS} value="" onChange={onChange} />)
@@ -112,21 +112,21 @@ describe('choosing a location', () => {
     const options = screen.getAllByRole('option')
     expect(options).toHaveLength(1)
     await userEvent.click(options[0]!)
-    expect(onChange).toHaveBeenCalledWith('sobeys-640')
+    expect(onChange).toHaveBeenCalledWith('braemar-640')
   })
 
   it('shows the name and its group code, and not the address', async () => {
     /*
       The address is searched but not printed. A shop's name usually carries its own street
-      — "Sobeys - 640 Parkside Drive" — so a line of address underneath repeats it and
+      — "Braemar - 640 Linden Drive" — so a line of address underneath repeats it and
       pushes the name out of the panel.
     */
     render(<LocationField label="Location" locations={LOCATIONS} value="" onChange={vi.fn()} />)
     await userEvent.click(screen.getByRole('button', { name: 'Location' }))
 
-    expect(screen.getByText('Sobeys')).toBeTruthy()
+    expect(screen.getByText('Braemar')).toBeTruthy()
     expect(screen.getByText('640'), 'the group code stays').toBeTruthy()
-    expect(screen.queryByText('640 Parkside Dr')).toBeNull()
+    expect(screen.queryByText('640 Linden Dr')).toBeNull()
   })
 
   it('puts the best match first, not whichever came first in the list', async () => {
@@ -136,11 +136,11 @@ describe('choosing a location', () => {
     */
     render(<LocationField label="Location" locations={LOCATIONS} value="" onChange={vi.fn()} />)
     await userEvent.click(screen.getByRole('button', { name: 'Location' }))
-    await userEvent.type(screen.getByRole('combobox'), 'sobeys')
+    await userEvent.type(screen.getByRole('combobox'), 'braemar')
 
     const names = screen.getAllByRole('option').map((o) => o.textContent ?? '')
-    expect(names[0]).toContain('Sobeys')
-    expect(names.some((n) => n.includes('Walmart'))).toBe(false)
+    expect(names[0]).toContain('Braemar')
+    expect(names.some((n) => n.includes('Kelmont'))).toBe(false)
   })
 
   it('closes without choosing anything on escape', async () => {
@@ -159,6 +159,6 @@ describe('choosing a location', () => {
 
     await userEvent.click(screen.getByRole('button', { name: 'Location' }))
     await userEvent.keyboard('{ArrowDown}{Enter}')
-    expect(onChange).toHaveBeenCalledWith('sobeys-north')
+    expect(onChange).toHaveBeenCalledWith('braemar-north')
   })
 })

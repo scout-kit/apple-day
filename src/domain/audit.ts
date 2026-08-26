@@ -3,7 +3,7 @@
  *
  * The money is the reason this exists. A jar's amount is typed in once, by whoever is at
  * base ops at the time, and until now nothing said who that was or what the number had been
- * before. "Sobeys says they handed over $180 and the sheet says $80" is a conversation this
+ * before. "Braemar says they handed over $180 and the sheet says $80" is a conversation this
  * group has had, and the honest answer to it was a shrug.
  *
  * What this can and cannot promise, on the free plan: entries are written by the app, in the
@@ -50,7 +50,7 @@ export interface AuditEntry {
   entityId: string
   /** Which event it belongs to, or null for the shared library and the roster. */
   eventId: string | null
-  /** One line, in the app's own words: "Counted jar 12 at Sobeys". */
+  /** One line, in the app's own words: "Counted jar 12 at Braemar". */
   summary: string
   changes: AuditChange[]
 }
@@ -116,7 +116,7 @@ export function describeEntry(entry: AuditEntry): string {
  * Turning the ids in an entry into something a person can read.
  *
  * The entry stores ids because they are exact and they still mean something years later.
- * Nobody reads them: "locationId: sobeys → —" answers a different question from "Sobeys".
+ * Nobody reads them: "locationId: braemar → —" answers a different question from "Braemar".
  * So the ids are kept and the names are resolved at the point of reading, falling back to
  * the id whenever the thing has since been renamed away or deleted — which is honest, and
  * better than a blank.

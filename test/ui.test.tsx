@@ -64,9 +64,9 @@ describe('a volunteer opening their pass', () => {
         {
           day: 'Friday',
           slotLabel: '5:00 PM – 6:00 PM',
-          locationName: 'Sobeys — 640 Parkside Drive',
-          address: '640 Parkside Dr',
-          mapsUrl: 'https://maps.example/sobeys',
+          locationName: 'Braemar — 640 Linden Drive',
+          address: '640 Linden Dr',
+          mapsUrl: 'https://maps.example/braemar',
           comments: 'Outside on the sidewalk. Do not block the doors.',
         },
       ],
@@ -80,7 +80,7 @@ describe('a volunteer opening their pass', () => {
     render(<MemoryRoute path="/p/:token" url="/p/tok123"><PassPage /></MemoryRoute>)
 
     await waitFor(() => expect(screen.getByText('Alpha One')).toBeDefined())
-    expect(screen.getByText(/Sobeys/)).toBeDefined()
+    expect(screen.getByText(/Braemar/)).toBeDefined()
     expect(screen.getByText(/Do not block the doors/)).toBeDefined()
     expect(screen.getByText('519-555-0100')).toBeDefined()
     expect(screen.getByText(/15 minutes before/)).toBeDefined()

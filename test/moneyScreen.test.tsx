@@ -24,7 +24,7 @@ const location = (id: string, name: string): ScheduledLocation => ({
   openHours: { fri: { openMin: 17 * 60, closeMin: 21 * 60 }, sat: null },
 })
 
-const locations = [location('sobeys', 'Sobeys'), location('lounge', 'Staff lounge')]
+const locations = [location('braemar', 'Braemar'), location('lounge', 'Staff lounge')]
 
 const people: Person[] = [
   {
@@ -33,13 +33,13 @@ const people: Person[] = [
   },
 ]
 
-// Sobeys is staffed for two hours; the lounge took money with nobody rostered. Two rather
+// Braemar is staffed for two hours; the lounge took money with nobody rostered. Two rather
 // than one so the total and the per-hour rate cannot coincidentally be the same number.
 //
 // Both are checked in: hours mean hours somebody worked, so a shift nobody turned up for
 // contributes nothing and would make this fixture measure the wrong thing.
 const worked = (over: Partial<Assignment> & { id: string; slotId: string }): Assignment => ({
-  locationId: 'sobeys',
+  locationId: 'braemar',
   personId: 'p-one',
   status: 'checkedIn',
   whereabouts: 'here',
@@ -54,7 +54,7 @@ let assignments: Assignment[] = [
 ]
 
 const jar = (over: Partial<Jar> & { id: string }): Jar => ({
-  jarNumber: 1, day: 'fri', locationId: 'sobeys', personId: 'p-one',
+  jarNumber: 1, day: 'fri', locationId: 'braemar', personId: 'p-one',
   assignmentId: 'a1', assignmentIds: ['a1'], status: 'counted', issuedAt: 1, issuedBy: 'o',
   amount: 100, method: 'cash', note: '', countedBy: 'o', countedAt: 2,
   ...over,
@@ -132,7 +132,7 @@ describe('every location that saw money is listed', () => {
     render(<MoneyScreen />)
     const table = within(byLocationTable())
 
-    expect(table.getByText('Sobeys')).toBeDefined()
+    expect(table.getByText('Braemar')).toBeDefined()
     // Previously only in the warning above, never in the table.
     expect(table.getByText('Staff lounge')).toBeDefined()
     expect(table.getByText('$86.55')).toBeDefined()
@@ -171,7 +171,7 @@ describe('every location that saw money is listed', () => {
     const rows = Array.from(byLocationTable().querySelectorAll('tbody tr'))
     expect(rows).toHaveLength(2)
     // Ranked rows first, unrankable at the end.
-    expect(rows[0]!.textContent).toContain('Sobeys')
+    expect(rows[0]!.textContent).toContain('Braemar')
     expect(rows[1]!.textContent).toContain('Staff lounge')
   })
 })
@@ -397,17 +397,17 @@ describe('records that point at something gone', () => {
   it('says what the record was for instead of printing an id', () => {
     // A youth deleted after being scheduled. The old warning said "unknown personId
     // p-test" and left you to work out the rest.
-    assignments = [worked({ id: 'fri-1700_sobeys_p-gone', slotId: 'fri-1700', personId: 'p-gone' })]
+    assignments = [worked({ id: 'fri-1700_braemar_p-gone', slotId: 'fri-1700', personId: 'p-gone' })]
     render(<MoneyScreen />)
 
     const text = warning().textContent!
     expect(text).toContain('Shift with no youth')
     // What survives is named, so it is clear what is being decided about.
-    expect(text).toContain('Sobeys')
+    expect(text).toContain('Braemar')
   })
 
   it('explains why a deleted youth cannot be recovered', () => {
-    assignments = [worked({ id: 'fri-1700_sobeys_p-gone', slotId: 'fri-1700', personId: 'p-gone' })]
+    assignments = [worked({ id: 'fri-1700_braemar_p-gone', slotId: 'fri-1700', personId: 'p-gone' })]
     render(<MoneyScreen />)
 
     expect(warning().textContent).toContain('no longer exists')
@@ -419,20 +419,20 @@ describe('records that point at something gone', () => {
   it('repairs a shift that still knows what it was for', async () => {
     // Fields lost, name intact: everything it names still exists, so it can be rebuilt.
     assignments = [
-      worked({ id: 'fri-1700_sobeys_p-one', slotId: '', locationId: '', personId: '' }),
+      worked({ id: 'fri-1700_braemar_p-one', slotId: '', locationId: '', personId: '' }),
     ]
     render(<MoneyScreen />)
 
     await userEvent.click(within(warning()).getByRole('button', { name: 'Fix' }))
-    expect(repairAssignment).toHaveBeenCalledWith('2026', 'fri-1700_sobeys_p-one', {
+    expect(repairAssignment).toHaveBeenCalledWith('2026', 'fri-1700_braemar_p-one', {
       slotId: 'fri-1700',
-      locationId: 'sobeys',
+      locationId: 'braemar',
       personId: 'p-one',
     })
   })
 
   it('warns what deleting a shift does to the numbers before doing it', async () => {
-    assignments = [worked({ id: 'fri-1700_sobeys_p-gone', slotId: 'fri-1700', personId: 'p-gone' })]
+    assignments = [worked({ id: 'fri-1700_braemar_p-gone', slotId: 'fri-1700', personId: 'p-gone' })]
     render(<MoneyScreen />)
 
     await userEvent.click(within(warning()).getByRole('button', { name: 'Delete' }))
@@ -442,7 +442,7 @@ describe('records that point at something gone', () => {
     expect(unassign).not.toHaveBeenCalled()
 
     await userEvent.click(within(dialog).getByRole('button', { name: 'Delete' }))
-    expect(unassign).toHaveBeenCalledWith('2026', 'fri-1700_sobeys_p-gone')
+    expect(unassign).toHaveBeenCalledWith('2026', 'fri-1700_braemar_p-gone')
   })
 
   it('can move a jar whose location has gone rather than lose the money', async () => {
@@ -451,8 +451,8 @@ describe('records that point at something gone', () => {
 
     // The same type-to-search picker as everywhere else a location is chosen.
     await userEvent.click(within(warning()).getByRole('button', { name: 'Location for j3' }))
-    await userEvent.click(await screen.findByRole('option', { name: /Sobeys/ }))
-    expect(relocateJar).toHaveBeenCalledWith('2026', 'j3', 'sobeys')
+    await userEvent.click(await screen.findByRole('option', { name: /Braemar/ }))
+    expect(relocateJar).toHaveBeenCalledWith('2026', 'j3', 'braemar')
   })
 
   it('stays silent for a healthy schedule', () => {
@@ -513,8 +513,8 @@ describe('location by hour', () => {
     render(<MoneyScreen />)
     await showTab('Hours')
 
-    // Sobeys took $100 in the 5pm hour and nothing at 6pm.
-    const row = gridRow('Sobeys')
+    // Braemar took $100 in the 5pm hour and nothing at 6pm.
+    const row = gridRow('Braemar')
     const cells = Array.from(row.querySelectorAll('td')).map((c) => c.textContent)
     expect(cells[1]).toBe('$100.00')
     expect(cells[2]).toBe('$0')
@@ -533,7 +533,7 @@ describe('location by hour', () => {
   it('highlights each location’s best hour', async () => {
     render(<MoneyScreen />)
     await showTab('Hours')
-    const best = gridRow('Sobeys').querySelectorAll('td.hour-best')
+    const best = gridRow('Braemar').querySelectorAll('td.hour-best')
     expect(best).toHaveLength(1)
     expect(best[0]!.textContent).toBe('$100.00')
   })
@@ -551,8 +551,8 @@ describe('location by hour', () => {
     const names = Array.from(gridTable().querySelectorAll('tbody td.sticky-name')).map(
       (c) => c.textContent,
     )
-    // Sobeys and the lounge in the order they were given, not ranked by takings.
-    expect(names).toEqual(['Sobeys', 'Staff lounge'])
+    // Braemar and the lounge in the order they were given, not ranked by takings.
+    expect(names).toEqual(['Braemar', 'Staff lounge'])
   })
 
   it('shows a location that is only in the data, so nothing hides', async () => {
@@ -667,7 +667,7 @@ describe('reading a figure off the chart', () => {
 
 describe('finding one row rather than reading down the table', () => {
   /*
-    The ranking means a location is never where you last saw it, so "what did Sobeys take"
+    The ranking means a location is never where you last saw it, so "what did Braemar take"
     could only be answered by scrolling. Twenty-one locations and a hundred-odd volunteers
     is past the point where a list is a lookup.
   */
@@ -679,11 +679,11 @@ describe('finding one row rather than reading down the table', () => {
     render(<MoneyScreen />)
     const before = within(locationTable()).getAllByRole('row').length
 
-    await userEvent.type(screen.getByLabelText('Find a location'), 'sobeys')
+    await userEvent.type(screen.getByLabelText('Find a location'), 'braemar')
     const after = within(locationTable()).getAllByRole('row').length
 
     expect(after).toBeLessThan(before)
-    expect(within(locationTable()).getByText(/Sobeys/)).toBeTruthy()
+    expect(within(locationTable()).getByText(/Braemar/)).toBeTruthy()
   })
 
   it('needs every word, in any order, as everywhere else in the app', async () => {
@@ -749,11 +749,11 @@ describe('finding a location by hour', () => {
     render(<MoneyScreen />)
     await showTab('Hours')
 
-    await userEvent.type(screen.getByLabelText('Find a location by hour'), 'sobeys')
+    await userEvent.type(screen.getByLabelText('Find a location by hour'), 'braemar')
     const grid = screen
       .getByRole('columnheader', { name: 'Location' })
       .closest('table') as HTMLElement
-    expect(within(grid).getByText('Sobeys')).toBeTruthy()
+    expect(within(grid).getByText('Braemar')).toBeTruthy()
     expect(within(grid).queryByText('Staff lounge')).toBeNull()
   })
 })

@@ -34,7 +34,7 @@ vi.mock('../src/lib/repo', () => ({
   useSignups: () => ({ data: signups, loading: false, error: null }),
   useAssignments: () => ({ data: assignments, loading: false, error: null }),
   useLocations: () => ({
-    data: [{ id: 'sobeys', name: 'Sobeys' }],
+    data: [{ id: 'braemar', name: 'Braemar' }],
     loading: false,
     error: null,
   }),
@@ -111,7 +111,7 @@ beforeEach(() => {
   ]
   assignments = [
     {
-      id: 'a1', slotId: 'fri-1700', locationId: 'sobeys', personId: 'p-busy',
+      id: 'a1', slotId: 'fri-1700', locationId: 'braemar', personId: 'p-busy',
       status: 'confirmed', whereabouts: 'here', checkedInAt: null, checkedOutAt: null,
     },
   ]
@@ -149,7 +149,7 @@ describe('the roster', () => {
     const ben = rowFor('Ben Booked')
 
     // Booked hour names the location on hover, so a gap can be traced.
-    expect(ben.querySelector('[title*="Sobeys"]')).not.toBeNull()
+    expect(ben.querySelector('[title*="Braemar"]')).not.toBeNull()
     expect(ben.querySelector('[title*="available"]')).not.toBeNull()
     expect(ben.querySelector('[title*="not available"]')).not.toBeNull()
   })
@@ -383,7 +383,7 @@ describe('setting availability', () => {
   it('shows an hour worked but never offered as a disagreement', () => {
     assignments = [
       {
-        id: 'a2', slotId: 'fri-2000', locationId: 'sobeys', personId: 'p-free',
+        id: 'a2', slotId: 'fri-2000', locationId: 'braemar', personId: 'p-free',
         status: 'confirmed', whereabouts: 'here', checkedInAt: null, checkedOutAt: null,
       },
     ]

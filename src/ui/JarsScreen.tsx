@@ -166,7 +166,7 @@ export function JarsScreen(): ReactNode {
    * The counted jars a search is asking for.
    *
    * Matched on the jar number, the location and the person — every word has to appear
-   * somewhere, so "12 sob" finds jar 12 at Sobeys, the same way the pickers behave.
+   * somewhere, so "12 sob" finds jar 12 at Braemar, the same way the pickers behave.
    */
   const countedShown = useMemo(() => {
     const terms = countedSearch.toLowerCase().split(/\s+/).filter(Boolean)

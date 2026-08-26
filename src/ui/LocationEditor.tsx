@@ -96,7 +96,7 @@ export function LocationEditor({
               <input
                 value={draft.name}
                 onChange={(e) => setDraft({ ...draft, name: e.target.value })}
-                placeholder="Sobeys — 640 Parkside Drive"
+                placeholder="Braemar — 640 Linden Drive"
               />
             </label>
             <label style={{ flex: '0 1 7rem' }}>
@@ -278,7 +278,7 @@ export function LocationEditor({
             <TagInput
               label="Past names"
               values={draft.aliases}
-              placeholder="Sobeys Northfield"
+              placeholder="Braemar Aldergrove"
               onChange={(aliases) => setDraft({ ...draft, aliases })}
             />
           </div>

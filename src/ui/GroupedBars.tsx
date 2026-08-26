@@ -76,7 +76,7 @@ export function GroupedBars({
     A legend entry being pointed at, by index into whatever carries the colour.
 
     Following the colour across the whole chart is the thing a legend is for and the thing
-    it cannot do on its own: with three shops in every bar, finding Sobeys means matching a
+    it cannot do on its own: with three shops in every bar, finding Braemar means matching a
     swatch against a dozen bands by eye. Pointing at the name lights all of them at once.
   */
   const [spotlit, setSpotlit] = useState<number | null>(null)
@@ -260,7 +260,7 @@ export function GroupedBars({
                               pointerEvents="none"
                             />
                             {/* Its own target, so the answer to "how much of this is
-                                Sobeys" is one hover rather than arithmetic. */}
+                                Braemar" is one hover rather than arithmetic. */}
                             <rect
                               x={x}
                               y={bandTop}

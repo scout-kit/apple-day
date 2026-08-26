@@ -205,7 +205,7 @@ export function MoneyScreen(): ReactNode {
   /*
     Looking one up, rather than reading down twenty-one of them.
 
-    "Which of these did Sobeys take?" was a question this screen could only answer by
+    "Which of these did Braemar take?" was a question this screen could only answer by
     scrolling, and the ranking means a location is never where you last saw it. Same search
     everywhere: every word has to appear somewhere in the row.
   */

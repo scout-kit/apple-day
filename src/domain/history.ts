@@ -10,7 +10,7 @@ import type { AppleDayEvent, Assignment, Day, Jar, Slot } from './types'
  * Last year's results are the evidence for this year's choices — that is the whole reason
  * the app holds several events rather than one — and until now nothing put them side by
  * side. The location library is shared and its ids are stable, so a location keeps its
- * identity across years without any name matching: "Sobeys is down and Walmart is up" is a
+ * identity across years without any name matching: "Braemar is down and Kelmont is up" is a
  * question the data can already answer.
  */
 

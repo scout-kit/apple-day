@@ -36,9 +36,9 @@ describe('a pass carries only its own holder', () => {
       slots: slots2025,
     })
 
-    // y10 worked Walmart at 7pm and again at 8pm.
+    // y10 worked Kelmont at 7pm and again at 8pm.
     expect(shifts).toHaveLength(2)
-    expect(shifts.every((s) => s.locationName.includes('Walmart'))).toBe(true)
+    expect(shifts.every((s) => s.locationName.includes('Kelmont'))).toBe(true)
     expect(shifts[0]!.slotLabel).toContain('7:00 PM')
     expect(shifts[1]!.slotLabel).toContain('8:00 PM')
   })
@@ -86,7 +86,7 @@ describe('mail-merge export', () => {
       'Parent Email': 'parent@example.org',
       'Schedule Link': 'https://apple-day.example/p/tok',
     })
-    expect(rows[0]!.Shifts).toContain('Walmart')
+    expect(rows[0]!.Shifts).toContain('Kelmont')
   })
 })
 
@@ -107,7 +107,7 @@ describe('pass tokens', () => {
 describe('the base of operations reaches the people who need it', () => {
   const BASE = {
     name: 'St Andrew\u2019s Church hall',
-    address: '54 Bridgeport Rd E',
+    address: '54 Foxglove Rd E',
     mapsUrl: 'https://maps.example/hall',
   }
 

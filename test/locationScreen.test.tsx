@@ -22,8 +22,8 @@ const SLOTS: Slot[] = [
   { id: 'fri-1800', day: 'fri', startMin: 18 * 60, endMin: 19 * 60, label: '6:00 PM' },
 ]
 
-const sobeys: Location = {
-  id: 'sobeys', name: 'Sobeys', address: '640 Parkside Drive', mapsUrl: '', lat: null, lng: null, groupCode: '1W',
+const braemar: Location = {
+  id: 'braemar', name: 'Braemar', address: '640 Linden Drive', mapsUrl: '', lat: null, lng: null, groupCode: '1W',
   siteContact: { name: 'A Manager', role: 'Store manager', phone: '519-555-0123', email: 'm@example.org' },
   insurance: 'Certificate sent', comments: 'Use the north doors.',
   openHours: { fri: { openMin: 17 * 60, closeMin: 21 * 60 } }, aliases: [],
@@ -101,13 +101,13 @@ vi.mock('../src/lib/sections', () => ({
 const { LocationScreen } = await import('../src/ui/LocationScreen')
 
 const shift = (id: string, slotId: string, over: Partial<Assignment> = {}): Assignment => ({
-  id, slotId, locationId: 'sobeys', personId: 'p-one',
+  id, slotId, locationId: 'braemar', personId: 'p-one',
   status: 'checkedIn', whereabouts: 'here', checkedInAt: 1, checkedOutAt: null,
   ...over,
 })
 
 const jar = (over: Partial<Jar> = {}): Jar => ({
-  id: 'j1', jarNumber: 4, day: 'fri', locationId: 'sobeys', personId: 'p-one',
+  id: 'j1', jarNumber: 4, day: 'fri', locationId: 'braemar', personId: 'p-one',
   assignmentId: 'a1', assignmentIds: ['a1'], status: 'counted', issuedAt: 1, issuedBy: 'o',
   amount: 100, method: 'cash', countedBy: 'organizer', countedAt: 2, note: '',
   ...over,
@@ -143,7 +143,7 @@ const twoYears = () => {
   ]
 }
 
-const renderFor = (id = 'sobeys'): void => {
+const renderFor = (id = 'braemar'): void => {
   render(
     <MemoryRoute path="/e/:eventId/location/:locationId" url={`/e/2026/location/${id}`}>
       <LocationScreen />
@@ -153,8 +153,8 @@ const renderFor = (id = 'sobeys'): void => {
 
 beforeEach(() => {
   resetUrl()
-  library = [sobeys]
-  yearLocations = [{ ...sobeys, active: true, priority: 2 }]
+  library = [braemar]
+  yearLocations = [{ ...braemar, active: true, priority: 2 }]
   assignments = [shift('a1', 'fri-1700')]
   jars = [jar()]
   history = []
@@ -168,8 +168,8 @@ beforeEach(() => {
 describe('what the page says about a location', () => {
   it('names it, with its address and a way to see where it is', () => {
     renderFor()
-    expect(screen.getByRole('heading', { name: 'Sobeys' })).toBeTruthy()
-    expect(screen.getByText(/640 Parkside Drive/)).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'Braemar' })).toBeTruthy()
+    expect(screen.getByText(/640 Linden Drive/)).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Map' })).toBeTruthy()
   })
 
@@ -196,24 +196,24 @@ describe('what the page says about a location', () => {
       Never recorded and closed all week are different facts: one is something to go and
       find out, the other is the answer.
     */
-    library = [{ ...sobeys, openHours: {} }]
+    library = [{ ...braemar, openHours: {} }]
     renderFor()
     expect(screen.getByText(/No hours recorded/)).toBeTruthy()
 
-    library = [{ ...sobeys, openHours: { fri: null } }]
+    library = [{ ...braemar, openHours: { fri: null } }]
     renderFor()
     expect(screen.getByText(/Closed all week/)).toBeTruthy()
   })
 
   it('shows the past names that keep four years on one row', () => {
-    library = [{ ...sobeys, aliases: ['Sobeys Northfield', 'Sobeys - 640 Parkside'] }]
+    library = [{ ...braemar, aliases: ['Braemar Aldergrove', 'Braemar - 640 Linden'] }]
     renderFor()
-    expect(screen.getByText(/Sobeys Northfield/)).toBeTruthy()
+    expect(screen.getByText(/Braemar Aldergrove/)).toBeTruthy()
   })
 
   it('says plainly when there is nothing recorded about arranging it', () => {
     // An empty card that renders nothing at all reads as a page that failed to load.
-    library = [{ ...sobeys, siteContact: null, insurance: '', comments: '' }]
+    library = [{ ...braemar, siteContact: null, insurance: '', comments: '' }]
     renderFor()
     expect(screen.getByText(/nothing to go on/)).toBeTruthy()
   })
@@ -254,16 +254,16 @@ describe('what the page says about a location', () => {
     yearLocations = []
     renderFor()
     expect(screen.queryByRole('heading', { name: 'Not found' })).toBeNull()
-    expect(screen.getByRole('heading', { name: 'Sobeys' })).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'Braemar' })).toBeTruthy()
   })
 })
 
 describe('a location name is a way to reach its page', () => {
   it('is built through pathFor, like every other link in the app', async () => {
     const { LocationLink } = await import('../src/ui/LocationLink')
-    render(<LocationLink name="Sobeys" locationId="sobeys" />)
-    expect(screen.getByRole('link', { name: 'Sobeys' }).getAttribute('href')).toBe(
-      '/e/2026/location/sobeys',
+    render(<LocationLink name="Braemar" locationId="braemar" />)
+    expect(screen.getByRole('link', { name: 'Braemar' }).getAttribute('href')).toBe(
+      '/e/2026/location/braemar',
     )
   })
 
@@ -281,7 +281,7 @@ describe('the thing this page was worth building for', () => {
   /*
     What a given hour at this door has been worth, year on year. It lived behind a picker on
     the history screen — the right figures in the wrong place, because "how has five o'clock
-    at Sobeys gone" is a question about one shop, and answering it meant leaving the shop
+    at Braemar gone" is a question about one shop, and answering it meant leaving the shop
     and choosing it from a list.
   */
 
@@ -324,18 +324,18 @@ describe('the thing this page was worth building for', () => {
   })
 
   it('shows this location only, not a total across every door', async () => {
-    // Walmart's takings in 2026 must not appear on Sobeys' page.
+    // Kelmont's takings in 2026 must not appear on Braemar' page.
     history = [
       ...twoYears().slice(0, 1),
       {
         ...twoYears()[1]!,
         assignments: [
           shift('b', 'fri-1700', { personId: 'p-one' }),
-          shift('c', 'fri-1800', { locationId: 'walmart', personId: 'p-one' }),
+          shift('c', 'fri-1800', { locationId: 'kelmont', personId: 'p-one' }),
         ],
         jars: [
           jar({ id: 'j2', assignmentId: 'b', assignmentIds: ['b'], amount: 150 }),
-          jar({ id: 'j3', locationId: 'walmart', assignmentId: 'c', assignmentIds: ['c'], amount: 50 }),
+          jar({ id: 'j3', locationId: 'kelmont', assignmentId: 'c', assignmentIds: ['c'], amount: 50 }),
         ],
       },
     ]
@@ -477,9 +477,9 @@ describe('correcting a location from its own page', () => {
   it('opens the library editor, filled in', async () => {
     await openEditor()
     const dialog = screen.getByRole('dialog')
-    expect((within(dialog).getByLabelText('Name') as HTMLInputElement).value).toBe('Sobeys')
+    expect((within(dialog).getByLabelText('Name') as HTMLInputElement).value).toBe('Braemar')
     expect((within(dialog).getByLabelText(/Address/) as HTMLInputElement).value).toBe(
-      '640 Parkside Drive',
+      '640 Linden Drive',
     )
   })
 
@@ -491,7 +491,7 @@ describe('correcting a location from its own page', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Save' }))
 
     expect(saveLocation).toHaveBeenCalledWith(
-      expect.objectContaining({ id: 'sobeys', address: '999 New Road' }),
+      expect.objectContaining({ id: 'braemar', address: '999 New Road' }),
     )
   })
 

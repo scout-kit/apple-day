@@ -24,13 +24,13 @@ const SLOTS = buildAllSlots()
 
 const locations: ScheduledLocation[] = [
   {
-    id: 'sobeys', name: 'Sobeys', address: '', mapsUrl: '', lat: null, lng: null, groupCode: '',
+    id: 'braemar', name: 'Braemar', address: '', mapsUrl: '', lat: null, lng: null, groupCode: '',
     siteContact: null, insurance: '', comments: '', aliases: [],
     active: true, priority: 1,
     openHours: { fri: { openMin: 17 * 60, closeMin: 21 * 60 }, sat: null },
   },
   {
-    id: 'walmart', name: 'Walmart', address: '335 Farmers Market Rd', mapsUrl: '', lat: null, lng: null,
+    id: 'kelmont', name: 'Kelmont', address: '335 Farmers Market Rd', mapsUrl: '', lat: null, lng: null,
     groupCode: '', siteContact: null, insurance: '', comments: '', aliases: [],
     active: true, priority: 2,
     openHours: { fri: { openMin: 17 * 60, closeMin: 21 * 60 }, sat: null },
@@ -95,7 +95,7 @@ const dialog = (): HTMLElement => screen.getByRole('dialog')
 const counted = (over: Partial<Jar> & { id: string }): Jar => ({
   jarNumber: 7,
   day: 'fri',
-  locationId: 'sobeys',
+  locationId: 'braemar',
   personId: 'p-one',
   assignmentId: 'a1', assignmentIds: ['a1'],
   status: 'counted',
@@ -135,7 +135,7 @@ describe('deleting a counted jar', () => {
 
     const inDialog = within(dialog())
     expect(inDialog.getByText(/\$134\.20/)).toBeDefined()
-    expect(inDialog.getByText(/Sobeys/)).toBeDefined()
+    expect(inDialog.getByText(/Braemar/)).toBeDefined()
     expect(inDialog.getByText(/removes the amount from every total/)).toBeDefined()
     // And points at the non-destructive option.
     expect(inDialog.getByText(/use Correct instead/)).toBeDefined()
@@ -218,21 +218,21 @@ describe('the counted list', () => {
 
   const threeJars = (): void => {
     jars = [
-      counted({ id: 'j1', jarNumber: 12, locationId: 'sobeys', personId: 'p-one', amount: 100 }),
-      counted({ id: 'j2', jarNumber: 3, locationId: 'walmart', personId: 'p-two', amount: 60 }),
-      counted({ id: 'j3', jarNumber: 9, locationId: 'walmart', personId: null, amount: 20 }),
+      counted({ id: 'j1', jarNumber: 12, locationId: 'braemar', personId: 'p-one', amount: 100 }),
+      counted({ id: 'j2', jarNumber: 3, locationId: 'kelmont', personId: 'p-two', amount: 60 }),
+      counted({ id: 'j3', jarNumber: 9, locationId: 'kelmont', personId: null, amount: 20 }),
     ]
   }
 
   it('gives the location and the person a column each', () => {
-    // They used to share one cell as "Sobeys · Alpha One", which cannot be scanned down or
+    // They used to share one cell as "Braemar · Alpha One", which cannot be scanned down or
     // sorted, and reads as one fact rather than two.
     threeJars()
     render(<JarsScreen />)
 
     const headers = Array.from(table().querySelectorAll('thead th')).map((h) => h.textContent)
     expect(headers).toEqual(['Jar', 'Where', 'Who', 'Amount', 'Method', ''])
-    expect(rows()[0]![1]).toContain('Sobeys')
+    expect(rows()[0]![1]).toContain('Braemar')
     expect(rows()[0]![2]).toBe('Alpha One')
   })
 
@@ -249,8 +249,8 @@ describe('the counted list', () => {
   it('says plainly when a jar has no youth against it', () => {
     threeJars()
     render(<JarsScreen />)
-    const walmartNoOne = rows().find((r) => r[0]!.startsWith('9'))!
-    expect(walmartNoOne[2]).toBe('not recorded')
+    const kelmontNoOne = rows().find((r) => r[0]!.startsWith('9'))!
+    expect(kelmontNoOne[2]).toBe('not recorded')
   })
 
   it('finds a jar by its number', async () => {
@@ -261,13 +261,13 @@ describe('the counted list', () => {
 
     await userEvent.type(screen.getByLabelText('Search counted jars'), '12')
     expect(rows()).toHaveLength(1)
-    expect(rows()[0]![1]).toContain('Sobeys')
+    expect(rows()[0]![1]).toContain('Braemar')
   })
 
   it('finds jars by location', async () => {
     threeJars()
     render(<JarsScreen />)
-    await userEvent.type(screen.getByLabelText('Search counted jars'), 'walmart')
+    await userEvent.type(screen.getByLabelText('Search counted jars'), 'kelmont')
     expect(rows()).toHaveLength(2)
   })
 
@@ -282,7 +282,7 @@ describe('the counted list', () => {
   it('takes several words, each of which has to appear somewhere', async () => {
     threeJars()
     render(<JarsScreen />)
-    await userEvent.type(screen.getByLabelText('Search counted jars'), '3 wal')
+    await userEvent.type(screen.getByLabelText('Search counted jars'), '3 kel')
     expect(rows()).toHaveLength(1)
     expect(rows()[0]![0]).toContain('3')
   })
@@ -290,7 +290,7 @@ describe('the counted list', () => {
   it('says how many of how many are showing', async () => {
     threeJars()
     render(<JarsScreen />)
-    await userEvent.type(screen.getByLabelText('Search counted jars'), 'walmart')
+    await userEvent.type(screen.getByLabelText('Search counted jars'), 'kelmont')
     expect(screen.getByRole('heading', { name: /Counted \(2 of 3\)/ })).toBeTruthy()
   })
 
@@ -306,7 +306,7 @@ describe('correcting a jar', () => {
   const openCorrection = async (): Promise<void> => {
     jars = [
       counted({
-        id: 'j1', jarNumber: 12, locationId: 'sobeys', personId: 'p-one',
+        id: 'j1', jarNumber: 12, locationId: 'braemar', personId: 'p-one',
         amount: 100, note: 'first go', assignmentId: null, assignmentIds: [],
       }),
     ]
@@ -322,7 +322,7 @@ describe('correcting a jar', () => {
     */
     await openCorrection()
     expect((screen.getByLabelText('Amount') as HTMLInputElement).value).toBe('100')
-    expect(screen.getByRole('button', { name: 'Location' }).textContent).toContain('Sobeys')
+    expect(screen.getByRole('button', { name: 'Location' }).textContent).toContain('Braemar')
     expect(screen.getByRole('button', { name: 'Youth' }).textContent).toContain('Alpha One')
     expect((screen.getByLabelText(/^Note/) as HTMLInputElement).value).toBe('first go')
   })
@@ -330,10 +330,10 @@ describe('correcting a jar', () => {
   it('corrects the location it was written against', async () => {
     await openCorrection()
     await userEvent.click(screen.getByRole('button', { name: 'Location' }))
-    await userEvent.click(await screen.findByRole('option', { name: /Walmart/ }))
+    await userEvent.click(await screen.findByRole('option', { name: /Kelmont/ }))
     await userEvent.click(screen.getByRole('button', { name: /^Record 12$/ }))
 
-    expect(countJar.mock.calls[0]![2]).toMatchObject({ locationId: 'walmart' })
+    expect(countJar.mock.calls[0]![2]).toMatchObject({ locationId: 'kelmont' })
   })
 
   it('corrects whose it was', async () => {
@@ -380,7 +380,7 @@ describe('correcting a jar', () => {
     */
     jars = [
       counted({
-        id: 'j1', jarNumber: 12, locationId: 'sobeys', personId: 'p-one',
+        id: 'j1', jarNumber: 12, locationId: 'braemar', personId: 'p-one',
         amount: 100, assignmentId: 'a1', assignmentIds: ['a1'],
       }),
     ]

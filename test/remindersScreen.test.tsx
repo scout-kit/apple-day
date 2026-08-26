@@ -26,7 +26,7 @@ const person = (id: string, first: string, over: Partial<Person> = {}): Person =
 })
 
 const shift = (id: string, personId: string, over: Partial<Assignment> = {}): Assignment => ({
-  id, slotId: 'sat-0900', locationId: 'sobeys', personId,
+  id, slotId: 'sat-0900', locationId: 'braemar', personId,
   status: 'confirmed', whereabouts: 'here', checkedInAt: null, checkedOutAt: null, ...over,
 })
 

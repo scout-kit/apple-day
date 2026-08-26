@@ -186,8 +186,8 @@ describe('what to ask a geocoder for', () => {
   it('tries the whole thing first', () => {
     // When the geocoder does know the shop by name, that is a better answer than the
     // building it sits in.
-    expect(addressAttempts('Sobeys, 640 Parkside Dr, Elmbridge ON')[0]).toBe(
-      'Sobeys, 640 Parkside Dr, Elmbridge ON',
+    expect(addressAttempts('Braemar, 640 Linden Dr, Elmbridge ON')[0]).toBe(
+      'Braemar, 640 Linden Dr, Elmbridge ON',
     )
   })
 
@@ -199,10 +199,10 @@ describe('what to ask a geocoder for', () => {
   })
 
   it('does not drop a leading segment that is a street', () => {
-    // "640 Parkside Dr" starts with a number, so it is where the place is, not what it is
+    // "640 Linden Dr" starts with a number, so it is where the place is, not what it is
     // called — dropping it would throw away the only part that matters.
-    expect(addressAttempts('640 Parkside Dr, Elmbridge, ON')).toEqual([
-      '640 Parkside Dr, Elmbridge, ON',
+    expect(addressAttempts('640 Linden Dr, Elmbridge, ON')).toEqual([
+      '640 Linden Dr, Elmbridge, ON',
     ])
   })
 
@@ -217,16 +217,16 @@ describe('what to ask a geocoder for', () => {
   })
 
   it('tidies the whitespace people leave behind', () => {
-    expect(addressAttempts('  Sobeys ,  640  Parkside Dr ')).toEqual([
-      'Sobeys , 640 Parkside Dr',
-      '640 Parkside Dr',
+    expect(addressAttempts('  Braemar ,  640  Linden Dr ')).toEqual([
+      'Braemar , 640 Linden Dr',
+      '640 Linden Dr',
     ])
   })
 
   it('never asks the same thing twice', () => {
     for (const address of [
-      'Sobeys, 640 Parkside Dr',
-      '640 Parkside Dr, Elmbridge',
+      'Braemar, 640 Linden Dr',
+      '640 Linden Dr, Elmbridge',
       'One Name Only',
       'Shop,,,',
     ]) {

@@ -67,7 +67,7 @@ describe('a header that is not plain ASCII', () => {
 
 describe('the body', () => {
   it('survives a round trip', () => {
-    const body = 'Hi Ada,\n\n  Saturday 9:00 AM — Sobeys\n  Your page: https://x.org/p/tok'
+    const body = 'Hi Ada,\n\n  Saturday 9:00 AM — Braemar\n  Your page: https://x.org/p/tok'
     expect(decodeBody(rfc2822({ to: 'a@x.org', subject: 'S', body }))).toBe(body)
   })
 
@@ -81,7 +81,7 @@ describe('the body', () => {
   })
 
   it('survives an emoji, which somebody will eventually put in a location name', () => {
-    const body = 'Sobeys 🍎'
+    const body = 'Braemar 🍎'
     expect(decodeBody(rfc2822({ to: 'a@x.org', subject: 'S', body }))).toBe(body)
   })
 

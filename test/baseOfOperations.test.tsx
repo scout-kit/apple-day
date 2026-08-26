@@ -50,7 +50,7 @@ beforeEach(() => {
 
 const BASE = {
   name: 'St Andrew’s Church hall',
-  address: '54 Bridgeport Rd E',
+  address: '54 Foxglove Rd E',
   mapsUrl: 'https://maps.example/hall',
 }
 
@@ -70,7 +70,7 @@ describe('a volunteer’s pass', () => {
       arrivalNote: 'Come here first to collect a jar and your apples.',
       shifts: [
         {
-          day: 'Friday', slotLabel: '5:00 PM – 6:00 PM', locationName: 'Sobeys',
+          day: 'Friday', slotLabel: '5:00 PM – 6:00 PM', locationName: 'Braemar',
           address: '', mapsUrl: '', comments: '',
         },
       ],
@@ -81,7 +81,7 @@ describe('a volunteer’s pass', () => {
     // The base is also named in the line explaining where the location comes from, so
     // check the heading rather than any mention of the hall.
     expect(screen.getByText(/Report to St Andrew/)).toBeDefined()
-    expect(screen.getByText('54 Bridgeport Rd E')).toBeDefined()
+    expect(screen.getByText('54 Foxglove Rd E')).toBeDefined()
     // Both the base and the shift location offer directions.
     expect(screen.getAllByText('Directions').length).toBeGreaterThan(0)
     // Arrival advice is the organizers' own text now, carried on the pass, not a sentence
@@ -183,9 +183,9 @@ describe('where they are going is not on the pass until they check in', () => {
       {
         day: 'Friday',
         slotLabel: '5:00 PM – 6:00 PM',
-        locationName: 'Sobeys — 640 Parkside Drive',
-        address: '640 Parkside Dr',
-        mapsUrl: 'https://maps.example/sobeys',
+        locationName: 'Braemar — 640 Linden Drive',
+        address: '640 Linden Dr',
+        mapsUrl: 'https://maps.example/braemar',
         comments: 'Outside on the sidewalk.',
       },
     ],
@@ -203,8 +203,8 @@ describe('where they are going is not on the pass until they check in', () => {
     renderPass()
 
     await waitFor(() => expect(screen.getByText('Alpha One')).toBeDefined())
-    expect(screen.queryByText(/Sobeys/)).toBeNull()
-    expect(screen.queryByText(/640 Parkside/)).toBeNull()
+    expect(screen.queryByText(/Braemar/)).toBeNull()
+    expect(screen.queryByText(/640 Linden/)).toBeNull()
     expect(screen.getByText(/given out at St Andrew/)).toBeDefined()
   })
 
@@ -220,9 +220,9 @@ describe('where they are going is not on the pass until they check in', () => {
     readPass.mockResolvedValue(passWith({ revealShifts: true }))
     renderPass()
 
-    await waitFor(() => expect(screen.getByText(/Sobeys/)).toBeDefined())
-    // The location name itself ends in "640 Parkside Drive", so match the address exactly.
-    expect(screen.getByText('640 Parkside Dr')).toBeDefined()
+    await waitFor(() => expect(screen.getByText(/Braemar/)).toBeDefined())
+    // The location name itself ends in "640 Linden Drive", so match the address exactly.
+    expect(screen.getByText('640 Linden Dr')).toBeDefined()
     expect(screen.getByText(/Outside on the sidewalk/)).toBeDefined()
   })
 
@@ -247,7 +247,7 @@ describe('where they are going is not on the pass until they check in', () => {
     renderPass()
 
     await waitFor(() => expect(screen.getByText(/given out/)).toBeDefined())
-    expect(screen.queryByText(/Sobeys/)).toBeNull()
+    expect(screen.queryByText(/Braemar/)).toBeNull()
   })
 })
 
@@ -389,9 +389,9 @@ describe('saying which shift you cannot make', () => {
     revealShifts: true,
     shifts: [
       { slotId: 'fri-1700', day: 'Friday', slotLabel: '5:00 PM – 6:00 PM',
-        locationName: 'Sobeys', address: '', mapsUrl: '', comments: '' },
+        locationName: 'Braemar', address: '', mapsUrl: '', comments: '' },
       { slotId: 'sat-0900', day: 'Saturday', slotLabel: '9:00 AM – 10:00 AM',
-        locationName: 'Walmart', address: '', mapsUrl: '', comments: '' },
+        locationName: 'Kelmont', address: '', mapsUrl: '', comments: '' },
     ],
   })
 

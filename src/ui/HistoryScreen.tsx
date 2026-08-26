@@ -137,7 +137,7 @@ export function HistoryScreen(): ReactNode {
 
     It used to be a checkbox per location, and every combination summed. That answered "what
     is the shape of the evening across these six doors", which is a question nobody was
-    asking — the one being asked was "what does five o'clock at Sobeys do, year on year",
+    asking — the one being asked was "what does five o'clock at Braemar do, year on year",
     and a sum of six locations cannot be read that way.
 
     So several may be picked and they are kept apart — one set of bars per door, per year.
@@ -177,7 +177,7 @@ export function HistoryScreen(): ReactNode {
   /*
     The rows a search is asking for.
 
-    Twenty-one locations over four years is a wide table and a long one, and "how has Sobeys
+    Twenty-one locations over four years is a wide table and a long one, and "how has Braemar
     done" was a question that could only be answered by reading down it. Same search as
     everywhere else: every word has to appear somewhere in the row.
 
@@ -537,7 +537,7 @@ export function HistoryScreen(): ReactNode {
                         {/*
                           Two lines, and wrapping.
 
-                          A column here is a shop and a year — "St. Jacob's Farmers market
+                          A column here is a shop and a year — "Ashfield Farmers market
                           Loc.1 · Apple Day 2026" — against a column sized for "10:00 AM –
                           11:00 AM". On one unwrapped line it simply ran under its neighbour
                           and was lost. Stacked, the name has the width to itself and the

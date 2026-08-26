@@ -527,7 +527,7 @@ export interface LocationHourGrid {
 /**
  * Money and hours for every location, hour by hour.
  *
- * The two existing tables each answer half a question. "By location" says Sobeys did well
+ * The two existing tables each answer half a question. "By location" says Braemar did well
  * without saying when; "by hour" says 5pm did well without saying where. Next year's plan
  * needs both at once — which door to stand at, at what time — and that is a grid, not two
  * lists.

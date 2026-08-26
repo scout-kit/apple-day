@@ -21,7 +21,7 @@ const plot = () => within(screen.getByRole('img'))
 
 describe('reading a stacked bar', () => {
   /*
-    The bands are the point of stacking: how much of this hour was Sobeys. Without a target
+    The bands are the point of stacking: how much of this hour was Braemar. Without a target
     of its own, hovering a band gives the whole bar's total and the reader is left doing the
     arithmetic the chart was supposed to do for them.
   */
@@ -42,8 +42,8 @@ describe('reading a stacked bar', () => {
         { id: '2026', label: 'Apple Day 2026' },
       ]}
       bands={[
-        { id: 'sobeys', label: 'Sobeys' },
-        { id: 'walmart', label: 'Walmart' },
+        { id: 'braemar', label: 'Braemar' },
+        { id: 'kelmont', label: 'Kelmont' },
       ]}
       format={(v) => `$${v}`}
     />
@@ -52,20 +52,20 @@ describe('reading a stacked bar', () => {
   it('gives every band its own hover target, named and figured', () => {
     render(stacked)
     expect(
-      screen.getByRole('button', { name: '5:00 PM, Apple Day 2026, Sobeys: $150' }),
+      screen.getByRole('button', { name: '5:00 PM, Apple Day 2026, Braemar: $150' }),
     ).toBeTruthy()
     expect(
-      screen.getByRole('button', { name: '5:00 PM, Apple Day 2026, Walmart: $60' }),
+      screen.getByRole('button', { name: '5:00 PM, Apple Day 2026, Kelmont: $60' }),
     ).toBeTruthy()
   })
 
   it('names the location in the readout, not just the year', () => {
     render(stacked)
     fireEvent.mouseEnter(
-      screen.getByRole('button', { name: '5:00 PM, Apple Day 2025, Walmart: $40' }),
+      screen.getByRole('button', { name: '5:00 PM, Apple Day 2025, Kelmont: $40' }),
     )
     const readout = document.querySelector('[aria-live="polite"]')!
-    expect(readout.textContent).toContain('Walmart')
+    expect(readout.textContent).toContain('Kelmont')
     expect(readout.textContent).toContain('$40')
   })
 
@@ -73,8 +73,8 @@ describe('reading a stacked bar', () => {
     // The years are told apart by their place in the cluster, and named on hover.
     render(stacked)
     const legend = document.querySelector('.bar-legend')!
-    expect(legend.textContent).toContain('Sobeys')
-    expect(legend.textContent).toContain('Walmart')
+    expect(legend.textContent).toContain('Braemar')
+    expect(legend.textContent).toContain('Kelmont')
     expect(legend.textContent).not.toContain('Apple Day 2025')
   })
 
@@ -84,13 +84,13 @@ describe('reading a stacked bar', () => {
         groups={[{ label: '5:00 PM', values: [100], stacks: [[100, null]] }]}
         series={[{ id: '2026', label: 'Apple Day 2026' }]}
         bands={[
-          { id: 'sobeys', label: 'Sobeys' },
-          { id: 'walmart', label: 'Walmart' },
+          { id: 'braemar', label: 'Braemar' },
+          { id: 'kelmont', label: 'Kelmont' },
         ]}
         format={(v) => `$${v}`}
       />,
     )
-    expect(plot().queryByRole('button', { name: /Walmart/ })).toBeNull()
+    expect(plot().queryByRole('button', { name: /Kelmont/ })).toBeNull()
   })
 
   it('still draws a plain bar, and labels it, when nothing is stacked', () => {
@@ -122,8 +122,8 @@ describe('getting at the total of a stacked bar', () => {
       ]}
       series={[{ id: '2026', label: 'Apple Day 2026' }]}
       bands={[
-        { id: 'sobeys', label: 'Sobeys' },
-        { id: 'walmart', label: 'Walmart' },
+        { id: 'braemar', label: 'Braemar' },
+        { id: 'kelmont', label: 'Kelmont' },
       ]}
       format={(v) => `$${v}`}
     />
@@ -135,7 +135,7 @@ describe('getting at the total of a stacked bar', () => {
   it('gives the band and the bar it is part of, in one hover', () => {
     render(stacked)
     fireEvent.mouseEnter(
-      screen.getByRole('button', { name: '5:00 PM, Apple Day 2026, Sobeys: $150' }),
+      screen.getByRole('button', { name: '5:00 PM, Apple Day 2026, Braemar: $150' }),
     )
     expect(readout()).toContain('$150')
     expect(readout(), 'the whole bar, without aiming for it').toContain('of $210')
@@ -144,7 +144,7 @@ describe('getting at the total of a stacked bar', () => {
   it('says it for the top band too, which has nothing above it to hover', () => {
     render(stacked)
     fireEvent.mouseEnter(
-      screen.getByRole('button', { name: '5:00 PM, Apple Day 2026, Walmart: $60' }),
+      screen.getByRole('button', { name: '5:00 PM, Apple Day 2026, Kelmont: $60' }),
     )
     expect(readout()).toContain('of $210')
   })
@@ -156,20 +156,20 @@ describe('getting at the total of a stacked bar', () => {
         groups={[{ label: '5:00 PM', values: [150], stacks: [[150, null]] }]}
         series={[{ id: '2026', label: 'Apple Day 2026' }]}
         bands={[
-          { id: 'sobeys', label: 'Sobeys' },
-          { id: 'walmart', label: 'Walmart' },
+          { id: 'braemar', label: 'Braemar' },
+          { id: 'kelmont', label: 'Kelmont' },
         ]}
         format={(v) => `$${v}`}
       />,
     )
-    fireEvent.mouseEnter(plot().getByRole('button', { name: /Sobeys/ }))
+    fireEvent.mouseEnter(plot().getByRole('button', { name: /Braemar/ }))
     expect(readout()).not.toContain('of $150')
   })
 })
 
 describe('following a colour from the legend', () => {
   /*
-    With three shops in every bar, finding Sobeys means matching a swatch against a dozen
+    With three shops in every bar, finding Braemar means matching a swatch against a dozen
     bands by eye. Pointing at the name in the legend lights all of them at once, which is
     the thing a legend is for and the thing it cannot do on its own.
   */
@@ -184,8 +184,8 @@ describe('following a colour from the legend', () => {
         { id: '2026', label: 'Apple Day 2026' },
       ]}
       bands={[
-        { id: 'sobeys', label: 'Sobeys' },
-        { id: 'walmart', label: 'Walmart' },
+        { id: 'braemar', label: 'Braemar' },
+        { id: 'kelmont', label: 'Kelmont' },
       ]}
       format={(v) => `$${v}`}
     />
@@ -201,18 +201,18 @@ describe('following a colour from the legend', () => {
 
   it('offers every colour as something to point at', () => {
     render(chart)
-    expect(legendItem('Sobeys')).toBeTruthy()
-    expect(legendItem('Walmart')).toBeTruthy()
+    expect(legendItem('Braemar')).toBeTruthy()
+    expect(legendItem('Kelmont')).toBeTruthy()
   })
 
   it('lights one colour and dims the rest, across every bar', () => {
     render(chart)
     const before = bandOpacities()
-    fireEvent.mouseEnter(legendItem('Sobeys'))
+    fireEvent.mouseEnter(legendItem('Braemar'))
     const after = bandOpacities()
 
     expect(after).not.toEqual(before)
-    // Four Sobeys bands lit, four Walmart bands dimmed — two hours, two years.
+    // Four Braemar bands lit, four Kelmont bands dimmed — two hours, two years.
     expect(after.filter((o) => o === '1')).toHaveLength(4)
     expect(after.filter((o) => o === '0.22')).toHaveLength(4)
   })
@@ -220,14 +220,14 @@ describe('following a colour from the legend', () => {
   it('puts it back when the pointer leaves', () => {
     render(chart)
     const before = bandOpacities()
-    fireEvent.mouseEnter(legendItem('Walmart'))
-    fireEvent.mouseLeave(legendItem('Walmart'))
+    fireEvent.mouseEnter(legendItem('Kelmont'))
+    fireEvent.mouseLeave(legendItem('Kelmont'))
     expect(bandOpacities()).toEqual(before)
   })
 
   it('follows the keyboard, so the legend is not pointer-only', () => {
     render(chart)
-    fireEvent.focus(legendItem('Walmart'))
+    fireEvent.focus(legendItem('Kelmont'))
     expect(bandOpacities().filter((o) => o === '1')).toHaveLength(4)
   })
 

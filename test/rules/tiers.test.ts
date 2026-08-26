@@ -42,7 +42,7 @@ beforeEach(async () => {
     await setDoc(doc(db, 'admins', ADMIN), { addedAt: 0 })
     await setDoc(doc(db, 'admins', ORGANIZER), { addedAt: 0, level: 'organizer' })
     await setDoc(doc(db, 'events', EVENT), { year: 2026, name: 'Apple Day 2026' })
-    await setDoc(doc(db, 'locations', 'sobeys'), { name: 'Sobeys' })
+    await setDoc(doc(db, 'locations', 'braemar'), { name: 'Braemar' })
     await setDoc(doc(db, 'sections', 'cubs'), { name: 'Cubs', order: 2 })
     await setDoc(doc(db, 'events', EVENT, 'people', 'p-one'), { firstName: 'Elliot', lastName: 'R' })
   })
@@ -56,7 +56,7 @@ describe('an entry with no level is a full admin', () => {
     // The default that matters: reading a legacy entry as the lesser tier would have locked
     // the group out of its own setup screens.
     await assertSucceeds(
-      setDoc(doc(asAdmin(), 'locations', 'sobeys'), { name: 'Sobeys Northfield' }),
+      setDoc(doc(asAdmin(), 'locations', 'braemar'), { name: 'Braemar Aldergrove' }),
     )
   })
 })
@@ -65,7 +65,7 @@ describe('an organizer runs the event', () => {
   it('builds the schedule', async () => {
     await assertSucceeds(
       setDoc(doc(asOrganizer(), 'events', EVENT, 'assignments', 'a1'), {
-        slotId: 'fri-1700', locationId: 'sobeys', personId: 'p-one',
+        slotId: 'fri-1700', locationId: 'braemar', personId: 'p-one',
         status: 'planned', whereabouts: 'here', checkedInAt: null, checkedOutAt: 0,
       }),
     )
@@ -106,7 +106,7 @@ describe('an organizer runs the event', () => {
   it('counts the money', async () => {
     await assertSucceeds(
       setDoc(doc(asOrganizer(), 'events', EVENT, 'jars', 'fri-jar-1-a'), {
-        jarNumber: 1, day: 'fri', locationId: 'sobeys', status: 'counted',
+        jarNumber: 1, day: 'fri', locationId: 'braemar', status: 'counted',
         amount: 100, method: 'cash',
       }),
     )
@@ -117,7 +117,7 @@ describe('an organizer runs the event', () => {
 
   it('reads everything it needs to do any of that', async () => {
     for (const path of [
-      ['locations', 'sobeys'],
+      ['locations', 'braemar'],
       ['sections', 'cubs'],
       // people are event-scoped now
       ['events', EVENT, 'people', 'p-one'] as unknown as [string, string],
@@ -154,7 +154,7 @@ describe('an organizer fixes what needs fixing on the day', () => {
   */
   it('adds a shop and corrects an address', async () => {
     await assertSucceeds(
-      setDoc(doc(asOrganizer(), 'locations', 'sobeys'), { name: 'Sobeys Northfield' }),
+      setDoc(doc(asOrganizer(), 'locations', 'braemar'), { name: 'Braemar Aldergrove' }),
     )
     await assertSucceeds(
       setDoc(doc(asOrganizer(), 'locations', 'new-shop'), { name: 'The new one' }),
@@ -164,15 +164,15 @@ describe('an organizer fixes what needs fixing on the day', () => {
   it('cannot remove a shop from the library', async () => {
     // Three years of jars and assignments hang off a location id. A wrong address is
     // noticed and fixed; an orphaned year is not.
-    await assertFails(deleteDoc(doc(asOrganizer(), 'locations', 'sobeys')))
+    await assertFails(deleteDoc(doc(asOrganizer(), 'locations', 'braemar')))
   })
 
   it('sets which locations the year uses', async () => {
     // This year's shops are this year's schedule — the same decision as which hour somebody
     // works, made by the same person, often in the same sitting.
     await assertSucceeds(
-      setDoc(doc(asOrganizer(), 'events', EVENT, 'eventLocations', 'sobeys'), {
-        locationId: 'sobeys', active: true, priority: 1,
+      setDoc(doc(asOrganizer(), 'events', EVENT, 'eventLocations', 'braemar'), {
+        locationId: 'braemar', active: true, priority: 1,
       }),
     )
   })
@@ -234,7 +234,7 @@ describe('an organizer does not undo what cannot be undone', () => {
 
 describe('an admin does all of it', () => {
   it('changes the library, the sections and the event', async () => {
-    await assertSucceeds(setDoc(doc(asAdmin(), 'locations', 'sobeys'), { name: 'Renamed' }))
+    await assertSucceeds(setDoc(doc(asAdmin(), 'locations', 'braemar'), { name: 'Renamed' }))
     await assertSucceeds(setDoc(doc(asAdmin(), 'sections', 'cubs'), { name: 'Cubs', order: 2 }))
     await assertSucceeds(
       setDoc(doc(asAdmin(), 'events', EVENT), { name: 'Renamed' }, { merge: true }),
@@ -248,7 +248,7 @@ describe('an admin does all of it', () => {
   it('runs the event as well', async () => {
     await assertSucceeds(
       setDoc(doc(asAdmin(), 'events', EVENT, 'assignments', 'a1'), {
-        slotId: 'fri-1700', locationId: 'sobeys', personId: 'p-one',
+        slotId: 'fri-1700', locationId: 'braemar', personId: 'p-one',
         status: 'planned', whereabouts: 'here', checkedInAt: null, checkedOutAt: 0,
       }),
     )

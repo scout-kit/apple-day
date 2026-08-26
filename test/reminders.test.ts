@@ -37,7 +37,7 @@ const person = (id: string, first: string, over: Partial<Person> = {}): Person =
 const shift = (
   id: string, personId: string, slotId: string, over: Partial<Assignment> = {},
 ): Assignment => ({
-  id, slotId, locationId: 'sobeys', personId,
+  id, slotId, locationId: 'braemar', personId,
   status: 'confirmed', whereabouts: 'here', checkedInAt: null, checkedOutAt: null, ...over,
 })
 
@@ -359,7 +359,7 @@ describe('what a reminder must never say', () => {
     for (const t of DEFAULT_TEMPLATES) {
       const text = `${fillTemplate(t.subject, only, ctx)} ${fillTemplate(t.body, only, ctx)}`
       expect(text, t.id).toContain('9:00 AM')
-      for (const leak of ['sobeys', 'Sobeys', 'Parkside', 'maps.google']) {
+      for (const leak of ['braemar', 'Braemar', 'Linden', 'maps.google']) {
         expect(text, `${t.id} leaked ${leak}`).not.toContain(leak)
       }
     }

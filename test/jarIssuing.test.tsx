@@ -39,7 +39,7 @@ const SLOT = 'fri-1700'
  */
 const locations: ScheduledLocation[] = [
   {
-    id: 'sobeys', name: 'Sobeys', address: '640 Parkside Dr', mapsUrl: '', lat: null, lng: null, groupCode: '',
+    id: 'braemar', name: 'Braemar', address: '640 Linden Dr', mapsUrl: '', lat: null, lng: null, groupCode: '',
     siteContact: null, insurance: '', comments: '', aliases: [],
     active: true, priority: 1,
     openHours: { fri: { openMin: 17 * 60, closeMin: 21 * 60 }, sat: null },
@@ -146,7 +146,7 @@ const { DayOfScreen } = await import('../src/ui/DayOfScreen')
 
 const jar = (over: Partial<Jar> & { id: string; jarNumber: number }): Jar => ({
   day: 'fri',
-  locationId: 'sobeys',
+  locationId: 'braemar',
   personId: 'p-one',
   assignmentId: 'a1', assignmentIds: ['a1'],
   status: 'out',
@@ -183,7 +183,7 @@ beforeEach(() => {
   swapAssignments.mockResolvedValue(undefined)
   assignments = [
     {
-      id: 'a1', slotId: SLOT, locationId: 'sobeys', personId: 'p-one',
+      id: 'a1', slotId: SLOT, locationId: 'braemar', personId: 'p-one',
       status: 'checkedIn', whereabouts: 'here', checkedInAt: 1, checkedOutAt: null,
     },
   ]
@@ -213,7 +213,7 @@ describe('issuing a jar', () => {
     expect(input).toMatchObject({
       jarNumber: 1,
       day: 'fri',
-      locationId: 'sobeys',
+      locationId: 'braemar',
       personId: 'p-one',
       assignmentId: 'a1', assignmentIds: ['a1'],
     })
@@ -410,7 +410,7 @@ describe('the day-of desk works person by person', () => {
     assignments = [
       assignments[0]!,
       {
-        id: 'a2', slotId: 'fri-2000', locationId: 'sobeys', personId: 'p-two',
+        id: 'a2', slotId: 'fri-2000', locationId: 'braemar', personId: 'p-two',
         status: 'confirmed', whereabouts: 'here', checkedInAt: null, checkedOutAt: null,
       },
     ]
@@ -427,7 +427,7 @@ describe('the day-of desk works person by person', () => {
     assignments = [
       assignments[0]!,
       {
-        id: 'a2', slotId: 'fri-2000', locationId: 'sobeys', personId: 'p-two',
+        id: 'a2', slotId: 'fri-2000', locationId: 'braemar', personId: 'p-two',
         status: 'confirmed', whereabouts: 'here', checkedInAt: null, checkedOutAt: null,
       },
     ]
@@ -443,7 +443,7 @@ describe('the day-of desk works person by person', () => {
     assignments = [
       assignments[0]!,
       {
-        id: 'a2', slotId: 'fri-1900', locationId: 'sobeys', personId: 'p-one',
+        id: 'a2', slotId: 'fri-1900', locationId: 'braemar', personId: 'p-one',
         status: 'confirmed', whereabouts: 'here', checkedInAt: null, checkedOutAt: null,
       },
     ]
@@ -459,7 +459,7 @@ describe('the day-of desk works person by person', () => {
     assignments = [
       assignments[0]!,
       {
-        id: 'a2', slotId: 'fri-1800', locationId: 'sobeys', personId: 'p-two',
+        id: 'a2', slotId: 'fri-1800', locationId: 'braemar', personId: 'p-two',
         status: 'confirmed', whereabouts: 'here', checkedInAt: null, checkedOutAt: null,
       },
     ]
@@ -692,17 +692,17 @@ describe('the row shows only the buttons the shift can use', () => {
 describe('finding a location from the table', () => {
   it('opens a map for the place, without leaving the screen', async () => {
     render(<DayOfScreen />)
-    await userEvent.click(screen.getByTitle(/Where Sobeys is/))
+    await userEvent.click(screen.getByTitle(/Where Braemar is/))
 
-    const frame = screen.getByTitle('Map of Sobeys') as HTMLIFrameElement
+    const frame = screen.getByTitle('Map of Braemar') as HTMLIFrameElement
     expect(frame.src).toContain('output=embed')
   })
 
   it('routes from the base of operations when one is set', async () => {
     render(<DayOfScreen />)
-    await userEvent.click(screen.getByTitle(/Where Sobeys is/))
+    await userEvent.click(screen.getByTitle(/Where Braemar is/))
 
-    const frame = screen.getByTitle('Map of Sobeys') as HTMLIFrameElement
+    const frame = screen.getByTitle('Map of Braemar') as HTMLIFrameElement
     // The question at a shift change is how to get there from base, not where it is in the
     // abstract.
     expect(frame.src).toContain('saddr=')
@@ -718,29 +718,29 @@ describe('finding a location from the table', () => {
     */
     baseId = null
     render(<DayOfScreen />)
-    await userEvent.click(screen.getByTitle(/Where Sobeys is/))
+    await userEvent.click(screen.getByTitle(/Where Braemar is/))
 
     expect(screen.getByText(/No base of operations is set/)).toBeTruthy()
-    expect((screen.getByTitle('Map of Sobeys') as HTMLIFrameElement).src).toContain('q=')
+    expect((screen.getByTitle('Map of Braemar') as HTMLIFrameElement).src).toContain('q=')
   })
 
   it('always offers the way out to Google Maps proper', async () => {
     // The keyless embed is undocumented and could stop working; the link is what keeps the
     // place findable if it does.
     render(<DayOfScreen />)
-    await userEvent.click(screen.getByTitle(/Where Sobeys is/))
+    await userEvent.click(screen.getByTitle(/Where Braemar is/))
     expect(screen.getByRole('link', { name: 'Open in Google Maps' })).toBeTruthy()
   })
 
   it('closes again', async () => {
     render(<DayOfScreen />)
-    await userEvent.click(screen.getByTitle(/Where Sobeys is/))
+    await userEvent.click(screen.getByTitle(/Where Braemar is/))
     // The modal's own Close, not the dismiss button in its corner.
-    const footer = screen.getByTitle('Map of Sobeys').closest('.modal')!
+    const footer = screen.getByTitle('Map of Braemar').closest('.modal')!
     await userEvent.click(
       Array.from(footer.querySelectorAll('button')).find((b) => b.textContent === 'Close')!,
     )
-    expect(screen.queryByTitle('Map of Sobeys')).toBeNull()
+    expect(screen.queryByTitle('Map of Braemar')).toBeNull()
   })
 })
 
@@ -758,11 +758,11 @@ describe('the base of operations is found even though it is not a staffed locati
 
   it('routes the map from it', async () => {
     render(<DayOfScreen />)
-    await userEvent.click(screen.getByTitle(/Where Sobeys is/))
+    await userEvent.click(screen.getByTitle(/Where Braemar is/))
 
-    const frame = screen.getByTitle('Map of Sobeys') as HTMLIFrameElement
+    const frame = screen.getByTitle('Map of Braemar') as HTMLIFrameElement
     expect(frame.src).toContain('saddr=123%20Hall%20St')
-    expect(frame.src).toContain('daddr=640%20Parkside%20Dr')
+    expect(frame.src).toContain('daddr=640%20Linden%20Dr')
   })
 })
 
@@ -786,7 +786,7 @@ describe('arriving data', () => {
 })
 
 describe('back-to-back shifts at one location are one stretch of work', () => {
-  /** Two consecutive hours at Sobeys, plus a later one so runs can be told apart. */
+  /** Two consecutive hours at Braemar, plus a later one so runs can be told apart. */
   const backToBack = (status: 'confirmed' | 'checkedIn' = 'confirmed'): void => {
     assignments = [
       { ...assignments[0]!, id: 'a1', slotId: 'fri-1700', status },

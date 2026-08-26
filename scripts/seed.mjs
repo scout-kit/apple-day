@@ -261,7 +261,7 @@ async function main() {
       'data/locations.seed.json is missing.\n\n' +
         'It is your own data, so it is not in this repository. Create it as a JSON array:\n' +
         '  [{ "id": "corner-grocers", "name": "Corner Grocers",\n' +
-        '     "address": "640 Parkside Drive", "groupCode": "CG" }]\n\n' +
+        '     "address": "640 Linden Drive", "groupCode": "CG" }]\n\n' +
         'Or skip it entirely and add locations on the Locations screen — `make firstrun`\n' +
         'starts an empty emulator for exactly that.',
     )

@@ -6,12 +6,12 @@ import { Picker } from './Picker'
  * Choose one location, by typing part of its name or address.
  *
  * The same control as the person picker, for the same reason: twenty shops in a native
- * dropdown is a scroll-and-squint exercise, and the thing that tells two Sobeys apart is the
+ * dropdown is a scroll-and-squint exercise, and the thing that tells two Braemar apart is the
  * address, which an `<option>` has nowhere to put. Searching covers the address and the
- * group code as well as the name, so "640" finds the Parkside one.
+ * group code as well as the name, so "640" finds the Linden one.
  *
  * A row is the shop and its group code, and no more. The address is searched but not shown:
- * these names carry their own street — "Sobeys - 640 Parkside Drive" — so printing the
+ * these names carry their own street — "Braemar - 640 Linden Drive" — so printing the
  * address underneath says the same thing twice and pushes the name out of the panel.
  */
 
@@ -48,7 +48,7 @@ export function LocationPicker({
             id: location.id,
             label: location.name,
             ...(location.groupCode ? { tag: location.groupCode } : {}),
-            // Searched, not shown: typing "640" still finds the Parkside one.
+            // Searched, not shown: typing "640" still finds the Linden one.
             ...(location.address ? { search: location.address } : {}),
           })),
         },

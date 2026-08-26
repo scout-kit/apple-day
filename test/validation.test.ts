@@ -40,7 +40,7 @@ describe('double booking', () => {
     const assignments = [
       ...fridayAssignments2025,
       {
-        id: 'clash', slotId: 'fri-1700', locationId: 'walmart', personId: 'y01',
+        id: 'clash', slotId: 'fri-1700', locationId: 'kelmont', personId: 'y01',
         status: 'planned' as const, whereabouts: 'here' as const, checkedInAt: null, checkedOutAt: null,
       },
     ]
@@ -56,7 +56,7 @@ describe('double booking', () => {
     const assignments = [
       ...fridayAssignments2025,
       {
-        id: 'dupe', slotId: 'fri-1700', locationId: 'sobeys-640', personId: 'y01',
+        id: 'dupe', slotId: 'fri-1700', locationId: 'braemar-640', personId: 'y01',
         status: 'planned' as const, whereabouts: 'here' as const, checkedInAt: null, checkedOutAt: null,
       },
     ]
@@ -73,7 +73,7 @@ describe('double booking', () => {
           : a,
       ),
       {
-        id: 'replacement', slotId: 'fri-1700', locationId: 'sobeys-640', personId: 'y02',
+        id: 'replacement', slotId: 'fri-1700', locationId: 'braemar-640', personId: 'y02',
         status: 'confirmed' as const, whereabouts: 'here' as const, checkedInAt: null, checkedOutAt: null,
       },
     ]
@@ -136,7 +136,7 @@ describe('stated availability', () => {
     // The board hatches a closed hour and withholds its picker, so getting a shift there
     // took a deliberate override. Repeating it as a warning adds nothing.
     const locations = locations2025.map((l) =>
-      l.id === 'sobeys-640'
+      l.id === 'braemar-640'
         ? { ...l, openHours: { fri: { openMin: 18 * 60, closeMin: 21 * 60 }, sat: null } }
         : l,
     )
@@ -260,7 +260,7 @@ describe('what is deliberately not reported', () => {
   it('says nothing about somebody working a location alone', () => {
     const alone = [
       {
-        id: 'solo', slotId: 'fri-1700', locationId: 'sobeys-640', personId: 'y01',
+        id: 'solo', slotId: 'fri-1700', locationId: 'braemar-640', personId: 'y01',
         status: 'planned' as const, whereabouts: 'here' as const, checkedInAt: null, checkedOutAt: null,
       },
     ]

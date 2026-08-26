@@ -98,7 +98,7 @@ describe('every template', () => {
     */
     for (const t of DEFAULT_TEMPLATES) {
       const body = `${fillTemplate(t.subject, family, CTX)} ${fillTemplate(t.body, family, CTX)}`
-      for (const leak of ['Sobeys', 'Parkside', 'maps.google', 'http://', 'Unit ']) {
+      for (const leak of ['Braemar', 'Linden', 'maps.google', 'http://', 'Unit ']) {
         expect(body, `${t.id} leaked ${leak}`).not.toContain(leak)
       }
     }

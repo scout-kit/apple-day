@@ -69,26 +69,26 @@ const jar = (over: Partial<Jar> & { id: string; locationId: string }): Jar => ({
   ...over,
 })
 
-/** 2025: one hour at Sobeys, $100. */
+/** 2025: one hour at Braemar, $100. */
 const y2025: EventData = {
   event: event('2025'),
   slots: slots('fri', [17, 18]),
-  assignments: [shift('a', 'fri-1700', 'sobeys', 'y01')],
-  jars: [jar({ id: 'j1', locationId: 'sobeys', amount: 100 })],
+  assignments: [shift('a', 'fri-1700', 'braemar', 'y01')],
+  jars: [jar({ id: 'j1', locationId: 'braemar', amount: 100 })],
 }
 
-/** 2026: two hours at Sobeys and one at Walmart, $150 and $50. */
+/** 2026: two hours at Braemar and one at Kelmont, $150 and $50. */
 const y2026: EventData = {
   event: event('2026'),
   slots: slots('fri', [17, 18]),
   assignments: [
-    shift('b', 'fri-1700', 'sobeys', 'y01'),
-    shift('c', 'fri-1800', 'sobeys', 'y02'),
-    shift('d', 'fri-1700', 'walmart', 'y03'),
+    shift('b', 'fri-1700', 'braemar', 'y01'),
+    shift('c', 'fri-1800', 'braemar', 'y02'),
+    shift('d', 'fri-1700', 'kelmont', 'y03'),
   ],
   jars: [
-    jar({ id: 'j2', locationId: 'sobeys', amount: 150 }),
-    jar({ id: 'j3', locationId: 'walmart', personId: 'y03', amount: 50 }),
+    jar({ id: 'j2', locationId: 'braemar', amount: 150 }),
+    jar({ id: 'j3', locationId: 'kelmont', personId: 'y03', amount: 50 }),
   ],
 }
 
@@ -106,7 +106,7 @@ describe('one event’s totals', () => {
     // staff an hour.
     const absent: EventData = {
       ...y2025,
-      assignments: [shift('a', 'fri-1700', 'sobeys', 'y01', { status: 'noShow', whereabouts: 'here' })],
+      assignments: [shift('a', 'fri-1700', 'braemar', 'y01', { status: 'noShow', whereabouts: 'here' })],
     }
     const t = eventTotals(absent)
     expect(t.staffedHours).toBe(0)
@@ -131,7 +131,7 @@ describe('one event’s totals', () => {
   it('ignores a jar still out there', () => {
     const withOut: EventData = {
       ...y2025,
-      jars: [...y2025.jars, jar({ id: 'j9', locationId: 'sobeys', status: 'out', amount: null })],
+      jars: [...y2025.jars, jar({ id: 'j9', locationId: 'braemar', status: 'out', amount: null })],
     }
     expect(eventTotals(withOut).revenue).toBe(100)
   })
@@ -172,65 +172,65 @@ describe('changeFrom', () => {
 
 describe('a location across the years', () => {
   const names = new Map([
-    ['sobeys', 'Sobeys'],
-    ['walmart', 'Walmart'],
+    ['braemar', 'Braemar'],
+    ['kelmont', 'Kelmont'],
   ])
 
   it('keeps one row per location without any name matching', () => {
     // The library is global and its ids are stable, which is what the workbook's fuzzy name
     // matching was trying and failing to achieve.
     const { rows } = locationTrends([y2025, y2026], names)
-    expect(rows.map((r) => r.locationId)).toEqual(['sobeys', 'walmart'])
+    expect(rows.map((r) => r.locationId)).toEqual(['braemar', 'kelmont'])
   })
 
   it('puts each event in its own cell', () => {
     const { rows } = locationTrends([y2025, y2026], names)
-    const sobeys = rows.find((r) => r.locationId === 'sobeys')!
-    expect(sobeys.cells.map((c) => c.revenue)).toEqual([100, 150])
-    expect(sobeys.cells.map((c) => c.staffedHours)).toEqual([1, 2])
+    const braemar = rows.find((r) => r.locationId === 'braemar')!
+    expect(braemar.cells.map((c) => c.revenue)).toEqual([100, 150])
+    expect(braemar.cells.map((c) => c.staffedHours)).toEqual([1, 2])
   })
 
   it('says how the most recent year compares with the one before', () => {
     const { rows } = locationTrends([y2025, y2026], names)
-    expect(rows.find((r) => r.locationId === 'sobeys')!.changes.revenue).toBe(0.5)
+    expect(rows.find((r) => r.locationId === 'braemar')!.changes.revenue).toBe(0.5)
   })
 
   it('has no comparison for a location used only once', () => {
-    // Walmart is new in 2026; calling that an infinite rise would be nonsense.
+    // Kelmont is new in 2026; calling that an infinite rise would be nonsense.
     const { rows } = locationTrends([y2025, y2026], names)
-    expect(rows.find((r) => r.locationId === 'walmart')!.changes.revenue).toBeNull()
+    expect(rows.find((r) => r.locationId === 'kelmont')!.changes.revenue).toBeNull()
   })
 
   it('compares the years a location was actually used, skipping a year off', () => {
     /*
       A location rested for a year must not read as a collapse to zero and back.
 
-      Sobeys is used in 2025 and 2027 but not 2026, so the comparison is 2025 against 2027.
+      Braemar is used in 2025 and 2027 but not 2026, so the comparison is 2025 against 2027.
       Comparing against the previous *event* instead would divide by a year the location was
       never open for, which is a null, not a rise.
     */
-    const y2026WithoutSobeys: EventData = {
+    const y2026WithoutBraemar: EventData = {
       ...y2026,
-      assignments: [shift('d', 'fri-1700', 'walmart', 'y03')],
-      jars: [jar({ id: 'j3', locationId: 'walmart', personId: 'y03', amount: 50 })],
+      assignments: [shift('d', 'fri-1700', 'kelmont', 'y03')],
+      jars: [jar({ id: 'j3', locationId: 'kelmont', personId: 'y03', amount: 50 })],
     }
     const y2027: EventData = {
       event: event('2027'),
       slots: slots('fri', [17]),
-      assignments: [shift('e', 'fri-1700', 'sobeys', 'y01')],
-      jars: [jar({ id: 'j4', locationId: 'sobeys', amount: 150 })],
+      assignments: [shift('e', 'fri-1700', 'braemar', 'y01')],
+      jars: [jar({ id: 'j4', locationId: 'braemar', amount: 150 })],
     }
-    const { rows } = locationTrends([y2025, y2026WithoutSobeys, y2027], names)
-    const sobeys = rows.find((r) => r.locationId === 'sobeys')!
+    const { rows } = locationTrends([y2025, y2026WithoutBraemar, y2027], names)
+    const braemar = rows.find((r) => r.locationId === 'braemar')!
     // 2025 gave 100, 2027 gave 150 — a rise of half, with 2026 simply not counted.
-    expect(sobeys.changes.revenue).toBe(0.5)
+    expect(braemar.changes.revenue).toBe(0.5)
     // And the empty year is still an empty cell, not a zero.
-    expect(sobeys.cells.map((c) => c.revenue)).toEqual([100, 0, 150])
+    expect(braemar.cells.map((c) => c.revenue)).toEqual([100, 0, 150])
   })
 
   it('ranks by what the location has brought in overall', () => {
     const { rows } = locationTrends([y2025, y2026], names)
-    expect(rows[0]!.locationId).toBe('sobeys')
+    expect(rows[0]!.locationId).toBe('braemar')
   })
 
   it('shows a location that only appears in the data', () => {
@@ -254,12 +254,12 @@ describe('takings by clock hour, year over year', () => {
     event: event('2025'),
     slots: slots('fri', [17, 18]),
     assignments: [
-      shift('a', 'fri-1700', 'sobeys', 'y01'),
-      shift('b', 'fri-1800', 'sobeys', 'y01'),
+      shift('a', 'fri-1700', 'braemar', 'y01'),
+      shift('b', 'fri-1800', 'braemar', 'y01'),
     ],
     jars: [
-      jar({ id: 'j1', locationId: 'sobeys', assignmentId: 'a', assignmentIds: ['a'], amount: 100 }),
-      jar({ id: 'j2', locationId: 'sobeys', assignmentId: 'b', assignmentIds: ['b'], amount: 60 }),
+      jar({ id: 'j1', locationId: 'braemar', assignmentId: 'a', assignmentIds: ['a'], amount: 100 }),
+      jar({ id: 'j2', locationId: 'braemar', assignmentId: 'b', assignmentIds: ['b'], amount: 60 }),
     ],
   }
 
@@ -271,12 +271,12 @@ describe('takings by clock hour, year over year', () => {
       { id: 'fri-b', day: 'fri', startMin: 17 * 60 + 45, endMin: 18 * 60 + 45, label: '5:45' },
     ],
     assignments: [
-      shift('c', 'fri-a', 'sobeys', 'y01'),
-      shift('d', 'fri-b', 'sobeys', 'y02'),
+      shift('c', 'fri-a', 'braemar', 'y01'),
+      shift('d', 'fri-b', 'braemar', 'y02'),
     ],
     jars: [
-      jar({ id: 'j3', locationId: 'sobeys', assignmentId: 'c', assignmentIds: ['c'], amount: 120 }),
-      jar({ id: 'j4', locationId: 'sobeys', assignmentId: 'd', assignmentIds: ['d'], amount: 80 }),
+      jar({ id: 'j3', locationId: 'braemar', assignmentId: 'c', assignmentIds: ['c'], amount: 120 }),
+      jar({ id: 'j4', locationId: 'braemar', assignmentId: 'd', assignmentIds: ['d'], amount: 80 }),
     ],
   }
 
@@ -300,7 +300,7 @@ describe('takings by clock hour, year over year', () => {
   it('never loses a cent to the division', () => {
     const odd: EventData = {
       ...overlapped,
-      jars: [jar({ id: 'j5', locationId: 'sobeys', assignmentId: 'd', assignmentIds: ['d'], amount: 100 })],
+      jars: [jar({ id: 'j5', locationId: 'braemar', assignmentId: 'd', assignmentIds: ['d'], amount: 100 })],
     }
     const result = hourlyTrends([odd], null)
     const total = result.rows.reduce((n, r) => n + r.revenue, 0)
@@ -320,18 +320,18 @@ describe('takings by clock hour, year over year', () => {
   })
 
   it('narrows to one location', () => {
-    const withWalmart: EventData = {
+    const withKelmont: EventData = {
       ...onTheHour,
-      assignments: [...onTheHour.assignments, shift('w', 'fri-1700', 'walmart', 'y03')],
+      assignments: [...onTheHour.assignments, shift('w', 'fri-1700', 'kelmont', 'y03')],
       jars: [
         ...onTheHour.jars,
-        jar({ id: 'j9', locationId: 'walmart', assignmentId: 'w', assignmentIds: ['w'], amount: 500 }),
+        jar({ id: 'j9', locationId: 'kelmont', assignmentId: 'w', assignmentIds: ['w'], amount: 500 }),
       ],
     }
-    const all = hourlyTrends([withWalmart], null)
-    const sobeys = hourlyTrends([withWalmart], ['sobeys'])
+    const all = hourlyTrends([withKelmont], null)
+    const braemar = hourlyTrends([withKelmont], ['braemar'])
     expect(row(all, 17).cells[0]!.revenue).toBe(600)
-    expect(row(sobeys, 17).cells[0]!.revenue).toBe(100)
+    expect(row(braemar, 17).cells[0]!.revenue).toBe(100)
   })
 
   it('marks an hour an event never ran as absent, not as zero', () => {
@@ -340,7 +340,7 @@ describe('takings by clock hour, year over year', () => {
     const long: EventData = { ...overlapped, slots: [
       { id: 'fri-a', day: 'fri', startMin: 17 * 60, endMin: 18 * 60, label: '5:00' },
       { id: 'fri-c', day: 'fri', startMin: 19 * 60, endMin: 20 * 60, label: '7:00' },
-    ], assignments: [shift('c', 'fri-a', 'sobeys', 'y01')], jars: [] }
+    ], assignments: [shift('c', 'fri-a', 'braemar', 'y01')], jars: [] }
 
     const result = hourlyTrends([short, long], null)
     const seven = row(result, 19)
@@ -358,8 +358,8 @@ describe('takings by clock hour, year over year', () => {
     const later: EventData = {
       event: event('2027'),
       slots: slots('fri', [17]),
-      assignments: [shift('e', 'fri-1700', 'sobeys', 'y01')],
-      jars: [jar({ id: 'j6', locationId: 'sobeys', assignmentId: 'e', assignmentIds: ['e'], amount: 150 })],
+      assignments: [shift('e', 'fri-1700', 'braemar', 'y01')],
+      jars: [jar({ id: 'j6', locationId: 'braemar', assignmentId: 'e', assignmentIds: ['e'], amount: 150 })],
     }
     const result = hourlyTrends([onTheHour, withoutFive, later], null)
     // 2025 gave 100 at 5pm, 2027 gave 150; 2026 did not run that hour at all.
@@ -383,13 +383,13 @@ describe('takings by clock hour, year over year', () => {
 
 
 describe('hours behind the money, location by location', () => {
-  const names = new Map([['sobeys', 'Sobeys'], ['walmart', 'Walmart']])
+  const names = new Map([['braemar', 'Braemar'], ['kelmont', 'Kelmont']])
 
   it('counts person-hours per location per event', () => {
     const { rows } = locationTrends([y2025, y2026], names)
-    const sobeys = rows.find((r) => r.locationId === 'sobeys')!
+    const braemar = rows.find((r) => r.locationId === 'braemar')!
     // One hour staffed in 2025, two in 2026.
-    expect(sobeys.cells.map((c) => c.staffedHours)).toEqual([1, 2])
+    expect(braemar.cells.map((c) => c.staffedHours)).toEqual([1, 2])
   })
 
   it('says which way the takings went, and which way an hour there went', () => {
@@ -402,25 +402,25 @@ describe('hours behind the money, location by location', () => {
       screen's when somewhere is being chosen for next year.
     */
     const { rows } = locationTrends([y2025, y2026], names)
-    const sobeys = rows.find((r) => r.locationId === 'sobeys')!
-    expect(sobeys.changes.revenue).toBe(0.5)
-    expect(sobeys.changes.perHour).toBe(-0.25)
-    expect(sobeys.changes).not.toHaveProperty('hours')
+    const braemar = rows.find((r) => r.locationId === 'braemar')!
+    expect(braemar.changes.revenue).toBe(0.5)
+    expect(braemar.changes.perHour).toBe(-0.25)
+    expect(braemar.changes).not.toHaveProperty('hours')
   })
 
   it('has no comparison on any measure for a location used once', () => {
     const { rows } = locationTrends([y2025, y2026], names)
-    const walmart = rows.find((r) => r.locationId === 'walmart')!
-    expect(walmart.changes).toEqual({ revenue: null, perHour: null })
+    const kelmont = rows.find((r) => r.locationId === 'kelmont')!
+    expect(kelmont.changes).toEqual({ revenue: null, perHour: null })
   })
 
   it('has no rate to compare when a year had no recorded hours', () => {
     // A year backfilled from the workbook has money and no check-ins.
     const noHours: EventData = { ...y2026, assignments: [] }
     const { rows } = locationTrends([y2025, noHours], names)
-    const sobeys = rows.find((r) => r.locationId === 'sobeys')!
-    expect(sobeys.changes.perHour).toBeNull()
-    expect(sobeys.changes.revenue).toBe(0.5)
+    const braemar = rows.find((r) => r.locationId === 'braemar')!
+    expect(braemar.changes.perHour).toBeNull()
+    expect(braemar.changes.revenue).toBe(0.5)
   })
 })
 
@@ -430,12 +430,12 @@ describe('adding several locations together', () => {
     event: event('2026'),
     slots: slots('fri', [17]),
     assignments: [
-      shift('a', 'fri-1700', 'sobeys', 'y01'),
-      shift('b', 'fri-1700', 'walmart', 'y02'),
+      shift('a', 'fri-1700', 'braemar', 'y01'),
+      shift('b', 'fri-1700', 'kelmont', 'y02'),
     ],
     jars: [
-      jar({ id: 'j1', locationId: 'sobeys', assignmentId: 'a', assignmentIds: ['a'], amount: 100 }),
-      jar({ id: 'j2', locationId: 'walmart', assignmentId: 'b', assignmentIds: ['b'], amount: 40 }),
+      jar({ id: 'j1', locationId: 'braemar', assignmentId: 'a', assignmentIds: ['a'], amount: 100 }),
+      jar({ id: 'j2', locationId: 'kelmont', assignmentId: 'b', assignmentIds: ['b'], amount: 40 }),
     ],
   }
 
@@ -443,8 +443,8 @@ describe('adding several locations together', () => {
     result.rows.find((r) => r.hour === 17)!.cells[0]!
 
   it('adds up only the locations chosen', () => {
-    expect(five(hourlyTrends([twoDoors], ['sobeys', 'walmart'])).revenue).toBe(140)
-    expect(five(hourlyTrends([twoDoors], ['sobeys'])).revenue).toBe(100)
+    expect(five(hourlyTrends([twoDoors], ['braemar', 'kelmont'])).revenue).toBe(140)
+    expect(five(hourlyTrends([twoDoors], ['braemar'])).revenue).toBe(100)
   })
 
   it('counts nothing when nothing is chosen', () => {
@@ -459,12 +459,12 @@ describe('adding several locations together', () => {
 
   it('counts the hours worked at the chosen locations too', () => {
     // So the Hours measure is about the same doors as the money beside it.
-    expect(five(hourlyTrends([twoDoors], ['sobeys'])).staffedHours).toBe(1)
-    expect(five(hourlyTrends([twoDoors], ['sobeys', 'walmart'])).staffedHours).toBe(2)
+    expect(five(hourlyTrends([twoDoors], ['braemar'])).staffedHours).toBe(1)
+    expect(five(hourlyTrends([twoDoors], ['braemar', 'kelmont'])).staffedHours).toBe(2)
   })
 
   it('reports what an hour at those locations was worth', () => {
-    expect(five(hourlyTrends([twoDoors], ['sobeys', 'walmart'])).revenuePerHour).toBe(70)
+    expect(five(hourlyTrends([twoDoors], ['braemar', 'kelmont'])).revenuePerHour).toBe(70)
   })
 })
 
@@ -501,34 +501,34 @@ describe('locations kept apart instead of added together', () => {
     worth across these doors". The other question — which door, and whether it is changing —
     needs them side by side, and needs the years beside them too.
   */
-  const twoDoors = (id: string, sobeys: number, walmart: number): EventData => ({
+  const twoDoors = (id: string, braemar: number, kelmont: number): EventData => ({
     event: event(id),
     slots: slots('fri', [17, 18]),
     assignments: [
-      shift('a' + id, 'fri-1700', 'sobeys', 'y01'),
-      shift('b' + id, 'fri-1700', 'walmart', 'y02'),
+      shift('a' + id, 'fri-1700', 'braemar', 'y01'),
+      shift('b' + id, 'fri-1700', 'kelmont', 'y02'),
     ],
     jars: [
-      jar({ id: 'js' + id, locationId: 'sobeys', assignmentId: 'a' + id, assignmentIds: ['a' + id], amount: sobeys }),
-      jar({ id: 'jw' + id, locationId: 'walmart', assignmentId: 'b' + id, assignmentIds: ['b' + id], amount: walmart }),
+      jar({ id: 'js' + id, locationId: 'braemar', assignmentId: 'a' + id, assignmentIds: ['a' + id], amount: braemar }),
+      jar({ id: 'jw' + id, locationId: 'kelmont', assignmentId: 'b' + id, assignmentIds: ['b' + id], amount: kelmont }),
     ],
   })
 
   const years = [twoDoors('2025', 100, 40), twoDoors('2026', 150, 60)]
 
   it('gives a column per location per year', () => {
-    const { series } = hourlyTrendsSplit(years, ['sobeys', 'walmart'])
+    const { series } = hourlyTrendsSplit(years, ['braemar', 'kelmont'])
     expect(series.map((s) => s.key)).toEqual([
-      seriesKey('sobeys', '2025'),
-      seriesKey('sobeys', '2026'),
-      seriesKey('walmart', '2025'),
-      seriesKey('walmart', '2026'),
+      seriesKey('braemar', '2025'),
+      seriesKey('braemar', '2026'),
+      seriesKey('kelmont', '2025'),
+      seriesKey('kelmont', '2026'),
     ])
   })
 
   it('keeps each door to its own takings, rather than summing them', () => {
     // The whole point. Summed, this hour is $250; apart, it is $150 and $60.
-    const { rows } = hourlyTrendsSplit(years, ['sobeys', 'walmart'])
+    const { rows } = hourlyTrendsSplit(years, ['braemar', 'kelmont'])
     const at5 = rows.find((r) => r.hour === 17)!
     expect(at5.cells.map((c) => c.revenue)).toEqual([100, 150, 40, 60])
   })
@@ -538,8 +538,8 @@ describe('locations kept apart instead of added together', () => {
       Both walk the same data through the same rule. If they ever disagreed about one
       location, one of them would be wrong about the split of a straddling shift.
     */
-    const split = hourlyTrendsSplit(years, ['sobeys'])
-    const summed = hourlyTrends(years, ['sobeys'])
+    const split = hourlyTrendsSplit(years, ['braemar'])
+    const summed = hourlyTrends(years, ['braemar'])
     expect(split.rows.map((r) => r.cells.map((c) => c.revenue))).toEqual(
       summed.rows.map((r) => r.cells.map((c) => c.revenue)),
     )
@@ -550,15 +550,15 @@ describe('locations kept apart instead of added together', () => {
       event: event('2026'),
       slots: slots('fri', [17, 18]),
       assignments: [
-        shift('early', 'fri-1700', 'sobeys', 'y01'),
-        shift('late', 'fri-1800', 'walmart', 'y02'),
+        shift('early', 'fri-1700', 'braemar', 'y01'),
+        shift('late', 'fri-1800', 'kelmont', 'y02'),
       ],
       jars: [
-        jar({ id: 'j1', locationId: 'sobeys', assignmentId: 'early', assignmentIds: ['early'], amount: 100 }),
-        jar({ id: 'j2', locationId: 'walmart', assignmentId: 'late', assignmentIds: ['late'], amount: 80 }),
+        jar({ id: 'j1', locationId: 'braemar', assignmentId: 'early', assignmentIds: ['early'], amount: 100 }),
+        jar({ id: 'j2', locationId: 'kelmont', assignmentId: 'late', assignmentIds: ['late'], amount: 80 }),
       ],
     }
-    const { rows } = hourlyTrendsSplit([lateOpener], ['sobeys', 'walmart'])
+    const { rows } = hourlyTrendsSplit([lateOpener], ['braemar', 'kelmont'])
 
     // Both hours appear, and the door that was shut reads as shut.
     expect(rows.map((r) => r.hour)).toEqual([17, 18])
@@ -571,20 +571,20 @@ describe('locations kept apart instead of added together', () => {
     const only: EventData = {
       event: event('2026'),
       slots: slots('fri', [17, 18]),
-      assignments: [shift('a', 'fri-1700', 'sobeys', 'y01')],
-      jars: [jar({ id: 'j', locationId: 'sobeys', assignmentId: 'a', assignmentIds: ['a'], amount: 100 })],
+      assignments: [shift('a', 'fri-1700', 'braemar', 'y01')],
+      jars: [jar({ id: 'j', locationId: 'braemar', assignmentId: 'a', assignmentIds: ['a'], amount: 100 })],
     }
-    const { rows } = hourlyTrendsSplit([only], ['sobeys', 'walmart'])
-    const walmartCell = rows.find((r) => r.hour === 17)!.cells[1]!
-    expect(walmartCell.ran).toBe(false)
-    expect(walmartCell.revenuePerHour).toBeNull()
+    const { rows } = hourlyTrendsSplit([only], ['braemar', 'kelmont'])
+    const kelmontCell = rows.find((r) => r.hour === 17)!.cells[1]!
+    expect(kelmontCell.ran).toBe(false)
+    expect(kelmontCell.revenuePerHour).toBeNull()
   })
 
   it('keeps the order the locations were given', () => {
     // Which is the order the year works them, on the screen that picked them.
-    const { series } = hourlyTrendsSplit(years, ['walmart', 'sobeys'])
+    const { series } = hourlyTrendsSplit(years, ['kelmont', 'braemar'])
     expect(series.map((s) => s.locationId)).toEqual([
-      'walmart', 'walmart', 'sobeys', 'sobeys',
+      'kelmont', 'kelmont', 'braemar', 'braemar',
     ])
   })
 
@@ -595,7 +595,7 @@ describe('locations kept apart instead of added together', () => {
   it('gives every row a cell for every column', () => {
     // A chart reads these positionally, so a short row would silently shift every value in
     // it into the wrong series.
-    const { series, rows } = hourlyTrendsSplit(years, ['sobeys', 'walmart'])
+    const { series, rows } = hourlyTrendsSplit(years, ['braemar', 'kelmont'])
     for (const row of rows) expect(row.cells).toHaveLength(series.length)
   })
 })
@@ -608,10 +608,10 @@ describe('rearranging a split row into stacks', () => {
     wrong without saying so.
   */
   const series = [
-    { key: seriesKey('sobeys', '2025'), eventId: '2025', locationId: 'sobeys' },
-    { key: seriesKey('sobeys', '2026'), eventId: '2026', locationId: 'sobeys' },
-    { key: seriesKey('walmart', '2025'), eventId: '2025', locationId: 'walmart' },
-    { key: seriesKey('walmart', '2026'), eventId: '2026', locationId: 'walmart' },
+    { key: seriesKey('braemar', '2025'), eventId: '2025', locationId: 'braemar' },
+    { key: seriesKey('braemar', '2026'), eventId: '2026', locationId: 'braemar' },
+    { key: seriesKey('kelmont', '2025'), eventId: '2025', locationId: 'kelmont' },
+    { key: seriesKey('kelmont', '2026'), eventId: '2026', locationId: 'kelmont' },
   ]
   const events = [{ eventId: '2025' }, { eventId: '2026' }]
 
@@ -627,14 +627,14 @@ describe('rearranging a split row into stacks', () => {
     day: 'fri' as const,
     hour: 17,
     label: 'Fri 5:00 PM',
-    // sobeys 2025, sobeys 2026, walmart 2025, walmart 2026
+    // braemar 2025, braemar 2026, kelmont 2025, kelmont 2026
     cells: [cell(100), cell(150), cell(40), cell(60)],
   }
 
   it('groups by year and bands by location', () => {
     expect(stackBands(row, series, events, 'revenue')).toEqual([
-      [100, 40], // 2025: sobeys, walmart
-      [150, 60], // 2026: sobeys, walmart
+      [100, 40], // 2025: braemar, kelmont
+      [150, 60], // 2026: braemar, kelmont
     ])
   })
 

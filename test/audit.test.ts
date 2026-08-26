@@ -98,8 +98,8 @@ describe('reading the log back', () => {
   })
 
   it('names who did it', () => {
-    expect(describeEntry(entry({ id: 'x', at: 1, summary: 'Counted jar 12 at Sobeys' })))
-      .toBe('Counted jar 12 at Sobeys — updated by Devin')
+    expect(describeEntry(entry({ id: 'x', at: 1, summary: 'Counted jar 12 at Braemar' })))
+      .toBe('Counted jar 12 at Braemar — updated by Devin')
   })
 
   it('falls back to the uid when there is no name to show', () => {
@@ -117,7 +117,7 @@ describe('reading the log back', () => {
  * something years later; a reader wants names.
  */
 const NAMES = {
-  location: (id: string) => (id === 'sobeys' ? 'Sobeys' : undefined),
+  location: (id: string) => (id === 'braemar' ? 'Braemar' : undefined),
   person: (id: string) => (id === 'y01' ? 'Elliot R' : undefined),
   slot: (id: string) => (id === 'fri-1700' ? 'Fri 5:00 PM' : undefined),
   user: (uid: string) => (uid === 'u-devin' ? 'devin@example.org' : undefined),
@@ -129,7 +129,7 @@ const removal = (): AuditEntry => ({
   summary: 'Removed a shift from the board',
   changes: [
     { field: 'personId', from: 'y01', to: '—' },
-    { field: 'locationId', from: 'sobeys', to: '—' },
+    { field: 'locationId', from: 'braemar', to: '—' },
     { field: 'slotId', from: 'fri-1700', to: '—' },
     { field: 'status', from: 'planned', to: '—' },
   ],
@@ -138,7 +138,7 @@ const removal = (): AuditEntry => ({
 describe('saying which shift it was', () => {
   it('names the person, the place and the hour', async () => {
     const { subjectOf } = await import('../src/domain/audit')
-    expect(subjectOf(removal(), NAMES)).toBe('Elliot R · Sobeys · Fri 5:00 PM')
+    expect(subjectOf(removal(), NAMES)).toBe('Elliot R · Braemar · Fri 5:00 PM')
   })
 
   it('falls back to the id when something has since been renamed away', async () => {
@@ -153,7 +153,7 @@ describe('saying which shift it was', () => {
       slot: () => undefined,
       user: () => undefined,
     }
-    expect(subjectOf(removal(), empty)).toBe('y01 · sobeys · fri-1700')
+    expect(subjectOf(removal(), empty)).toBe('y01 · braemar · fri-1700')
   })
 
   it('says nothing when an entry is not about a shift', async () => {
@@ -164,7 +164,7 @@ describe('saying which shift it was', () => {
 
   it('reads a value through the right lookup for its field', async () => {
     const { readableValue } = await import('../src/domain/audit')
-    expect(readableValue('locationId', 'sobeys', NAMES)).toBe('Sobeys')
+    expect(readableValue('locationId', 'braemar', NAMES)).toBe('Braemar')
     expect(readableValue('personId', 'y01', NAMES)).toBe('Elliot R')
     // Not everything is an id. An amount is an amount.
     expect(readableValue('amount', '180', NAMES)).toBe('180')

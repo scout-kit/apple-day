@@ -48,7 +48,7 @@ export interface OrphanIssue {
 /**
  * Split a shift id back into the three things it was built from.
  *
- * `fri-1700_sobeys-640-parkside-drive_p-alan-turing-cubs`. Slugs use dashes and never
+ * `fri-1700_braemar-640-linden-drive_p-alan-turing-cubs`. Slugs use dashes and never
  * underscores, so the three parts are unambiguous — but an id that was supplied by hand
  * rather than generated may not follow the shape at all, hence the null.
  */

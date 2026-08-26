@@ -27,7 +27,7 @@ const SLOTS: Slot[] = [
 const shift = (id: string, slotId: string, personId: string): Assignment => ({
   id,
   slotId,
-  locationId: 'sobeys',
+  locationId: 'braemar',
   personId,
   status: 'checkedIn',
   whereabouts: 'back',
@@ -38,7 +38,7 @@ const shift = (id: string, slotId: string, personId: string): Assignment => ({
 const jar = (over: Partial<Jar> & { id: string }): Jar => ({
   jarNumber: 1,
   day: 'fri',
-  locationId: 'sobeys',
+  locationId: 'braemar',
   personId: 'p1',
   assignmentId: 'a1', assignmentIds: ['a1'],
   status: 'counted',
