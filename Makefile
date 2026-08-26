@@ -51,8 +51,17 @@ help: ## List available targets
 doctor: ## Check that the local prerequisites are present
 	@ok=1; \
 	if command -v node >/dev/null; then \
-	  echo "  node      $$(node -v)"; \
-	else echo "  node      MISSING — install Node 20+"; ok=0; fi; \
+	  if node -e "const[a,b]=process.versions.node.split('.').map(Number);process.exit(((a===20&&b>=19)||(a===22&&b>=13)||a>=24)?0:1)"; then \
+	    echo "  node      $$(node -v)"; \
+	  else \
+	    echo "  node      $$(node -v)  UNSUPPORTED"; \
+	    echo "            This project needs $$(node -p "require('./package.json').engines.node" 2>/dev/null || echo '^20.19 || ^22.13 || >=24')."; \
+	    echo "            An unsupported one does not fail on install — it fails much later,"; \
+	    echo "            as two dozen storage tests with nothing pointing at Node."; \
+	    echo "            'nvm use' picks the version in .nvmrc."; \
+	    ok=0; \
+	  fi; \
+	else echo "  node      MISSING — see .nvmrc"; ok=0; fi; \
 	if command -v java >/dev/null; then \
 	  echo "  java      $$(java -version 2>&1 | head -1 | sed 's/.*version //;s/\"//g')  (Firestore emulator)"; \
 	else echo "  java      MISSING — the Firestore emulator will not start without a JDK 11+"; ok=0; fi; \

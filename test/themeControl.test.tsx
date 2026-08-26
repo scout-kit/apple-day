@@ -259,3 +259,57 @@ describe('the rules suite only talks to a Firestore emulator', () => {
     expect(target.slice(0, target.indexOf('\n\n'))).toMatch(/lsof -i:/)
   })
 })
+
+describe('the Node this project runs on', () => {
+  /*
+    An unsupported Node does not announce itself. It installs, it builds, and then jsdom
+    mis-handles web storage and two dozen tests fail with nothing pointing at the cause —
+    which is exactly how a day went.
+
+    `>=20` was the trap: 20.10, 21.x and 22.11 all satisfy it and all break jsdom. The range
+    now comes from what the dependencies actually ask for.
+  */
+  const ENGINES = JSON.parse(readFileSync('package.json', 'utf8')).engines.node as string
+  const MAKEFILE = readFileSync('Makefile', 'utf8')
+
+  /** `make doctor` checks the version inline, so it needs no package to run. */
+  const doctorAccepts = (version: string): boolean => {
+    const [a, b] = version.split('.').map(Number) as [number, number]
+    return (a === 20 && b >= 19) || (a === 22 && b >= 13) || a >= 24
+  }
+
+  it('asks for what the dependencies ask for, not a round number', () => {
+    expect(ENGINES).toBe('^20.19.0 || ^22.13.0 || >=24.0.0')
+    expect(ENGINES, 'a bare >=20 lets 20.10 and 22.11 through').not.toBe('>=20')
+  })
+
+  it('agrees with the check make doctor runs', () => {
+    // The two are written separately — doctor cannot depend on a package to do this, since
+    // a missing one would make it call every version unsupported.
+    const cases: [string, boolean][] = [
+      ['20.10.0', false], ['20.19.0', true], ['20.19.6', true],
+      ['21.7.3', false],
+      ['22.11.0', false], ['22.13.0', true], ['22.21.1', true],
+      ['23.5.0', false],
+      ['24.0.0', true], ['24.12.0', true], ['25.9.0', true],
+    ]
+    for (const [version, wanted] of cases) {
+      expect(doctorAccepts(version), `node ${version}`).toBe(wanted)
+    }
+  })
+
+  it('is checked by doctor at all, and refused rather than warned about', () => {
+    expect(MAKEFILE).toMatch(/UNSUPPORTED/)
+    expect(MAKEFILE).toMatch(/process\.versions\.node/)
+  })
+
+  it('is enforced by npm, so a wrong one cannot even install', () => {
+    // `engines` alone is advisory: npm prints a warning nobody reads and installs anyway.
+    expect(readFileSync('.npmrc', 'utf8')).toMatch(/engine-strict\s*=\s*true/)
+  })
+
+  it('names one version to use, so nobody has to read a range', () => {
+    expect(readFileSync('.nvmrc', 'utf8').trim()).toMatch(/^\d+$/)
+    expect(doctorAccepts(`${readFileSync('.nvmrc', 'utf8').trim()}.0.0`)).toBe(true)
+  })
+})

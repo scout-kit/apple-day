@@ -12,7 +12,10 @@ publish them by pointing GitHub Pages at the `docs/` folder on the default branc
 
 ## Getting started
 
-Node 20+ and a JDK 11+ — the Firestore emulator needs Java. `make doctor` checks both.
+A JDK 11+ — the Firestore emulator needs Java — and a Node that `package.json` accepts:
+`^20.19 || ^22.13 || >=24`. Not simply "20 or later": 20.10, 21.x and 22.11 all look recent
+enough and all break jsdom, which shows up as storage tests failing rather than as anything
+mentioning Node. `make doctor` checks both, and `npm` refuses to install on the wrong one.
 
 `.nvmrc` names the version this is built and tested against, so `nvm use` picks it up.
 Dependencies install with `npm ci` rather than `npm install`: the second is free to resolve
