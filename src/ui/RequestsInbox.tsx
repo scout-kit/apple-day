@@ -11,8 +11,8 @@ import { useRequestActions } from './RequestActions'
  * the jar count — and answering a volunteer properly means reading what they said and often
  * ringing a parent, which is not a thing to start doing over the top of a jar being counted.
  *
- * Nothing is rendered when nothing is waiting. It used to say "No requests waiting · 4
- * already dealt with", which is a permanent box telling somebody there is nothing to do.
+ * Nothing is rendered when nothing is waiting. "No requests waiting · 4 already dealt with"
+ * is a permanent box telling somebody there is nothing to do.
  */
 export function RequestsInbox(): ReactNode {
   const { role } = useSession()

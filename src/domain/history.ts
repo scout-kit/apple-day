@@ -113,10 +113,9 @@ export const ALL_EVENTS = 'all'
  * The parts of an event that decide where it sits in a run of years.
  *
  * Deliberately not `EventData`. Which years a lookback covers is answerable from the event
- * list alone — three fields, already in context — and it used to be answered from the fully
- * loaded shifts and jars of every year that had ever run. That meant reading every year in
- * order to display two of them, which is the wrong way round: the selection has to come
- * first so that only the selected years are ever fetched.
+ * list alone — three fields, already in context. Answering it from fully loaded shifts and
+ * jars would mean reading every year that has ever run in order to display two of them. The
+ * selection has to come first, so that only the selected years are ever fetched.
  */
 export interface EventLike {
   id: string

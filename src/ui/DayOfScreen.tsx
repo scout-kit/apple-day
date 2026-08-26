@@ -101,7 +101,7 @@ export function DayOfScreen(): ReactNode {
   /*
     In the address bar, not in React state.
 
-    Opening somebody from the Saturday table and pressing Back used to put you on Friday
+    Otherwise opening somebody from the Saturday table and pressing Back lands on Friday
     with the filters cleared — four button presses from where you were, on the morning you
     can least spare them.
   */

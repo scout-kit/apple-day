@@ -88,11 +88,9 @@ function Details({
       footer={
         <>
           {/*
-            The only Close in the dialog, beyond the header's ✕.
-
-            A dealt-with request used to grow a second one in the body — a `tiny` button
-            wired to an `onDismiss` that did precisely what this does — so the dialog
-            offered two buttons with the same word on them and no way to tell them apart.
+            The only Close in the dialog, beyond the header's ✕. A second one in the body for
+            a request already dealt with would put the same word on two buttons with nothing
+            to tell them apart.
           */}
           <button onClick={onClose}>Close</button>
           {!dealtWith && (

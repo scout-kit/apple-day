@@ -14,10 +14,10 @@ import type { Person } from '../domain/types'
  * So: a small mark, and the reason on hover. `title` for the mouse, `aria-label` for
  * everything else — a glyph with no accessible name is furniture to a screen reader.
  *
- * The number itself is not on the table. It used to be, under the name, which put parents'
- * phone numbers on a screen that is open on a table all day in a shop doorway for the sake
- * of a call almost nobody makes. The name links to the person's page, and the number is
- * there. Only the absence is worth a place on the board.
+ * The number itself is not on the table. Putting it under the name would leave parents'
+ * phone numbers on a screen that sits open in a shop doorway all day, for the sake of a call
+ * almost nobody makes. The name links to the person's page, and the number is there. Only
+ * the absence is worth a place on the board.
  */
 export function ContactFlag({
   person,

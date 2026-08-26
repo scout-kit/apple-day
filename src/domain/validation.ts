@@ -91,12 +91,12 @@ export function validateSchedule(input: ValidateInput): ScheduleIssue[] {
 
   // ---- scheduled outside what they said they could do ----------------------
   /*
-    Three cases, and two of them used to fall through in silence.
+    Three cases, and an empty list is not one of them.
 
-    Somebody who offered Friday hours and nothing on Saturday has an empty Saturday list,
-    and the check read that as "nothing stated, so nothing to contradict" — so the clearest
-    case there is, a Friday-only volunteer put on a Saturday shift, produced no warning at
-    all. It is the strongest signal on the board, not the weakest.
+    Somebody who offered Friday hours and nothing on Saturday has an empty Saturday list.
+    Reading that as "nothing stated, so nothing to contradict" loses the clearest case there
+    is — a Friday-only volunteer put on a Saturday shift. It is the strongest signal on the
+    board, not the weakest.
 
     Somebody with no signup at all — added by hand, a walk-in, the 2025 archive, which has
     no signups whatsoever — is still skipped, and deliberately. They never stated anything

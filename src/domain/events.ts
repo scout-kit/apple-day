@@ -30,9 +30,9 @@ export function readEvent(id: string, d: Record<string, unknown>): AppleDayEvent
   /*
     The name settles the year when it says one.
 
-    `year` is written once, when the event is created, and nothing used to keep it in step
-    with a name edited afterwards. So an event renamed to "Apple Day 2025" carried on saying
-    2026 — sorting under the wrong year, and titling every screen that shows it. Reading it
+    `year` is written once, when the event is created, so nothing else keeps it in step with
+    a name edited afterwards. Left alone, an event renamed to "Apple Day 2025" goes on saying
+    2026 — sorting under the wrong year and titling every screen that shows it. Reading it
     from the name corrects that on sight rather than waiting for somebody to save the event.
 
     Only when the name says: "Spring bottle drive" keeps whatever ordering it was given.

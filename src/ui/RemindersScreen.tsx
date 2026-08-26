@@ -125,9 +125,9 @@ export function RemindersScreen(): ReactNode {
   /*
     Two, because they happen in two places and one of them is off screen.
 
-    A failure to connect used to be reported at the top of the page, four cards above the
-    button that caused it — which looked exactly like the button doing nothing. A failure
-    while sending was worse: it rendered *behind* the open dialog.
+    A failure to connect belongs beside the button that caused it, not four cards up the
+    page where it reads as the button doing nothing. A failure while sending belongs in the
+    dialog, or it renders behind it.
   */
   const [setupError, setSetupError] = useState<string | null>(null)
   const [sendError, setSendError] = useState<string | null>(null)
@@ -188,8 +188,8 @@ export function RemindersScreen(): ReactNode {
     Everybody the current choices reach.
 
     One function, called two ways: memoized for the screen, and again by hand at the moment
-    send is pressed. It used to be written out twice — the same six lines in two places,
-    which is how the two quietly stop agreeing about who a reminder is for.
+    send is pressed. Two copies of these six lines is how the screen and the send quietly
+    stop agreeing about who a reminder is for.
   */
   const build = (): ReminderAudience =>
     buildAudience(selection, audience, {
@@ -244,8 +244,7 @@ export function RemindersScreen(): ReactNode {
   /*
     Who has already had this exact reminder, from the live ledger.
 
-    It used to be a point-read per person when the dialog opened, which answered only the
-    narrow question and answered it once. A listener answers the same thing for free, stays
+    A listener rather than a read per person when the dialog opens: it costs the same, stays
     current while the dialog is open, and is what lets the list behind it be marked too.
   */
   const sentThis = useMemo(
@@ -383,8 +382,8 @@ export function RemindersScreen(): ReactNode {
       <div className="card">
         <h2 style={{ marginTop: 0 }}>Who it goes to</h2>
 
-        {/* Only the two controls that answer that, so nothing shifts when the second
-            appears. The wording picker used to sit in this row and jump sideways. */}
+        {/* Only the two controls that answer that, so nothing shifts sideways when the
+            second appears. The wording picker belongs in its own row. */}
         <div className="row">
           <label style={{ flex: '0 1 13rem' }}>
             Covering
@@ -432,8 +431,8 @@ export function RemindersScreen(): ReactNode {
         {/*
           The label is the phrase and nothing else.
 
-          It used to wrap the explanation underneath it too, so the whole paragraph was a
-          click target — reading the reason toggled the thing it was explaining.
+          Wrapping the explanation underneath makes the whole paragraph a click target, so
+          reading the reason toggles the thing it is explaining.
         */}
         {/*
           The app's own toggle, which is what the other four of these use.

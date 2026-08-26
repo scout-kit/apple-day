@@ -572,10 +572,9 @@ export function locationHourGrid(
     Rows keep the order they were given.
 
     That is the year's own running order — the priority the organizers set by dragging the
-    Locations list about — so the grid reads down in the same sequence as the schedule
-    board and every other list in the app. Sorting it by takings instead, which it used to
-    do, meant the one screen you would compare against the board was the one that disagreed
-    with it about what order the locations come in.
+    Locations list about — so the grid reads down in the same sequence as the schedule board
+    and every other list in the app. Sorting by takings instead would make the one screen you
+    compare against the board the one that disagrees with it about the order of locations.
 
     Anything that appears only in the data follows at the end: a jar recorded against a
     location dropped from this year still has to show up, or the grid stops matching the

@@ -18,11 +18,10 @@ import { LocationField } from './PickerField'
  * Everything that makes an event what it is: its dates, its hours, its shift shape, where
  * volunteers report and who they can ring.
  *
- * One component for both creating and editing, which is the point of it existing. Creating
- * used to ask for a name and offer to copy last year's locations, and nothing else — every
- * other setting could only be reached by creating the event, then opening it again in a
- * second, much larger dialog. Two forms over one shape is also two forms to keep in step,
- * and the smaller one had already fallen a long way behind.
+ * One component for both creating and editing, which is the point of it existing. A smaller
+ * create form — a name, and copy last year's locations — means every other setting can only
+ * be reached by creating the event and opening it again in a second, much larger dialog. Two
+ * forms over one shape is also two forms to keep in step.
  *
  * It holds no state. The draft lives with whoever opened the form, so creating can throw it
  * away and editing can compare it against what was stored.
@@ -439,10 +438,10 @@ export function EventSettings({
           {/*
             Said here rather than discovered afterwards.
 
-            A contact with no phone and no email is dropped on save — rightly, since
-            this is printed on a pass as who to ring and a name on its own tells a
-            parent nothing. But it used to be dropped in silence: you typed a name,
-            pressed save, and it was simply gone with no word about why.
+            A contact with no phone and no email is dropped on save — rightly, since this is
+            printed on a pass as who to ring and a name on its own tells a parent nothing.
+            Dropping it in silence is the part worth avoiding: you type a name, press save,
+            and it is gone with no word about why.
           */}
           {contact.name.trim() !== '' && !isReachable(contact) && (
             <p className="small" style={{ margin: '0.15rem 0 0', color: 'var(--warn)' }}>

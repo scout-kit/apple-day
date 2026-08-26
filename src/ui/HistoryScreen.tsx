@@ -135,10 +135,9 @@ export function HistoryScreen(): ReactNode {
   /*
     One location, or all of them added together.
 
-    It used to be a checkbox per location, and every combination summed. That answered "what
-    is the shape of the evening across these six doors", which is a question nobody was
-    asking — the one being asked was "what does five o'clock at Braemar do, year on year",
-    and a sum of six locations cannot be read that way.
+    Summing every combination answers "what is the shape of the evening across these six
+    doors", which is not the question anybody asks. The question is "what does five o'clock
+    at Braemar do, year on year", and a sum of six locations cannot be read that way.
 
     So several may be picked and they are kept apart — one set of bars per door, per year.
     Nothing picked still means every location added together, which is the shape of the

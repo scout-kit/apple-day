@@ -5,9 +5,9 @@ import type { SupportContact } from '../domain/support'
 /**
  * Who to contact on the day, as shown to a volunteer or a parent.
  *
- * On a volunteer's pass. It was shared with the public schedule, which is gone.
- * Phone numbers are `tel:` links and emails `mailto:` links, because this is read on a phone
- * in a car park with one bar of signal and nobody is retyping a number.
+ * On a volunteer's pass. Phone numbers are `tel:` links and emails `mailto:` links, because
+ * this is read on a phone in a car park with one bar of signal and nobody is retyping a
+ * number.
  */
 export function SupportCard({
   contacts,

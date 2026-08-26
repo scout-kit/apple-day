@@ -261,10 +261,10 @@ export function LocationScreen(): ReactNode {
       {/*
         Everything else the record holds.
 
-        The card used to show the contact, the insurance and the notes, and stopped there —
-        so the opening hours, which decide whether a shift can even be staffed, and the past
-        names, which are what keep four years of takings on one row, were on the page's own
-        subject and nowhere on the page.
+        The contact, the insurance and the notes, and also the opening hours and the past
+        names. Those last two are easy to leave off and both matter: the hours decide whether
+        a shift can be staffed at all, and the past names are what keep four years of takings
+        on one row.
       */}
       <div className="card">
         <h2>Arranging it</h2>

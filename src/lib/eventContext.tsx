@@ -251,9 +251,9 @@ export function EventProvider({ children }: { children: ReactNode }): ReactNode 
       /*
         The whole event in one write.
 
-        It used to be created with defaults and then saved again from the editor, because
-        the create form only asked for a name. That is two entries in the audit log for one
-        act, and a window in between where the event existed with hours nobody chose.
+        Defaults written first and edited into shape afterwards would be two entries in the
+        audit log for one act, with a window in between where the event exists with hours
+        nobody chose.
       */
       const { id: _ignored, ...rest } = draft
       batch.set(

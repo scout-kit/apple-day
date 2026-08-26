@@ -118,10 +118,10 @@ export function AuditScreen(): ReactNode {
   /*
     Everything by default.
 
-    The log used to read only this event's entries, and the library, the sections and the
-    access list are written with no event against them — so a shop being renamed, or
-    somebody being let in, was on the record and on no screen. Narrowing is offered; it is
-    not the starting point, because you cannot narrow to something you do not know is there.
+    The library, the sections and the access list are written with no event against them, so
+    reading only this event's entries hides a shop being renamed or somebody being let in —
+    on the record, and on no screen. Narrowing is offered; it is not the starting point,
+    because you cannot narrow to something you do not know is there.
   */
   const [scope, setScope] = useUrlState('scope')
   const shown: AuditScope =

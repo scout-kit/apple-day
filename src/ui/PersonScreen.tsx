@@ -175,9 +175,8 @@ export function PersonScreen(): ReactNode {
               The same editor the roster uses, not a second one.
 
               This is the screen an organizer is on when a parent rings up, so it is where a
-              misspelled name or a wrong number gets noticed — and it used to be the one
-              place you could not fix either. The only way was back to the roster to find
-              the row again.
+              misspelled name or a wrong number gets noticed, and it should be where it gets
+              fixed — not back on the roster, hunting for the row again.
             */}
             <button onClick={() => setEditing(true)}>Edit details</button>
           </div>
@@ -196,7 +195,7 @@ export function PersonScreen(): ReactNode {
               {person.parentEmail}
             </a>
           )}
-          {/* This warning used to offer nowhere to go. Pressing it opens the editor. */}
+          {/* The warning is the button: noticing it and fixing it are one press. */}
           {!person.parentName && !person.parentPhone && !person.parentEmail && (
             <button className="tiny" onClick={() => setEditing(true)}>
               <span style={{ color: 'var(--warn)' }}>

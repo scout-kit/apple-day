@@ -97,10 +97,9 @@ export const paths = {
   /**
    * What the last publish wrote, so the app can tell whether the board has moved on since.
    *
-   * This used to live on the public schedule document, which was world-readable and is now
-   * gone with the page it served. Under the event instead, where only the roster can read
-   * it — and in its own subcollection rather than on the event itself, because publishing
-   * is organizer work and the event document is admin-only.
+   * Under the event, where only the roster can read it, and in its own subcollection rather
+   * than on the event document — publishing is organizer work and the event itself is
+   * admin-only.
    */
   publishState: (eventId: string) => doc(db, 'events', eventId, 'meta', 'publish'),
 

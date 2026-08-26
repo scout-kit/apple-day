@@ -191,9 +191,9 @@ export function IssueBanner({
   /*
     Nothing at all when there is nothing wrong.
 
-    This used to say "No conflicts." — a permanent green bar reporting the ordinary case,
-    at the top of the screen with the least room to spare. The board itself is the evidence
-    that it is fine; a banner is only worth its space when it has something to say.
+    "No conflicts." is a permanent green bar reporting the ordinary case, at the top of the
+    screen with the least room to spare. The board itself is the evidence that it is fine; a
+    banner is only worth its space when it has something to say.
   */
   if (issues.length === 0) return null
 

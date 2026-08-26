@@ -63,13 +63,12 @@ export function usePublishInput(): PublishInput {
 /**
  * Whether the published schedule still matches the board.
  *
- * One document. It used to be four subscriptions — every location, every person, every
- * assignment — because it worked the fingerprint out on the spot. That is fine on the
- * board, which holds all of it anyway; it was not fine in the bar, which is on all
- * seventeen screens. Opening the checklist read a few hundred documents to decide whether
- * to draw one small link.
+ * One document, and one string compared against another.
  *
- * The board records the hash instead (see `PublishWatch`), so this compares two strings.
+ * Working the fingerprint out here would mean four subscriptions — every location, every
+ * person, every assignment. That is free on the board, which holds all of it anyway, and far
+ * from free in the bar, which is on all seventeen screens. So the board records the hash as
+ * it goes (see `PublishWatch`) and this reads it.
  */
 export function usePublishStatus(): { status: PublishStatus; publishedAt: number } {
   const state = usePublishState()

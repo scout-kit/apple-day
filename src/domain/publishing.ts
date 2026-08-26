@@ -12,8 +12,8 @@ import type { Assignment, Person, ScheduledLocation, Slot } from './types'
  * document reachable without an account, so what goes onto one has to be testable without
  * standing up Firebase. A bug here is a privacy incident rather than a display glitch.
  *
- * There was a redacted public schedule too, which is where the redaction lived. It is gone,
- * and with it the only thing that was ever served to somebody with no link at all.
+ * Nothing here is served to somebody holding no link: a pass reaches exactly one person's
+ * own shifts, and there is no public listing to redact.
  *
  * The Firestore writes that consume these live in `src/lib/publish.ts`.
  */
@@ -170,10 +170,8 @@ export function publishedFingerprint(input: PublishInput): string {
   /*
     Passes and what is printed on them, and nothing else.
 
-    It used to hash the public schedule rows and the event's link as well. Both are gone
-    with the public page: a pass is now the only thing a volunteer ever reads, so it is the
-    only thing worth noticing a change in. The event's link still names the event in the
-    app, but it no longer reaches anybody outside it.
+    A pass is the only thing a volunteer ever reads, so it is the only thing worth noticing a
+    change in. The event's link names the event inside the app and reaches nobody outside it.
   */
   return hash(
     JSON.stringify({

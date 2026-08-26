@@ -89,9 +89,8 @@ export function PeopleScreen(): ReactNode {
   /*
     Held for adding somebody, and nothing else.
 
-    It used to open for editing too, from a button on the row. That is gone — a person is
-    edited on their own page — so the separate `adding` flag it was paired with went with
-    it: if this is set, somebody is being added.
+    Editing happens on the person's own page, so this needs no companion flag saying which
+    of the two it is: if it is set, somebody is being added.
   */
   const [newPerson, setNewPerson] = useState<Person | null>(null)
   const [writeError, setWriteError] = useState<Error | null>(null)

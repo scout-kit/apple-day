@@ -192,10 +192,9 @@ export function MoneyScreen(): ReactNode {
   /**
    * Every location that saw money or hours, ranked ones first.
    *
-   * The table used to render only the ranked rows, so a location with money but no staffed
-   * hours appeared in the warning above and nowhere else — its total was inside the figure
-   * at the top of the screen but missing from the list that is supposed to explain it.
-   * Unrankable rows now sit at the end with no rate rather than being dropped.
+   * Unrankable rows sit at the end with no rate rather than being dropped. A location with
+   * money but no staffed hours cannot be ranked, and leaving it out puts its total inside
+   * the figure at the top of the screen and nowhere in the list that explains it.
    */
   const allTableRows = useMemo(
     () => [...report.ranked, ...report.revenueWithoutHours],

@@ -37,11 +37,11 @@ import { RequestsInbox } from './RequestsInbox'
  * which is the fix for the workbook's jar sheet, where the location and the youth were
  * written again at counting time from memory and no two rows spelled a name the same way.
  *
- * Everything is still editable here, pre-filled with what the jar already says. A jar
- * arriving at the table knows where it has been *usually*; it does not know that somebody
- * grabbed the wrong one, or that the money was recorded against the wrong shop. Correcting
- * that used to mean deleting the record and entering it again, which loses the audit trail
- * for the sake of a typo.
+ * Everything is editable here, pre-filled with what the jar already says. A jar arriving at
+ * the table knows where it has been *usually*; it does not know that somebody grabbed the
+ * wrong one, or that the money was recorded against the wrong shop. Without a way to correct
+ * it in place, the only fix is deleting the record and entering it again — which loses the
+ * audit trail for the sake of a typo.
  */
 export function JarsScreen(): ReactNode {
   const { user, role } = useSession()
@@ -79,8 +79,8 @@ export function JarsScreen(): ReactNode {
   /*
     The rest of what a jar says, editable while it is being counted.
 
-    Counting used to take an amount and a method only, so correcting a jar that had been
-    written against the wrong shop meant deleting the record and typing it in again.
+    An amount and a method alone would mean a jar written against the wrong shop can only be
+    fixed by deleting the record and typing it in again.
   */
   const [countLocation, setCountLocation] = useState('')
   const [countPerson, setCountPerson] = useState('')

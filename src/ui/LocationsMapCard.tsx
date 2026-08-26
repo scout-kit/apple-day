@@ -59,10 +59,10 @@ export function LocationsMapCard({
   /*
     Every way out of the dialog goes through here.
 
-    There are four — the ✕, the button in the foot, Escape and the backdrop — and three of
-    them arrive as the dialog's own `onClose`. The fourth used to set `open` directly and so
-    skipped everything else this does, which meant closing by the button left a shop still
-    lit and the dialog reopened highlighting something nobody was pointing at.
+    There are four — the ✕, the button in the foot, Escape and the backdrop — and three
+    arrive as the dialog's own `onClose`. The fourth has to come through here too: setting
+    `open` directly skips the rest of this, and the dialog reopens with a shop still lit that
+    nobody is pointing at.
   */
   const close = (): void => {
     setPointedAt(null)

@@ -17,9 +17,8 @@ export interface HourPoint {
   /**
    * Just the start, for the axis: "5 PM".
    *
-   * An axis tick has about one column of width. Putting the full range there — which is
-   * what it used to do — meant "5:00 PM – 6:00 PM" in fifty pixels, so every label ran
-   * into its neighbours no matter how they were angled.
+   * An axis tick has about one column of width. The full range there means "5:00 PM – 6:00
+   * PM" in fifty pixels, and every label runs into its neighbours however they are angled.
    */
   axisLabel: string
   /** Shown once where the day changes, not under every bar. */

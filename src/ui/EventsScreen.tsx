@@ -79,9 +79,8 @@ export function EventsScreen(): ReactNode {
   /*
     Why the draft cannot be created yet, in the order somebody would hit them.
 
-    Checked while the form is open rather than on the button press. Creating used to accept
-    a name, write the event, and only then say it already existed — by which point the
-    dialog had closed and the message was about work that had not happened.
+    Checked while the form is open rather than on the button press, so the answer arrives
+    while the dialog is still there to act on it.
   */
   const draftProblem = useMemo((): string | null => {
     if (!draft) return null
@@ -93,11 +92,10 @@ export function EventsScreen(): ReactNode {
       joins two years into one.
 
       The id is the dangerous one. The name is the confusing one: two events called the
-      same thing are indistinguishable in every list in the app. And an id that another
-      event already answers to by its link makes both unreachable, since resolution has two
-      candidates and no way to choose. Checking only the id — which is all this used to do
-      — missed both of the others, and missed the first entirely for a year named "Apple
-      Day 2026" sitting under the id "2026".
+      same thing are indistinguishable in every list in the app. And an id another event
+      already answers to by its link makes both unreachable, since resolution has two
+      candidates and no way to choose. All three are checked, because a year named "Apple
+      Day 2026" sits under the id "2026" and only one of those is what anybody typed.
     */
     const wanted = draft.name.trim().toLowerCase()
     const clash = events.find(
@@ -173,8 +171,8 @@ export function EventsScreen(): ReactNode {
     setNote(null)
     try {
       const name = draft.name.trim()
-      // Written once, with everything on the form. It used to be written with defaults and
-      // then edited into shape, which put two entries in the audit log for one act.
+      // Written once, with everything on the form. Defaults first and edits after would put
+      // two entries in the audit log for one act.
       const id = await createEvent(draft)
 
       // Copying last year's location list is the shortcut that makes setting up a new

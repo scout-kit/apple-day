@@ -1,10 +1,9 @@
 /**
  * Which jars to print labels for.
  *
- * The sheet used to be "the first N", which is right the week before the event and wrong
- * every time after it: a tin comes back dented, three labels peel off in the rain, somebody
- * finds two more jars in a cupboard. What you want then is 4, 12 and 17 — not another
- * forty.
+ * "The first N" is right the week before the event and wrong every time after it: a tin
+ * comes back dented, three labels peel off in the rain, somebody finds two more jars in a
+ * cupboard. What you want then is 4, 12 and 17 — not another forty.
  *
  * One field takes both, because they are the same question asked twice: `1-40` for the
  * first run, `12,17,4` for the repairs, `1-10, 15, 20-22` when it is both.

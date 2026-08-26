@@ -514,11 +514,11 @@ function ScopeRedirect({ screen }: { screen: string }): ReactNode {
 /**
  * A screen that already holds the schedule, with the re-publish flag's bookkeeping beside it.
  *
- * The flag lives in the bar, on every screen. Working out whether the board has moved since
- * it was published used to mean subscribing to every location, person and assignment to
- * hash them — so opening the checklist read a few hundred documents to decide whether to
- * draw one small link. The hash is recorded here instead, by the screens that hold that
- * data anyway, and everywhere else compares two strings on one document.
+ * The flag lives in the bar, on every screen, so working out whether the board has moved
+ * since it was published has to be cheap. Hashing it on the spot would mean subscribing to
+ * every location, person and assignment — a few hundred documents read to decide whether to
+ * draw one small link. The hash is recorded here instead, by the screens that hold that data
+ * anyway, and everywhere else compares two strings on one document.
  *
  * Wrapped at the route rather than called inside each screen, so a screen's own tests do
  * not have to know this exists in order to render it.
@@ -569,9 +569,9 @@ export function App(): ReactNode {
   return (
     <Routes>
       {/*
-        The only public route left. There was a redacted schedule at /schedule as well —
-        first name and last initial, no contact details — but it is gone, so the one thing
-        reachable without an account is a volunteer's own pass, by a token nobody can guess.
+        Reachable without an account: a volunteer's own pass, by a token nobody can guess,
+        carrying only their own shifts. There is no public schedule of any kind, redacted or
+        otherwise.
       */}
       <Route path="/p/:token" element={<PassPage />} />
       {/*

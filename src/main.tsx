@@ -14,10 +14,10 @@ if (!root) throw new Error('Missing #root')
 
 createRoot(root).render(
   <StrictMode>
-    {/* The boundary is outside everything: a provider throwing on startup is exactly the
-        case that used to leave nothing on screen at all. The theme is next, because what a
-        page looks like does not depend on who is signed in — and a volunteer's pass, which
-        has no shell and no session, needs it just the same. */}
+    {/* The boundary is outside everything, because a provider throwing on startup is the
+        case that otherwise leaves nothing on screen at all. The theme is next: what a page
+        looks like does not depend on who is signed in, and a volunteer's pass, which has no
+        shell and no session, needs it just the same. */}
     <ErrorBoundary>
       <ThemeProvider>
         <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>

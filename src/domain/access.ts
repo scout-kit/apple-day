@@ -1,9 +1,9 @@
 /**
  * Who may use the app, and how that is decided.
  *
- * Granting access used to mean the Firebase console: find the person under Authentication,
- * copy their uid, create a document by hand. That is a job nobody wants at nine o'clock on
- * a Friday when a leader cannot get in.
+ * Granting access from inside the app, rather than from the Firebase console — find the
+ * person under Authentication, copy their uid, create a document by hand. That is not a job
+ * anybody wants at nine o'clock on a Friday when a leader cannot get in.
  *
  * So there are two records. A **roster entry** is keyed by Firebase uid and is what actually
  * grants access. An **invitation** is keyed by a code nobody can guess, and holding that code

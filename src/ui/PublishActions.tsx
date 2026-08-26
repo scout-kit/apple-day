@@ -9,15 +9,13 @@ import { RepublishNotice, usePublishInput } from './PublishNotice'
 /**
  * Publishing, on the screen the schedule is built on.
  *
- * There used to be a Publish screen. Almost everything on it had found a better home —
- * a volunteer's link and QR live on their own page, the jar labels beside the jars, and
- * the "no contact details" warning was already on the roster where the details are
- * entered. What was left was two buttons, and then one: the public schedule it opened is
- * gone too, so publishing now writes passes and nothing else.
+ * Here rather than on a screen of its own, because everything a Publish screen would hold
+ * belongs somewhere better: a volunteer's link and QR on their own page, the jar labels
+ * beside the jars, the "no contact details" warning on the roster where the details are
+ * entered. What is left is one button, and it belongs where the thing it publishes is built.
  *
- * The two warnings kept here are not repeated anywhere: neither is about the schedule, but
- * both are about to be baked into every pass, and this is the moment they still can be
- * fixed.
+ * The two warnings here are not repeated anywhere. Neither is about the schedule, but both
+ * are about to be baked into every pass, and this is the last moment they can be fixed.
  *
  * There was a mail-merge CSV here as well, the only route from this app to a parent's
  * inbox — there are no Cloud Functions on the free plan, so nothing here can send anything.
@@ -36,10 +34,9 @@ export function PublishActions(): ReactNode {
   /*
     The confirmation goes away by itself.
 
-    It used to say "Published 47 passes" and stay there until the screen was left, so the
-    board carried a stale claim about something that had already happened — and the number,
-    which nobody had asked for, read as though it were a thing to check. Saying it happened
-    is the whole job, and once it has been read there is nothing left to say.
+    Saying it happened is the whole job, and once it has been read there is nothing left to
+    say. A line that stays until the screen is left leaves the board carrying a stale claim,
+    and a count nobody asked for reads as a thing to check.
   */
   useEffect(() => {
     if (!justPublished) return

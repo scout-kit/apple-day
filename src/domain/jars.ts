@@ -67,11 +67,10 @@ export function sharesShiftWith(
 /**
  * A shift to move, and where to.
  *
- * The three jar writes — issuing, counting in, taking back — all move shifts, and each one
- * used to decide *which* shifts inside Firebase code that no test could reach. That is how
- * counting in a jar came to move only the first hour of a two-hour trip, leaving a youth on
- * the board as still out with their money already banked. The decision lives here now; the
- * repository only applies it.
+ * The three jar writes — issuing, counting in, taking back — all move shifts, and *which*
+ * shifts is decided here rather than inside Firebase code no test can reach. Get it wrong
+ * there and counting in a jar moves only the first hour of a two-hour trip, leaving a youth
+ * on the board as still out with their money already banked. The repository only applies it.
  */
 export interface ShiftMove {
   assignmentId: string

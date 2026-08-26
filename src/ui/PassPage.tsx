@@ -24,11 +24,10 @@ export function PassPage(): ReactNode {
   const [asking, setAsking] = useState(false)
   const [message, setMessage] = useState('')
   /*
-    What happened to the last request, shown where the button was.
+    What happened to the last request, shown where the button is.
 
-    The confirmation used to render in a note at the top of the page while the button sat at
-    the bottom of a long pass, so sending one looked exactly like nothing happening — the
-    request was recorded and the volunteer had no way to know.
+    A pass is long, and a confirmation at the top of it while the button sits at the bottom
+    reads as nothing happening — the request is recorded and the volunteer cannot tell.
   */
   /** What is being asked for. The list is short and the wording is the volunteer's. */
   const [kind, setKind] = useState<RequestKind>('swap')
@@ -185,10 +184,9 @@ export function PassPage(): ReactNode {
           /*
             One thing being asked, then send.
 
-            This used to be a message box above two buttons — "Ask to swap" and "Can't make
-            it" — so what you were sending depended on which button you happened to press at
-            the end, and a third button beside them said "Cancel", which reads as one of the
-            things you might be asking for rather than a way out of the form.
+            Not a message box above a row of buttons — "Ask to swap", "Can't make it",
+            "Cancel" — where what you send depends on which one you press at the end, and the
+            way out of the form reads as one of the things you might be asking for.
           */
           <div className="stack">
             <label>
