@@ -62,84 +62,270 @@
       for that group and deploys hosting and rules together.
     </p>
 
-    <h2>Aliases and configuration</h2>
+    <h2>The other deploy commands</h2>
 
-    <p>
-      An alias is a short name for a project, listed in <code>.firebaserc</code>. Each one
-      needs a matching <code>.env.&lt;alias&gt;</code> holding that project's Firebase
-      configuration and the address its volunteer links should point at.
-    </p>
-
-    <p>
-      Neither file is committed: they describe one installation rather than the app. Copy
-      <code>.firebaserc.example</code> and <code>.env.example</code> and fill them in. The
-      deploy refuses to run if either is missing, rather than quietly building with whatever
-      configuration it found.
-    </p>
-
-    <pre><code>make deploy-rules GROUP=&lt;alias&gt;   # rules and indexes only
-make deploy-all                   # every alias, one at a time
-make verify                       # every check, without building</code></pre>
+    <pre><code>make deploy-rules GROUP=&lt;alias&gt;   # rules and indexes only, no build
+make deploy-all                   # every alias in .firebaserc, one at a time
+make verify                       # every check, without building or deploying</code></pre>
 
     <h2>Setting up a new project</h2>
 
+    <p>
+      Once through, per group. Every step says where to click, because the Firebase console
+      moves things around and half of these live two levels down a menu.
+    </p>
+
+    <h3>1. Create the Firebase project</h3>
     <ol>
-      <li>Create the Firebase project and add a web app.</li>
-      <li>Create the Firestore database. <strong>Pick the region carefully &mdash; it is
-      permanent.</strong> For a Canadian group, <code>northamerica-northeast2</code>.</li>
-      <li>Enable Google sign-in under Authentication.</li>
-      <li>Copy the web configuration into <code>.env.&lt;alias&gt;</code>, add the alias to
-      <code>.firebaserc</code>, and set the public address volunteer links will use.</li>
-      <li>Deploy.</li>
-      <li>Grant the first admin by hand &mdash; see below.</li>
+      <li>Go to <a href="https://console.firebase.google.com" target="_blank"
+        rel="noreferrer">console.firebase.google.com</a> and press <strong>Create a
+        project</strong>.</li>
+      <li>Name it. The console turns that into a project <em>id</em> — often with digits on
+        the end if the name is taken. <strong>Note the id</strong>, not the name: it is what
+        goes in <code>.firebaserc</code> and <code>.env</code>.</li>
+      <li>Google Analytics is not used. Turn it off or leave it; it makes no difference.</li>
     </ol>
 
-    <h3>The first account</h3>
+    <h3>2. Add a web app to the project</h3>
+    <p>
+      A project has no configuration until an app is registered in it. This is the step that
+      produces the values the app needs, and it is easy to miss because nothing prompts for
+      it.
+    </p>
+    <ol>
+      <li>On the project overview page, find the row of platform icons under the project
+        name and press the <strong>web</strong> one — <code>&lt;/&gt;</code>. If you have
+        left that page: <strong>gear icon (top left, beside Project Overview) → Project
+        settings → General</strong>, then scroll to <strong>Your apps</strong>.</li>
+      <li>Give it a nickname — yours only, it appears nowhere.</li>
+      <li><strong>Do not</strong> tick "Also set up Firebase Hosting" here. The deploy does
+        hosting itself, from the CLI.</li>
+      <li>Press <strong>Register app</strong>. The next screen shows a
+        <code>firebaseConfig</code> block. Leave it open — step 5 needs it.</li>
+    </ol>
+
+    <h3>3. Create the Firestore database</h3>
+    <ol>
+      <li>In the left sidebar, under <strong>Build</strong>, choose
+        <strong>Firestore Database</strong>.</li>
+      <li>Press <strong>Create database</strong>.</li>
+      <li><strong>Pick the location carefully — it cannot be changed afterwards.</strong>
+        For a Canadian group, <code>northamerica-northeast2</code> (Toronto).</li>
+      <li>Start in <strong>production mode</strong> — locked down. The deploy uploads the
+        real rules, and starting locked means there is no window where the database is open
+        to the world.</li>
+    </ol>
+
+    <h3>4. Turn on Google sign-in</h3>
+    <p>
+      Two levels down, and the provider is a tab of its own — which is why this one is easy
+      to think you have done.
+    </p>
+    <ol>
+      <li>Left sidebar, under <strong>Build</strong>, choose
+        <strong>Authentication</strong>.</li>
+      <li>Press <strong>Get started</strong> if it is a new project.</li>
+      <li>Choose the <strong>Sign-in method</strong> tab — not Users, not Settings.</li>
+      <li>In the provider list press <strong>Google</strong>, toggle
+        <strong>Enable</strong>, pick a support email, and <strong>Save</strong>.</li>
+      <li>Still in Authentication, open the <strong>Settings</strong> tab →
+        <strong>Authorized domains</strong>. Your hosting domains
+        (<code>&lt;project-id&gt;.web.app</code> and
+        <code>&lt;project-id&gt;.firebaseapp.com</code>) are usually there already. If a
+        popup opens and closes immediately later on, this is the first thing to check.</li>
+    </ol>
+
+    <h3>5. Write the two local files</h3>
+    <p>
+      Neither is committed — they describe one installation. Both have a template beside
+      them, and both are dotfiles, so <code>ls -a</code> rather than Finder.
+    </p>
+
+    <p><strong><code>.firebaserc</code></strong> — which project an alias means:</p>
+    <pre><code>cp .firebaserc.example .firebaserc</code></pre>
+    <pre><code>{
+  "projects": {
+    "default": "apple-day-local",
+    "waterloo": "your-project-id-here"
+  }
+}</code></pre>
+    <p class="small muted">
+      Leave <code>default</code> alone — it is the emulator, not a real project. Add one line
+      per group: the alias on the left is what you type after <code>GROUP=</code>, the project
+      id on the right is what step 1 produced.
+    </p>
+
+    <p><strong><code>.env.&lt;alias&gt;</code></strong> — the app's own settings. The file
+      name must match the alias exactly: alias <code>waterloo</code> needs
+      <code>.env.waterloo</code>.</p>
+    <pre><code>cp .env.example .env.waterloo</code></pre>
 
     <p>
-      A fresh deployment has an empty database and nobody on the roster, so the first person
-      to sign in is refused. There is no way in that the app itself could offer, and
-      offering one would be a hole in it.
+      There is no copy-and-paste of the whole <code>firebaseConfig</code> block. Four of its
+      values are wanted, under different names. From step 2's screen — or
+      <strong>gear icon → Project settings → General → Your apps → SDK setup and
+      configuration → Config</strong>:
+    </p>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>From <code>firebaseConfig</code></th><th>Into <code>.env.&lt;alias&gt;</code></th></tr></thead>
+        <tbody>
+          <tr><td><code>apiKey</code></td><td><code>VITE_FIREBASE_API_KEY</code></td></tr>
+          <tr><td><code>authDomain</code></td><td><code>VITE_FIREBASE_AUTH_DOMAIN</code></td></tr>
+          <tr><td><code>projectId</code></td><td><code>VITE_FIREBASE_PROJECT_ID</code></td></tr>
+          <tr><td><code>appId</code></td><td><code>VITE_FIREBASE_APP_ID</code></td></tr>
+          <tr><td><code>storageBucket</code></td><td class="muted">not used — no Cloud Storage</td></tr>
+          <tr><td><code>messagingSenderId</code></td><td class="muted">not used — no push</td></tr>
+          <tr><td><code>measurementId</code></td><td class="muted">not used — no analytics</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>Plus one the console does not give you:</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Setting</th><th>Value</th></tr></thead>
+        <tbody>
+          <tr><td><code>VITE_PUBLIC_ORIGIN</code></td>
+            <td>where the site will live, e.g.
+              <code>https://your-project-id.web.app</code> — no trailing slash</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p class="small muted">
+      Quotes around the values are optional; both forms load identically. Do not put
+      <code>VITE_USE_EMULATOR</code> in this file — it would build a public site that talks
+      to a laptop. The deploy refuses if it finds one, and refuses if any of the four above
+      is blank, because a blank one becomes an empty string in the built files and every
+      sign-in then fails with <em>api-key-not-valid</em>.
+    </p>
+
+    <h3>6. Deploy</h3>
+    <pre><code>npx firebase login          # once per machine
+make deploy GROUP=waterloo</code></pre>
+    <p class="small muted">
+      This runs every check first, builds against <code>.env.waterloo</code>, then uploads
+      hosting, the rules and the indexes together.
+    </p>
+
+    <h3>7. Grant the first admin</h3>
+
+    <p>
+      A fresh deployment has nobody on the roster, so the first person to sign in is refused.
+      The app cannot offer a way past that — anything it offered would be a way in for
+      everybody. The rules go further and forbid creating your <em>own</em> roster entry, so
+      this one document has to come from the console, which is not bound by them.
     </p>
 
     <ol>
-      <li>Sign in to the deployed app with the account that should be the first admin. You
-      will be told you have no access; copy the account id it shows.</li>
-      <li>In the Firebase console, under Firestore, create a collection <code>admins</code>
-      with a document whose id is that account id, holding <code>email</code> (the address)
-      and <code>addedAt</code> (0).</li>
-      <li>The app notices on its own &mdash; the refused screen becomes the app, without
-      signing in again.</li>
+      <li>Open the deployed site and sign in with the account that should be the first admin.
+        You will be told you have no access; the screen shows your <strong>account id</strong>
+        with a button to copy it.</li>
+      <li>Firebase console → left sidebar <strong>Build</strong> →
+        <strong>Firestore Database</strong> → <strong>Start collection</strong>.</li>
+      <li>Collection ID: <code>admins</code>.</li>
+      <li>Document ID: <strong>paste the account id</strong>. Not auto-ID — it has to be
+        that exact string.</li>
+      <li>Add two fields:
+        <ul>
+          <li><code>email</code> — string — your address</li>
+          <li><code>addedAt</code> — number — <code>0</code></li>
+        </ul>
+      </li>
+      <li>Leave <code>level</code> out. An entry without one is a full admin; the only other
+        value that means anything is <code>organizer</code>.</li>
+      <li>Save. The app is watching that document, so the refused screen becomes the app
+        within a second — no reload, no signing in again.</li>
     </ol>
 
-    <p>
-      Everybody after that is invited from the Access screen. This is the only step that
-      ever needs the console.
+    <p class="small muted">
+      Once per project, ever. Everybody after that is invited by email from the
+      <strong>Access</strong> screen, which is the only route the app itself offers.
+      <code>make admin</code> does the same job but only against the local emulator — it
+      cannot touch a deployed project.
     </p>
 
-    <h2>Sending email</h2>
+    <h2>Sending email, if you want reminders</h2>
 
     <p>
-      Reminders go through an organizer's own Gmail using OAuth in the browser, because the
-      free tier has no server-side functions to send from.
-    </p>
-
-    <p>
-      In the Google Cloud console, on the same project: enable the Gmail API, then create an
-      OAuth client of type "Web application" with your hosting address listed as an
-      authorized origin. Leave the consent screen on External and in Testing, and add each
-      organizer who will send as a test user. Sending mail is a restricted scope, so
-      publishing the app would require a security assessment &mdash; Testing needs none.
+      Optional. Without it the reminder screen still works and hands you a file for whatever
+      mailing tool the group already uses; this is what lets it send from an organizer's own
+      Gmail instead.
     </p>
 
     <p>
-      On a Google Workspace domain, publish the app internally instead and consent stops
-      expiring.
+      All of it happens in the <strong>Google Cloud console</strong>, not the Firebase one.
+      They are the same project seen two ways, which is the part that catches people out —
+      Firebase projects <em>are</em> Cloud projects, so nothing new is created here.
     </p>
 
+    <h3>1. Enable the Gmail API</h3>
+    <ol>
+      <li>Go to <a href="https://console.cloud.google.com" target="_blank"
+        rel="noreferrer">console.cloud.google.com</a>.</li>
+      <li><strong>Check the project picker at the top</strong> and choose the same project.
+        Landing in the wrong one and enabling things there is the commonest wasted hour.</li>
+      <li>Left sidebar → <strong>APIs &amp; Services</strong> →
+        <strong>Library</strong>.</li>
+      <li>Search <strong>Gmail API</strong>, open it, press <strong>Enable</strong>.</li>
+    </ol>
+    <p class="small muted">
+      For the signup-form button, enable <strong>Google Forms API</strong> the same way while
+      you are here.
+    </p>
+
+    <h3>2. Set up the consent screen</h3>
+    <ol>
+      <li><strong>APIs &amp; Services</strong> → <strong>OAuth consent screen</strong>.</li>
+      <li>Choose <strong>External</strong>. Internal is only offered on a Workspace domain —
+        if you have one, take it, and consent then stops expiring.</li>
+      <li>Fill in an app name and a support email. Nothing else is needed.</li>
+      <li>Leave the publishing status as <strong>Testing</strong>. Sending mail is a
+        restricted scope, and publishing it would mean a Google security assessment. Testing
+        needs none.</li>
+      <li>Under <strong>Test users</strong>, add every organizer who will send. Only those
+        addresses can grant permission — this is the step that is easy to skip and produces a
+        refusal that reads like a bug.</li>
+    </ol>
+
+    <h3>3. Create the OAuth client</h3>
+    <ol>
+      <li><strong>APIs &amp; Services</strong> → <strong>Credentials</strong> →
+        <strong>Create credentials</strong> → <strong>OAuth client ID</strong>.</li>
+      <li>Application type: <strong>Web application</strong>.</li>
+      <li>Under <strong>Authorized JavaScript origins</strong> add where the site is served
+        from, with no path and no trailing slash:
+        <code>https://your-project-id.web.app</code>. Add
+        <code>http://localhost:5173</code> too if you want to try it locally.</li>
+      <li>Leave <strong>Authorized redirect URIs</strong> empty. This flow does not use one.</li>
+      <li>Press <strong>Create</strong> and copy the <strong>Client ID</strong> — it ends
+        <code>.apps.googleusercontent.com</code>. The client secret is not used and can be
+        ignored.</li>
+    </ol>
+
+    <h3>4. Put it in the env file</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>From the Cloud console</th><th>Into <code>.env.&lt;alias&gt;</code></th></tr></thead>
+        <tbody>
+          <tr><td>OAuth <strong>Client ID</strong></td>
+            <td><code>VITE_GOOGLE_CLIENT_ID</code></td></tr>
+          <tr><td>Client <strong>secret</strong></td>
+            <td class="muted">not used — a browser cannot keep one</td></tr>
+        </tbody>
+      </table>
+    </div>
+
     <p>
-      If none of that is set up, reminders still work: they come out as a file for whatever
-      mailing tool the group already uses.
+      Then deploy again, since this is baked in at build time like the rest:
+    </p>
+    <pre><code>make deploy GROUP=&lt;alias&gt;</code></pre>
+
+    <p class="small muted">
+      A client id is not a secret. What protects the account is the consent screen and the
+      origins allowlist above, which is why it is safe in a built file at all.
     </p>
 
     <h2>What the free tier allows</h2>

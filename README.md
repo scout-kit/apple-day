@@ -194,30 +194,6 @@ Nobody is told where they are going until they report to base. A pass names its 
 only after an organizer has checked that person in, so a forwarded link never says where a
 named child will be standing.
 
-### The first account, in a new project
-
-A fresh deployment has an empty Firestore and nobody on the roster, so the first person to
-sign in is refused. There is no way in the app can offer, and offering one would be a hole.
-It is granted once, by hand:
-
-1. Sign in to the deployed app with the account that should be the first admin. You will be
-   told you have no access; copy the **account id** it shows.
-2. In the Firebase console, under **Firestore Database**, create a collection `admins` with
-   a document whose id is that account id:
-
-   | field | type | value |
-   |---|---|---|
-   | `email` | string | the address |
-   | `addedAt` | number | `0` |
-
-   Leave `level` out. An entry without one is a full admin.
-3. The app notices on its own — the refused screen becomes the app, without signing in
-   again.
-
-Everybody after that is invited from the **Access** screen by address, which is the only
-route the app offers. Locally, `make admin` and `make organizer EMAIL=…` do the same job
-against the emulator.
-
 ## Deploying
 
 Each group gets its own Firebase project, so their data is separate at the only boundary
@@ -228,13 +204,26 @@ data, and it looks entirely normal while it does so.
 That is why the build and the deploy take the same name, from one command:
 
 ```bash
-make deploy GROUP=<alias>
+make deploy GROUP=waterloo
 ```
 
 `GROUP` is an alias in `.firebaserc`, and each alias needs a matching `.env.<alias>`.
-Neither file is committed — they describe one installation rather than the app. Copy
-`.firebaserc.example` and `.env.example` and fill them in. `make deploy-all` walks every
-alias in turn.
+Neither file is committed — they describe one installation rather than the app. Copy the
+templates beside them; both are dotfiles, so `ls -a`:
+
+```bash
+cp .firebaserc.example .firebaserc     # which project each alias means
+cp .env.example .env.waterloo          # that project's own settings
+```
+
+The deploy refuses rather than building something broken: a missing alias, a missing env
+file, any of the four Firebase settings left blank, or a `VITE_USE_EMULATOR` that would
+point a public site at a laptop.
+
+**[The full first-time walkthrough is in `docs/deploying.html`](docs/index.html)** — every
+console step with the navigation to find it, which value of `firebaseConfig` maps to which
+setting, granting the first admin, and the Google Cloud steps for sending mail. Written
+after doing it once and finding out which parts are not obvious.
 
 Firestore should be created in `northamerica-northeast2` (Toronto). **The region is
 permanent once set.**

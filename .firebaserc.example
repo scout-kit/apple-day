@@ -1,4 +1,12 @@
 {
+  "_comment": [
+    "Copy this to .firebaserc — it is not committed, because it names real projects.",
+    "Leave 'default' alone: it is the emulator, not a project that exists.",
+    "Add one line per group. The name on the left is what you type after GROUP=; the",
+    "value on the right is the project id from the Firebase console, which is not always",
+    "the same as the project name. See docs/deploying.html.",
+    "Delete this comment or leave it; the Firebase CLI ignores unknown keys."
+  ],
   "projects": {
     "default": "apple-day-local",
     "staging": "<your-staging-project-id>",
