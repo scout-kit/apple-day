@@ -166,6 +166,79 @@ describe('turning a day on and off', () => {
     expect(saved.openHours.sun).toEqual({ openMin: 10 * 60, closeMin: 21 * 60 })
   })
 })
+describe('switching a day on copies the nearest one already open', () => {
+  /*
+    The pain this removes: a shop with the same hours all week is seven switches and fourteen
+    dropdowns to say one sentence. Copying makes it seven switches.
+
+    Read off the rendered dropdowns rather than the saved record, because what matters is that
+    somebody sees the hours arrive filled in — a value that only appears after Save is not the
+    thing that saves anybody time.
+  */
+  const rangeOf = (day: string): [string, string] => {
+    const [open, close] = Array.from(
+      switchFor(day).closest('.row')!.querySelectorAll('select'),
+    )
+    return [(open as HTMLSelectElement).value, (close as HTMLSelectElement).value]
+  }
+
+  it('copies the day above', async () => {
+    editing = { ...partiallyRecorded, openHours: { sun: { openMin: 7 * 60, closeMin: 23 * 60 } } }
+    await openEditor()
+
+    await userEvent.click(switchFor('Monday'))
+    expect(rangeOf('Monday')).toEqual([String(7 * 60), String(23 * 60)])
+  })
+
+  it('reaches past a day that is shut', async () => {
+    // Sunday 7am–11pm, Monday closed, Tuesday still wants Sunday's hours.
+    editing = {
+      ...partiallyRecorded,
+      openHours: { sun: { openMin: 7 * 60, closeMin: 23 * 60 }, mon: null },
+    }
+    await openEditor()
+
+    await userEvent.click(switchFor('Tuesday'))
+    expect(rangeOf('Tuesday')).toEqual([String(7 * 60), String(23 * 60)])
+  })
+
+  it('carries a change forward from where it was made', async () => {
+    editing = {
+      ...partiallyRecorded,
+      openHours: {
+        sun: { openMin: 7 * 60, closeMin: 23 * 60 },
+        wed: { openMin: 9 * 60, closeMin: 17 * 60 },
+      },
+    }
+    await openEditor()
+
+    await userEvent.click(switchFor('Thursday'))
+    expect(rangeOf('Thursday')).toEqual([String(9 * 60), String(17 * 60)])
+  })
+
+  it('leaves the day it copied from alone', async () => {
+    // Two days that agree, not one day shown twice.
+    editing = { ...partiallyRecorded, openHours: { sun: { openMin: 7 * 60, closeMin: 23 * 60 } } }
+    await openEditor()
+
+    await userEvent.click(switchFor('Monday'))
+    const [, mondayClose] = Array.from(
+      switchFor('Monday').closest('.row')!.querySelectorAll('select'),
+    )
+    await userEvent.selectOptions(mondayClose!, String(17 * 60))
+
+    expect(rangeOf('Sunday')).toEqual([String(7 * 60), String(23 * 60)])
+  })
+
+  it('still offers a plain long day when nothing is recorded at all', async () => {
+    editing = { ...partiallyRecorded, openHours: {} }
+    await openEditor()
+
+    await userEvent.click(switchFor('Sunday'))
+    expect(rangeOf('Sunday')).toEqual([String(8 * 60), String(21 * 60)])
+  })
+})
+
 describe('the map link comes from the address', () => {
   const linkButton = (): HTMLElement =>
     screen.getByRole('button', { name: /Use a different link|Use the address/ })

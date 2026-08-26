@@ -194,6 +194,38 @@ export function isOpenOn(
   return Boolean(range && range.closeMin > range.openMin)
 }
 
+/** What a day gets when nothing else suggests anything: a long ordinary retail day. */
+export const DEFAULT_OPEN: OpenRange = { openMin: 8 * 60, closeMin: 21 * 60 }
+
+/**
+ * The hours to give a day being switched on.
+ *
+ * Shops keep the same hours most days, so setting seven of them one dropdown pair at a time
+ * is fourteen choices to say one thing. Switching a day on copies the nearest day already
+ * open, which makes the common case — every day the same — six switches and nothing else.
+ *
+ * Upwards first, and past closed days rather than stopping at them: Sunday 7am–11pm, Monday
+ * shut, then Tuesday switched on wants Sunday's hours. Monday being shut says nothing about
+ * Tuesday.
+ *
+ * Then downwards, for the shop whose Saturday was filled in first. Only then the default,
+ * which is a guess and looks like one — the point of copying is that the second day onwards
+ * is not a guess.
+ */
+export function hoursForNewDay(
+  openHours: Partial<Record<Day, OpenRange | null>>,
+  day: Day,
+): OpenRange {
+  const at = DAYS.indexOf(day)
+  const nearest = [
+    ...DAYS.slice(0, at).reverse(),
+    ...DAYS.slice(at + 1),
+  ].find((other) => isOpenOn(openHours, other))
+
+  const found = nearest ? openHours[nearest] : null
+  return found ? { ...found } : { ...DEFAULT_OPEN }
+}
+
 /**
  * Has anyone made a decision about this day, either way?
  *

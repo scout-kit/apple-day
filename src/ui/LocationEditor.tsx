@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { ReactNode } from 'react'
-import { DAY_LABEL, hourOptions, isOpenOn } from '../domain/slots'
+import { DAY_LABEL, hourOptions, hoursForNewDay, isOpenOn } from '../domain/slots'
 import { mapsSearchUrl } from '../domain/maps'
 import { DAYS } from '../domain/types'
 import type { Location, OpenRange } from '../domain/types'
@@ -180,7 +180,10 @@ export function LocationEditor({
                     checked={open}
                     aria-label={`Open on ${DAY_LABEL[day]}`}
                     onChange={(e) =>
-                      setRange(e.target.checked ? { openMin: 8 * 60, closeMin: 21 * 60 } : null)
+                      // Switching one on copies the nearest day already open, so a shop that
+                      // keeps the same hours all week is six switches rather than fourteen
+                      // dropdowns. Every one of them is still editable afterwards.
+                      setRange(e.target.checked ? hoursForNewDay(draft.openHours, day) : null)
                     }
                   />
                   {range ? (
