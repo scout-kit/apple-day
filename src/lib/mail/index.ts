@@ -56,7 +56,7 @@ export interface MailSender {
  * exactly the shape it throttles. At this size the whole run is a few seconds
  * either way, so there is nothing to win by rushing it.
  */
-export const BETWEEN_SENDS_MS = 250
+const BETWEEN_SENDS_MS = 250
 
 const pause = (ms: number): Promise<void> =>
   new Promise((resolve) => {

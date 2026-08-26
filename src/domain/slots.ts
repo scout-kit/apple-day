@@ -20,9 +20,6 @@ export const DEFAULT_SCHEDULE: Partial<Record<Day, SchedulingWindow>> = {
   sat: { startMin: 7 * 60, endMin: 15 * 60 },
 }
 
-/** The fallback for code with no event in hand. Prefer passing the event's own window. */
-export const DAY_WINDOW = DEFAULT_SCHEDULE
-
 /**
  * How long a shift is, and how much it overlaps the one before it.
  *
@@ -49,7 +46,7 @@ export function stepMinutes(shape: SlotShape): number {
 }
 
 /** How early and late a location's opening hours may be set. */
-export const HOURS_RANGE = { earliestMin: 0, latestMin: 24 * 60 }
+const HOURS_RANGE = { earliestMin: 0, latestMin: 24 * 60 }
 
 export const DAY_LABEL: Record<Day, string> = {
   sun: 'Sunday',

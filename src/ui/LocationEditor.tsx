@@ -20,7 +20,7 @@ import { TagInput } from './TagInput'
  */
 
 /** Ids are derived from the name, so a new record matches whatever the importer would make. */
-export const slugifyLocation = (name: string): string =>
+const slugifyLocation = (name: string): string =>
   name
     .toLowerCase()
     .normalize('NFKD')

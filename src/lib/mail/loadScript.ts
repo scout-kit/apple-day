@@ -46,7 +46,3 @@ export function loadScript(src: string, friendlyName: string): Promise<void> {
   return started
 }
 
-/** For tests: forget what has been loaded. */
-export function forgetLoadedScripts(): void {
-  loading.clear()
-}

@@ -7,7 +7,7 @@
  */
 export type ThemeChoice = 'system' | 'light' | 'dark'
 
-export const THEME_CHOICES: ThemeChoice[] = ['system', 'light', 'dark']
+const THEME_CHOICES: ThemeChoice[] = ['system', 'light', 'dark']
 
 export function isThemeChoice(value: unknown): value is ThemeChoice {
   return typeof value === 'string' && (THEME_CHOICES as string[]).includes(value)

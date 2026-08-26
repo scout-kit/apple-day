@@ -15,7 +15,7 @@ import {
 import { readEvent, yearFor } from '../domain/events'
 import { buildAllSlots } from '../domain/slots'
 import { cleanSupport } from '../domain/support'
-import type { AppleDayEvent, Day, Slot } from '../domain/types'
+import type { AppleDayEvent, Slot } from '../domain/types'
 import { auditedBatch, auditedSet } from './audit'
 import { paths } from './paths'
 import { runsTheEvent, useSession } from './session'
@@ -386,8 +386,3 @@ export function EventProvider({ children }: { children: ReactNode }): ReactNode 
 
 export const useEvent = (): EventContextValue => useContext(EventContext)
 
-/** Slots for one day of the selected event. */
-export function useDaySlots(day: Day): Slot[] {
-  const { slots } = useEvent()
-  return useMemo(() => slots.filter((s) => s.day === day), [slots, day])
-}

@@ -70,7 +70,7 @@ export function usePublishInput(): PublishInput {
  * from free in the bar, which is on all seventeen screens. So the board records the hash as
  * it goes (see `PublishWatch`) and this reads it.
  */
-export function usePublishStatus(): { status: PublishStatus; publishedAt: number } {
+function usePublishStatus(): { status: PublishStatus; publishedAt: number } {
   const state = usePublishState()
 
   /*

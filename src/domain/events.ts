@@ -106,7 +106,7 @@ export function defaultDatesFor(year: number): { fridayDate: string; saturdayDat
  * Only ever used for ordering and grouping, which is why an event named "Spring bottle
  * drive" is perfectly allowed to have none.
  */
-export function yearFromName(name: string): number {
+function yearFromName(name: string): number {
   const found = /\b(20\d{2})\b/.exec(name)
   return found ? Number(found[1]) : 0
 }

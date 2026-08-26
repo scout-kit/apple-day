@@ -669,19 +669,6 @@ export async function reorderSections(orderedIds: string[]): Promise<void> {
   await batch.commit()
 }
 
-export async function savePerson(eventId: string, person: Person): Promise<void> {
-  const { id, ...rest } = person
-  await auditedSet(paths.person(eventId, id), rest, {
-    entity: 'person',
-    entityId: id,
-    eventId,
-    summary: `Edited ${person.firstName} ${person.lastName}`.trim(),
-    // Names and section, never contact details. The log is read by admins and kept for
-    // years, and no question anybody asks of it needs a parent's phone number.
-    fields: ['firstName', 'lastName', 'section', 'pairWithPersonId'],
-  })
-}
-
 /**
  * Save a person, keeping their pairing pointing both ways.
  *
@@ -700,16 +687,30 @@ export async function savePersonWithPairing(
   const batch = writeBatch(db)
   const { id, ...rest } = person
 
+  /*
+    Read first, so the line can say what moved.
+
+    Names, section and pairing — never contact details. The log is read by admins and kept
+    for years, and no question anybody asks of it needs a parent's phone number. Without the
+    read the entry can only say "Edited Alex Chen", which does not answer the question it
+    exists for: a name was corrected, and to what.
+  */
+  const before = await getDoc(paths.person(eventId, id))
+    .then((snap) => (snap.exists() ? (snap.data() as Record<string, unknown>) : null))
+    .catch(() => null)
+
   recordInBatch(batch, {
     action: 'updated',
     entity: 'person',
     entityId: id,
     eventId,
     summary: `Edited ${person.firstName} ${person.lastName}`.trim(),
-    // Pairing only. Names and section come through `savePerson`; contact details never do.
-    changes: [
-      { field: 'pairWithPersonId', from: '—', to: person.pairWithPersonId ?? '—' },
-    ],
+    changes: diffFields(before, rest as Record<string, unknown>, [
+      'firstName',
+      'lastName',
+      'section',
+      'pairWithPersonId',
+    ]),
   })
 
   batch.set(paths.person(eventId, id), rest, { merge: true })
@@ -732,7 +733,7 @@ export async function savePersonWithPairing(
 }
 
 /** The signup document id for a person in a year. Matches what the CSV importer writes. */
-export const signupIdFor = (personId: string): string => `su-${personId}`
+const signupIdFor = (personId: string): string => `su-${personId}`
 
 /**
  * Set the hours a person has offered for a year.
@@ -765,16 +766,6 @@ export async function saveAvailability(
       fields: ['availability'],
     },
   )
-}
-
-/** Remove someone's signup for a year entirely. Their person record is untouched. */
-export async function removeSignup(eventId: string, personId: string): Promise<void> {
-  await auditedDelete(paths.signup(eventId, signupIdFor(personId)), {
-    entity: 'signup',
-    entityId: personId,
-    eventId,
-    summary: 'Removed somebody\u2019s availability',
-  })
 }
 
 /**
@@ -895,37 +886,6 @@ export async function unassign(eventId: string, assignmentId: string): Promise<v
     eventId,
     summary: 'Removed a shift from the board',
     fields: ['personId', 'locationId', 'slotId', 'status'],
-  })
-}
-
-/**
- * Send somebody out, or bring them back, by hand.
- *
- * The jar normally does this. For the shift that goes out without one.
- */
-export async function setWhereabouts(
-  eventId: string,
-  assignmentId: string,
-  whereabouts: Whereabouts,
-  at: number = Date.now(),
-): Promise<void> {
-  const patch: Record<string, unknown> = { whereabouts }
-  if (whereabouts === 'back') patch.checkedOutAt = at
-
-  // Somebody has to be answerable for where a youth is said to be, so the shift's own
-  // fields come along.
-  await auditedSet(paths.assignment(eventId, assignmentId), patch, {
-    action: 'updated',
-    entity: 'assignment',
-    entityId: assignmentId,
-    eventId,
-    summary:
-      whereabouts === 'out'
-        ? 'Sent somebody out to a location'
-        : whereabouts === 'back'
-          ? 'Brought somebody back to base'
-          : 'Changed where somebody is',
-    fields: ['whereabouts', 'personId', 'locationId', 'slotId'],
   })
 }
 
@@ -1058,37 +1018,6 @@ export async function setWhereaboutsMany(
   await batch.commit()
 }
 
-export async function setAssignmentStatus(
-  eventId: string,
-  assignmentId: string,
-  status: AssignmentStatus,
-  at: number = Date.now(),
-  was: AssignmentStatus | null = null,
-): Promise<void> {
-  const patch: Record<string, unknown> = { status }
-  if (status === 'checkedIn') patch.checkedInAt = at
-  if (status === 'noShow') patch.checkedInAt = null
-  // See `setAssignmentStatusMany`: whereabouts means nothing once they are not checked in.
-  if (status !== 'checkedIn') {
-    patch.whereabouts = 'here'
-    patch.checkedOutAt = null
-  }
-
-  // Marking somebody a no-show is a claim about a child that a parent may ask about.
-  // Recorded like the money is: who said so, and what it said before.
-  // Read first, so the line names which child, at which shop, at what hour.
-  await auditedSet(paths.assignment(eventId, assignmentId), patch, {
-    action: 'updated',
-    entity: 'assignment',
-    entityId: assignmentId,
-    eventId,
-    summary: `Marked a shift ${status}`,
-    fields: ['status', 'personId', 'locationId', 'slotId'],
-  })
-  void was
-}
-
-/** Swap two people between their shifts, in one atomic batch. */
 export async function swapAssignments(
   eventId: string,
   a: Assignment,

@@ -95,7 +95,6 @@ vi.mock('../src/lib/firebase', () => ({
   missingConfig: [],
   db: {},
   auth: { currentUser: { uid: 'u-organizer', displayName: 'An Organizer', email: '' } },
-  EVENT_ID: '2026',
 }))
 
 const { countJar, deleteJar, reopenJar, setAssignmentStatusMany } = await import(
@@ -200,6 +199,81 @@ describe('taking somebody off the schedule', () => {
 
     expect(committed()).toHaveLength(1)
     expect(committed()[0]!.deletes).toHaveLength(1)
+  })
+})
+
+describe('editing somebody', () => {
+  /*
+    One path saves a person, so it has to record everything worth recording.
+
+    "Edited Alex Chen" does not answer the question the log exists for: a name was corrected,
+    and to what. So the previous values are read before the batch and the line says what
+    moved — which is only possible because it is read, not inferred from the write.
+  */
+  const person = {
+    id: 'y01',
+    firstName: 'Alex',
+    lastName: 'Chen',
+    section: 'cubs',
+    parentName: 'Sam Chen',
+    parentEmail: 'sam@example.org',
+    parentPhone: '519-555-0100',
+    pairWithPersonId: null,
+  }
+
+  it('records a corrected name, and what it was before', async () => {
+    const { savePersonWithPairing } = await import('../src/lib/repo')
+    getDocData = { firstName: 'Alexx', lastName: 'Chen', section: 'cubs' }
+
+    await savePersonWithPairing('2026', person, [])
+
+    const changes = auditEntries()[0]!.changes as { field: string; from: string; to: string }[]
+    expect(changes).toContainEqual({ field: 'firstName', from: 'Alexx', to: 'Alex' })
+  })
+
+  it('records a move between sections', async () => {
+    const { savePersonWithPairing } = await import('../src/lib/repo')
+    getDocData = { firstName: 'Alex', lastName: 'Chen', section: 'beavers' }
+
+    await savePersonWithPairing('2026', person, [])
+
+    const changes = auditEntries()[0]!.changes as { field: string; from: string; to: string }[]
+    expect(changes).toContainEqual({ field: 'section', from: 'beavers', to: 'cubs' })
+  })
+
+  it('never records a parent’s contact details', async () => {
+    /*
+      The log is read by admins and kept for years, and no question anybody asks of it needs
+      a parent's phone number. A change to one is saved; it is simply not written down here.
+    */
+    const { savePersonWithPairing } = await import('../src/lib/repo')
+    getDocData = { firstName: 'Alex', lastName: 'Chen', parentPhone: '519-555-0999' }
+
+    await savePersonWithPairing('2026', person, [])
+
+    expect(JSON.stringify(auditEntries()[0]!)).not.toContain('519-555')
+    expect(JSON.stringify(auditEntries()[0]!)).not.toContain('sam@example.org')
+  })
+
+  it('saves and records in one commit', async () => {
+    // Same guarantee as everywhere else here: the change cannot outlive its record.
+    const { savePersonWithPairing } = await import('../src/lib/repo')
+    getDocData = { firstName: 'Alexx', lastName: 'Chen' }
+
+    await savePersonWithPairing('2026', person, [])
+
+    expect(committed()).toHaveLength(1)
+  })
+
+  it('writes no line at all when nothing moved', async () => {
+    // A save that changed nothing is not an event, and a log full of those is one nobody
+    // reads.
+    const { savePersonWithPairing } = await import('../src/lib/repo')
+    getDocData = { firstName: 'Alex', lastName: 'Chen', section: 'cubs', pairWithPersonId: null }
+
+    await savePersonWithPairing('2026', person, [])
+
+    expect(auditEntries()).toHaveLength(0)
   })
 })
 

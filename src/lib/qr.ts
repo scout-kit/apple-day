@@ -127,17 +127,8 @@ export function scanFromVideo(
   return { stop }
 }
 
-/** Pull a pass token out of a scanned value, whether it is a full URL or a bare token. */
-export function tokenFromScan(value: string): string | null {
-  const trimmed = value.trim()
-  const urlMatch = /\/p\/([A-Za-z0-9]{10,})/.exec(trimmed)
-  if (urlMatch?.[1]) return urlMatch[1]
-  if (/^[A-Za-z0-9]{16,32}$/.test(trimmed)) return trimmed
-  return null
-}
-
 /** Pull an object id (jar or location) out of a scanned value. */
-export function objectIdFromScan(value: string, kind: 'jar' | 'loc'): string | null {
+function objectIdFromScan(value: string, kind: 'jar' | 'loc'): string | null {
   const match = new RegExp(`(?:^|[/:])${kind}[/:]([A-Za-z0-9_-]+)`).exec(value.trim())
   return match?.[1] ?? null
 }

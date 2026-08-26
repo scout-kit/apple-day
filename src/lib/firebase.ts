@@ -110,7 +110,7 @@ export const auth = getAuth(app)
 */
 const appCheckSiteKey = (import.meta.env.VITE_APPCHECK_SITE_KEY as string | undefined) ?? ''
 
-export const appCheckOn = !useEmulator && appCheckSiteKey !== ''
+const appCheckOn = !useEmulator && appCheckSiteKey !== ''
 
 if (appCheckOn) {
   try {
@@ -127,9 +127,6 @@ if (useEmulator) {
   connectFirestoreEmulator(db, '127.0.0.1', firestorePort)
   connectAuthEmulator(auth, `http://127.0.0.1:${authPort}`, { disableWarnings: true })
 }
-
-/** The event being worked on. One event per year; the id is the year. */
-export const EVENT_ID = (import.meta.env.VITE_EVENT_ID as string | undefined) ?? '2026'
 
 export async function signInWithGoogle(): Promise<void> {
   await signInWithPopup(auth, new GoogleAuthProvider())

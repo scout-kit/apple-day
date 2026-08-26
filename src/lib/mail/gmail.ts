@@ -168,8 +168,3 @@ async function whoGranted(accessToken: string): Promise<string> {
   }
 }
 
-/** For sign-out, and for tests: forget the token without reloading the page. */
-export function forgetGmailToken(): void {
-  token = ''
-  account = ''
-}

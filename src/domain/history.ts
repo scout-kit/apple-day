@@ -127,7 +127,7 @@ export interface EventLike {
 const startKey = (e: EventLike): string => e.fridayDate || String(e.year)
 
 /** Oldest first, which is the direction a trend is read in. */
-export function orderEvents<E extends EventLike>(all: E[]): E[] {
+function orderEvents<E extends EventLike>(all: E[]): E[] {
   return [...all].sort((a, b) => startKey(a).localeCompare(startKey(b)) || a.year - b.year)
 }
 
