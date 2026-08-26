@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Deploying &mdash; Apple Day</title>
+<meta name="description" content="One Firebase project per group, and why the build and the deploy take the same name." />
+<link rel="stylesheet" href="style.css" />
+<script src="theme.js"></script>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="wrap">
+    <a class="brand" href="index.html"><span class="mark"></span> Apple Day</a>
+    <nav>
+      <a href="index.html">Overview</a>
+      <a href="schedule.html">Schedule</a>
+      <a href="locations.html">Locations</a>
+      <a href="day-of.html">Day of</a>
+      <a href="money.html">Money</a>
+      <a href="passes.html">Passes</a>
+      <a href="security.html">Access</a>
+      <a href="development.html">Development</a>
+      <a href="deploying.html" aria-current="page">Deploying</a>
+    </nav>
+    <button class="themer" type="button">Match device</button>
+  </div>
+</div>
+
+<main>
+  <div class="wrap">
+    <p class="kicker">For developers</p>
+    <h1>Deploying</h1>
+    <p class="lede">
+      One Firebase project per group. It is the only boundary that is actually enforced.
+    </p>
+
+    <h2>One project per group</h2>
+
+    <p>
+      Several groups can run this, and each gets its own Firebase project: its own database,
+      its own roster, its own hosting. Nothing is shared, so there is no query that could
+      accidentally cross between them and no rule that has to be right for it not to.
+    </p>
+
+    <p>
+      The Firebase configuration is baked into the built files, which means one build
+      belongs to exactly one project. Reusing a build across projects points one group's
+      site at another group's data &mdash; and it looks entirely normal while it does it.
+    </p>
+
+    <p>
+      So the build and the deploy take the same name, from one command, and neither can be
+      run without it:
+    </p>
+
+    <pre><code>make deploy GROUP=&lt;alias&gt;</code></pre>
+
+    <p>
+      That runs every check first &mdash; typecheck, both test suites &mdash; then builds
+      for that group and deploys hosting and rules together.
+    </p>
+
+    <h2>Aliases and configuration</h2>
+
+    <p>
+      An alias is a short name for a project, listed in <code>.firebaserc</code>. Each one
+      needs a matching <code>.env.&lt;alias&gt;</code> holding that project's Firebase
+      configuration and the address its volunteer links should point at.
+    </p>
+
+    <p>
+      Neither file is committed: they describe one installation rather than the app. Copy
+      <code>.firebaserc.example</code> and <code>.env.example</code> and fill them in. The
+      deploy refuses to run if either is missing, rather than quietly building with whatever
+      configuration it found.
+    </p>
+
+    <pre><code>make deploy-rules GROUP=&lt;alias&gt;   # rules and indexes only
+make deploy-all                   # every alias, one at a time
+make verify                       # every check, without building</code></pre>
+
+    <h2>Setting up a new project</h2>
+
+    <ol>
+      <li>Create the Firebase project and add a web app.</li>
+      <li>Create the Firestore database. <strong>Pick the region carefully &mdash; it is
+      permanent.</strong> For a Canadian group, <code>northamerica-northeast2</code>.</li>
+      <li>Enable Google sign-in under Authentication.</li>
+      <li>Copy the web configuration into <code>.env.&lt;alias&gt;</code>, add the alias to
+      <code>.firebaserc</code>, and set the public address volunteer links will use.</li>
+      <li>Deploy.</li>
+      <li>Grant the first admin by hand &mdash; see below.</li>
+    </ol>
+
+    <h3>The first account</h3>
+
+    <p>
+      A fresh deployment has an empty database and nobody on the roster, so the first person
+      to sign in is refused. There is no way in that the app itself could offer, and
+      offering one would be a hole in it.
+    </p>
+
+    <ol>
+      <li>Sign in to the deployed app with the account that should be the first admin. You
+      will be told you have no access; copy the account id it shows.</li>
+      <li>In the Firebase console, under Firestore, create a collection <code>admins</code>
+      with a document whose id is that account id, holding <code>email</code> (the address)
+      and <code>addedAt</code> (0).</li>
+      <li>The app notices on its own &mdash; the refused screen becomes the app, without
+      signing in again.</li>
+    </ol>
+
+    <p>
+      Everybody after that is invited from the Access screen. This is the only step that
+      ever needs the console.
+    </p>
+
+    <h2>Sending email</h2>
+
+    <p>
+      Reminders go through an organizer's own Gmail using OAuth in the browser, because the
+      free tier has no server-side functions to send from.
+    </p>
+
+    <p>
+      In the Google Cloud console, on the same project: enable the Gmail API, then create an
+      OAuth client of type "Web application" with your hosting address listed as an
+      authorized origin. Leave the consent screen on External and in Testing, and add each
+      organizer who will send as a test user. Sending mail is a restricted scope, so
+      publishing the app would require a security assessment &mdash; Testing needs none.
+    </p>
+
+    <p>
+      On a Google Workspace domain, publish the app internally instead and consent stops
+      expiring.
+    </p>
+
+    <p>
+      If none of that is set up, reminders still work: they come out as a file for whatever
+      mailing tool the group already uses.
+    </p>
+
+    <h2>What the free tier allows</h2>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Quota</th><th>Per day</th><th>In practice</th></tr></thead>
+        <tbody>
+          <tr><td>Hosting transfer</td><td>360 MB</td><td>The one worth watching. A volunteer opening their pass costs about 190 KB.</td></tr>
+          <tr><td>Document reads</td><td>50,000</td><td>Comfortable. The heaviest screens subscribe once and share.</td></tr>
+          <tr><td>Document writes</td><td>20,000</td><td>Comfortable. A busy Saturday is a few thousand.</td></tr>
+          <tr><td>Functions</td><td>none</td><td>Why there is no server-side sending.</td></tr>
+          <tr><td>Cloud Storage</td><td>none</td><td>Files, PDFs and QR codes are all generated in the browser.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>
+      App Check is not enabled. It is worth turning on for a public deployment.
+    </p>
+
+<div class="next"><a href="development.html">&larr; Development</a><span></span></div>
+
+  </div>
+</main>
+
+<footer>
+  <div class="wrap">
+    Apple Day &mdash; scheduling, day-of operations and fundraising totals for a Scout
+    group, on Firebase's free tier. Every name and figure on these pages is invented.
+  </div>
+</footer>
+
+</body>
+</html>

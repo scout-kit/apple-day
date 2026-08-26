@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Who can see what &mdash; Apple Day</title>
+<meta name="description" content="Organizers sign in; volunteers do not. What each kind of person can reach, and why." />
+<link rel="stylesheet" href="style.css" />
+<script src="theme.js"></script>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="wrap">
+    <a class="brand" href="index.html"><span class="mark"></span> Apple Day</a>
+    <nav>
+      <a href="index.html">Overview</a>
+      <a href="schedule.html">Schedule</a>
+      <a href="locations.html">Locations</a>
+      <a href="day-of.html">Day of</a>
+      <a href="money.html">Money</a>
+      <a href="passes.html">Passes</a>
+      <a href="security.html" aria-current="page">Access</a>
+      <a href="development.html">Development</a>
+      <a href="deploying.html">Deploying</a>
+    </nav>
+    <button class="themer" type="button">Match device</button>
+  </div>
+</div>
+
+<main>
+  <div class="wrap">
+    <p class="kicker">Access</p>
+    <h1>Who can see what</h1>
+    <p class="lede">
+      Two kinds of people use this, and only one of them has an account.
+    </p>
+
+    <div class="grid">
+      <div class="card">
+        <h3>Organizers</h3>
+        <p>Sign in with Google, and are then let in only if somebody has put them on the
+        roster. Everyone who works a screen holds one of these, base ops included.</p>
+      </div>
+      <div class="card">
+        <h3>Volunteers</h3>
+        <p>Open their own link. No account, no password, no session &mdash; and nothing to
+        set up for a fourteen-year-old on a borrowed phone.</p>
+      </div>
+    </div>
+
+    <h2>Getting somebody in</h2>
+
+    <p>
+      An organizer invites somebody by email address from the Access screen. When that
+      person signs in with that address, they are in. No console, no waiting on whoever
+      set the project up.
+    </p>
+
+    <p>
+      Invitations tidy themselves up: one that has already been used, or that belongs to
+      somebody who is now on the roster by another route, is cleared the next time they sign
+      in. Otherwise the "waiting to sign in" list fills up with people who are already here,
+      and a list like that stops being read.
+    </p>
+
+    <h3>Admins and organizers</h3>
+
+    <p>
+      Almost everything is open to organizers, including things that sound risky and are
+      not. Finding a shop's address is wrong happens standing outside the shop, and the
+      person standing there should be able to fix it. Wanting the support number changed at
+      eight on the Saturday morning is not unreasonable.
+    </p>
+
+    <p>
+      What stays with an admin is the work that cannot be undone or noticed later:
+    </p>
+
+    <ul>
+      <li><strong>Who gets in.</strong> Adding and removing people from the roster.</li>
+      <li><strong>Starting or deleting a year.</strong> Deleting one takes its jars, shifts
+      and records with it.</li>
+      <li><strong>Removing a shop from the library.</strong> Years of records hang off it,
+      and an orphaned year cannot be spotted afterwards.</li>
+      <li><strong>Renaming the sections.</strong> Every past year's figures are grouped by
+      these, so a rename quietly changes how all of them read.</li>
+      <li><strong>Reading the audit log.</strong> A record about the organizers themselves.</li>
+    </ul>
+
+    <h2>A volunteer's link</h2>
+
+    <p>
+      A pass link is a long random string, and holding it is the whole of the credential. It
+      reaches exactly one page &mdash; that person's own shifts, where to report, and who to
+      ring. There is no way to list them, so knowing one link tells you nothing about any
+      other, and no way to walk from a pass to anybody else's details.
+    </p>
+
+    <p>
+      Links are made fresh for each event, so last year's does not open this year's.
+    </p>
+
+    <div class="note">
+      <p>
+        A pass names the shop only after an organizer has checked that person in. Everybody
+        reports to base first, so nothing is lost by waiting &mdash; and an email cannot be
+        taken back once it has gone.
+      </p>
+    </div>
+
+    <h2>The audit log</h2>
+
+    <div class="mock">
+      <div class="mock-bar">
+        <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+        <span class="mock-title">Audit log</span>
+      </div>
+      <div class="mock-body">
+        <table>
+          <thead><tr><th>When</th><th>What</th><th>Change</th><th>Who</th></tr></thead>
+          <tbody>
+            <tr><td class="muted">9:41 PM</td><td>Counted jar 14, Market Square</td>
+                <td>amount $128.40 &rarr; $182.40</td><td class="muted">sam@&hellip;</td></tr>
+            <tr><td class="muted">9:12 PM</td><td>Moved jar 9's takings</td>
+                <td>Corner Grocers &rarr; Station Bakery</td><td class="muted">jo@&hellip;</td></tr>
+            <tr><td class="muted">7:58 PM</td><td>Amara O., Riverside 10:00</td>
+                <td>no show &rarr; checked in</td><td class="muted">sam@&hellip;</td></tr>
+            <tr><td class="muted">6:20 PM</td><td>Invited an organizer</td>
+                <td>&mdash; &rarr; alex@&hellip;</td><td class="muted">jo@&hellip;</td></tr>
+            <tr><td class="muted">Tue</td><td>Renamed a shop</td>
+                <td>Parkside Foods &rarr; Corner Grocers</td><td class="muted">jo@&hellip;</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <p class="mock-caption">
+      Each line says what changed and what it said before &mdash; not just that something
+      happened. Changes to shared things like the shop library are kept too, filed against
+      no particular year.
+    </p>
+
+    <p>
+      Every change is recorded: who made it, when, what it was, and what it said before.
+      Money that was corrected, a child marked as a no-show and then unmarked, somebody
+      granted access, a shop renamed.
+    </p>
+
+    <p>
+      Entries cannot be edited or deleted by anybody, including an admin. That is the point
+      &mdash; "who removed last year" is exactly the question a log exists to answer, so
+      deleting a year cannot take its record with it, and the app says so before you do it.
+    </p>
+
+    <p>
+      The log records names, section and pairing. It never records a parent's phone number
+      or email address: it is read by admins and kept for years, and no question anybody
+      asks of it needs those.
+    </p>
+
+    <h2>What is deliberately not here</h2>
+
+    <ul>
+      <li><strong>No public schedule.</strong> There is no page listing children and the
+      shops they will be standing outside.</li>
+      <li><strong>No shared device role.</strong> Anybody recording money signs in as
+      themselves, so there is nobody holding a role that does not appear in a list.</li>
+      <li><strong>No parent accounts.</strong> Nothing to create, remember or reset.</li>
+    </ul>
+
+    <p>
+      Nothing in the database is readable without either an account on the roster or one
+      specific volunteer's link.
+    </p>
+
+<div class="next"><a href="passes.html">&larr; Passes</a><a href="development.html">Development &rarr;</a></div>
+
+  </div>
+</main>
+
+<footer>
+  <div class="wrap">
+    Apple Day &mdash; scheduling, day-of operations and fundraising totals for a Scout
+    group, on Firebase's free tier. Every name and figure on these pages is invented.
+  </div>
+</footer>
+
+</body>
+</html>

@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Money &mdash; Apple Day</title>
+<meta name="description" content="What the weekend raised, by shop and by hour, worked out from the jars." />
+<link rel="stylesheet" href="style.css" />
+<script src="theme.js"></script>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="wrap">
+    <a class="brand" href="index.html"><span class="mark"></span> Apple Day</a>
+    <nav>
+      <a href="index.html">Overview</a>
+      <a href="schedule.html">Schedule</a>
+      <a href="locations.html">Locations</a>
+      <a href="day-of.html">Day of</a>
+      <a href="money.html" aria-current="page">Money</a>
+      <a href="passes.html">Passes</a>
+      <a href="security.html">Access</a>
+      <a href="development.html">Development</a>
+      <a href="deploying.html">Deploying</a>
+    </nav>
+    <button class="themer" type="button">Match device</button>
+  </div>
+</div>
+
+<main>
+  <div class="wrap">
+    <p class="kicker">Afterwards</p>
+    <h1>Money</h1>
+    <p class="lede">
+      What each shop raised, what each hour raised, and whether it all adds up.
+    </p>
+
+    <div class="mock">
+      <div class="mock-bar">
+        <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+        <span class="mock-title">Money &middot; by shop</span>
+      </div>
+      <div class="mock-body">
+        <div class="bar-row">
+          <span class="bar-label">Market Square</span>
+          <span class="bar-track"><span class="bar-fill" style="width:100%"></span></span>
+          <span class="bar-value">$1,526</span>
+        </div>
+        <div class="bar-row">
+          <span class="bar-label">Corner Grocers</span>
+          <span class="bar-track"><span class="bar-fill" style="width:71%"></span></span>
+          <span class="bar-value">$1,084</span>
+        </div>
+        <div class="bar-row">
+          <span class="bar-label">Station Bakery</span>
+          <span class="bar-track"><span class="bar-fill" style="width:44%"></span></span>
+          <span class="bar-value">$672</span>
+        </div>
+        <div class="bar-row">
+          <span class="bar-label">Riverside Hardware</span>
+          <span class="bar-track"><span class="bar-fill" style="width:26%"></span></span>
+          <span class="bar-value">$397</span>
+        </div>
+        <div class="bar-row">
+          <span class="bar-label muted">Two jars still out</span>
+          <span class="bar-track"></span>
+          <span class="bar-value muted">&mdash;</span>
+        </div>
+      </div>
+    </div>
+    <p class="mock-caption">
+      Jars that have not come back are listed rather than counted as nothing, so the total
+      says what it knows and the rest can be chased.
+    </p>
+
+    <h2>Per hour, not just per shop</h2>
+
+    <p>
+      A shop that raised eight hundred dollars over eight hours is not doing as well as one
+      that raised six hundred in three. Takings per hour is what tells you where to put
+      people next year, and it needs the hours actually worked &mdash; which the app knows,
+      because it knows who was checked in and for how long.
+    </p>
+
+    <p>
+      One jar often covers a run of consecutive shifts at one shop. Its takings are credited
+      across all of them, rather than all landing on the hour it went out. Otherwise a
+      Friday evening reads as a spectacular first hour followed by three that earned
+      nothing.
+    </p>
+
+    <div class="mock">
+      <div class="mock-bar">
+        <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+        <span class="mock-title">Money &middot; by hour</span>
+      </div>
+      <div class="mock-body">
+        <table>
+          <thead>
+            <tr><th>Hour</th><th>Taken</th><th>Out</th><th>Person-hours</th><th>Per person-hour</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Fri 5:00 PM</td><td>$204</td><td>4</td><td>4</td><td>$51</td></tr>
+            <tr><td>Fri 6:00 PM</td><td>$488</td><td>6</td><td>6</td><td>$81</td></tr>
+            <tr><td>Fri 7:00 PM</td><td>$612</td><td>6</td><td>6</td><td>$102</td></tr>
+            <tr><td>Fri 8:00 PM</td><td>$298</td><td>4</td><td>4</td><td>$75</td></tr>
+            <tr><td>Sat 9:00 AM</td><td>$540</td><td>8</td><td>8</td><td>$68</td></tr>
+            <tr><td>Sat 10:00 AM</td><td>$921</td><td>10</td><td>10</td><td>$92</td></tr>
+            <tr><td class="muted">Not tied to an hour</td><td class="muted">$180</td>
+                <td class="muted">&mdash;</td><td class="muted">&mdash;</td><td class="muted">&mdash;</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <p class="mock-caption">
+      The busiest hour and the most productive hour are not the same hour. Saturday at ten
+      takes the most because ten people are out; Friday at seven earns each person more.
+    </p>
+
+    <h2>There is only one set of figures</h2>
+
+    <p>
+      Every jar is counted once, so the cash and card split falls out of how each one was
+      counted. Nothing is totalled by hand a second time.
+    </p>
+
+    <p>
+      That is deliberate. A second set of typed totals is what lets a set of books sit
+      eighty-six dollars apart for a year without anybody noticing &mdash; both columns look
+      right, and neither is checkable against the other.
+    </p>
+
+    <p>
+      The only figures typed in are the ones no jar can know: apples sold by the bushel, and
+      what actually reached the bank. The deposit is there so the total has something
+      outside itself to be checked against.
+    </p>
+
+    <div class="mock">
+      <div class="mock-bar">
+        <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+        <span class="mock-title">Totals</span>
+      </div>
+      <div class="mock-body">
+        <table>
+          <tbody>
+            <tr><td>Counted in jars</td><td style="text-align:right">$3,243.00</td></tr>
+            <tr><td>Recorded without a jar</td><td style="text-align:right">$180.00</td></tr>
+            <tr><td>Apples sold by the bushel</td><td style="text-align:right">$220.00</td></tr>
+            <tr><td><strong>Raised</strong></td><td style="text-align:right"><strong>$3,643.00</strong></td></tr>
+            <tr><td class="muted">of which cash</td><td class="muted" style="text-align:right">$2,981.00</td></tr>
+            <tr><td class="muted">of which card</td><td class="muted" style="text-align:right">$442.00</td></tr>
+            <tr><td>Deposited at the bank</td><td style="text-align:right">$3,643.00</td></tr>
+            <tr><td><span class="tag back">balanced</span></td><td style="text-align:right">&mdash;</td></tr>
+            <tr><td class="muted">Jars still out</td><td class="muted" style="text-align:right">2 &mdash; 17, 21</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <p class="mock-caption">
+      The cash and card split is not typed in &mdash; it falls out of how each jar was
+      counted. The only figures typed here are the bushel sales and the deposit.
+    </p>
+
+    <h2>Comparing against last year</h2>
+
+    <p>
+      Each shop's page shows what it raised this year beside the year before, so a shop
+      quietly falling off is visible before somebody has already committed six people to it.
+      Only the years being compared are loaded, rather than every year the group has ever
+      run.
+    </p>
+
+    <h2>Corrections</h2>
+
+    <p>
+      An amount is typed once, at a table, by whoever is holding the jar &mdash; and a
+      correction at nine o'clock looks exactly like the original entry. So every change to a
+      counted amount is recorded with who made it and what it said before, and the same goes
+      for money moved between shops. Moving four hundred dollars from one shop to another
+      changes which one looks worth staffing next year.
+    </p>
+
+<div class="next"><a href="day-of.html">&larr; Day of</a><a href="passes.html">Passes &rarr;</a></div>
+
+  </div>
+</main>
+
+<footer>
+  <div class="wrap">
+    Apple Day &mdash; scheduling, day-of operations and fundraising totals for a Scout
+    group, on Firebase's free tier. Every name and figure on these pages is invented.
+  </div>
+</footer>
+
+</body>
+</html>

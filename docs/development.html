@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Development &mdash; Apple Day</title>
+<meta name="description" content="Running Apple Day locally: prerequisites, the make targets, tests and project layout." />
+<link rel="stylesheet" href="style.css" />
+<script src="theme.js"></script>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="wrap">
+    <a class="brand" href="index.html"><span class="mark"></span> Apple Day</a>
+    <nav>
+      <a href="index.html">Overview</a>
+      <a href="schedule.html">Schedule</a>
+      <a href="locations.html">Locations</a>
+      <a href="day-of.html">Day of</a>
+      <a href="money.html">Money</a>
+      <a href="passes.html">Passes</a>
+      <a href="security.html">Access</a>
+      <a href="development.html" aria-current="page">Development</a>
+      <a href="deploying.html">Deploying</a>
+    </nav>
+    <button class="themer" type="button">Match device</button>
+  </div>
+</div>
+
+<main>
+  <div class="wrap">
+    <p class="kicker">For developers</p>
+    <h1>Development</h1>
+    <p class="lede">
+      Everything runs against the Firebase emulator. No Firebase project, no billing
+      account, no cloud anything.
+    </p>
+
+    <h2>Prerequisites</h2>
+
+    <p>Node 20 or later, and a JDK 11 or later &mdash; the Firestore emulator needs Java.</p>
+
+    <pre><code>make doctor    # checks both, and says which is missing</code></pre>
+
+    <h2>Getting going</h2>
+
+    <pre><code>make up        # installs, starts the emulator, seeds it, serves the app</code></pre>
+
+    <p>
+      Click <strong>Organizer sign in</strong>, then grant yourself access:
+    </p>
+
+    <pre><code>make admin                          # every signed-in account
+make admin EMAIL=you@example.com    # or just one</code></pre>
+
+    <p>
+      Signing in is not enough on its own, and the grant cannot be done ahead of time: your
+      account id does not exist until you have signed in once. The app picks the grant up
+      live &mdash; no reload, no signing in again.
+    </p>
+
+    <p>
+      <code>make down</code> stops everything. The grant is part of the emulator snapshot,
+      so it survives a restart and you only do it once.
+    </p>
+
+    <h2>Seeing the first-run experience</h2>
+
+    <p>
+      A brand-new deployment has no data and nobody on the roster, and that path is easy to
+      break without noticing. To walk it:
+    </p>
+
+    <pre><code>make firstrun        # empty emulator on its own ports, app at :5174
+make firstrun-admin EMAIL=you@example.com
+make firstrun-down</code></pre>
+
+    <div class="note">
+      <p>
+        This is a whole second emulator, not another project id inside the one you work in.
+        Firestore keeps projects apart, but the auth emulator does not &mdash; it answers
+        every request from one set of accounts &mdash; so a "sandbox project" sharing an
+        emulator would create its test users in the data you actually care about.
+      </p>
+    </div>
+
+    <h2>The targets worth knowing</h2>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Target</th><th>Does</th></tr></thead>
+        <tbody>
+          <tr><td><code>make up</code> / <code>make down</code></td><td>emulator and dev server together</td></tr>
+          <tr><td><code>make check</code></td><td>typecheck, both test suites, production build</td></tr>
+          <tr><td><code>make test</code></td><td>domain and render tests &mdash; fast, no emulator</td></tr>
+          <tr><td><code>make test-rules</code></td><td>security rules against the emulator</td></tr>
+          <tr><td><code>make watch</code></td><td>tests in watch mode</td></tr>
+          <tr><td><code>make admin</code> / <code>make organizer</code></td><td>grant access to a signed-in account</td></tr>
+          <tr><td><code>make firstrun</code></td><td>an empty sandbox on its own ports</td></tr>
+          <tr><td><code>make seed</code></td><td>re-extract from the workbook and reload</td></tr>
+          <tr><td><code>make logs</code></td><td>tail the background emulator log</td></tr>
+          <tr><td><code>make clean</code></td><td>remove build output and local logs</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p><code>make help</code> lists all of them.</p>
+
+    <h2>Layout</h2>
+
+    <pre><code>src/domain/     pure logic, no Firebase imports —
+                types, slots, metrics, validation, importer, publishing
+src/lib/        Firestore, auth, mail, QR, CSV — everything facing outward
+src/ui/         screens and components
+firestore.rules the entire authorization layer
+test/           unit and render tests; test/rules/ needs the emulator
+scripts/        workbook extraction (Python, stdlib only) and emulator seeding</code></pre>
+
+    <p>
+      <code>src/domain</code> has no Firebase dependency, so the calculations run in
+      milliseconds and can be tested without a browser or a network.
+      <code>domain/publishing.ts</code> lives there specifically because it decides what a
+      volunteer is handed: the pass is the only thing reachable without an account, so a bug
+      in it is a privacy problem rather than a display glitch.
+    </p>
+
+    <h2>Tests</h2>
+
+    <p>
+      There is a regression suite built from a real year's results, holding the dollar
+      figures and dropping the names. It asserts the app reproduces the source workbook's
+      totals where the workbook was right, and deliberately diverges where it was wrong.
+      Those divergences are the point, so the tests name them:
+    </p>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Workbook said</th><th>Correct</th><th>Why</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>One shop ranked twice, $177.88/hr and $165.46/hr</td>
+            <td>One row, $1,526.41</td>
+            <td>The two day sheets spelled the name differently; the totals grouped by string</td>
+          </tr>
+          <tr>
+            <td>$86.55/hr, rank 4 of 12</td>
+            <td>Unrankable, listed as an anomaly</td>
+            <td><code>IF(F17&gt;0, E17/F17, E17)</code> fell back to the raw total when hours were 0</td>
+          </tr>
+          <tr>
+            <td>Friday: 3 hours</td>
+            <td>4 person-hours</td>
+            <td><code>COUNTA</code> counted filled cells; one cell held two siblings</td>
+          </tr>
+          <tr>
+            <td>Saturday: 25 person-hours</td>
+            <td>56</td>
+            <td>The hours sheet scanned five of eight slots</td>
+          </tr>
+          <tr>
+            <td>Reconciliation "balanced"</td>
+            <td>Friday short $86.55</td>
+            <td>A card total and bushel sales were summed into one column</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>
+      Referencing everything by id rather than by display string is what removes most of
+      that class of defect outright.
+    </p>
+
+    <h2>Notes</h2>
+
+    <p>
+      The hosting emulator sits on port 5050 rather than Firebase's default 5000, because
+      macOS ControlCenter holds 5000. Development does not use it &mdash; Vite serves the
+      app.
+    </p>
+
+    <p>
+      Source workbooks contain minors' names and parent contact details. The repository
+      excludes the workbook itself, any exported responses, and the generated location list.
+      Nothing derived from a real roster belongs in version control.
+    </p>
+
+<div class="next"><a href="security.html">&larr; Access</a><a href="deploying.html">Deploying &rarr;</a></div>
+
+  </div>
+</main>
+
+<footer>
+  <div class="wrap">
+    Apple Day &mdash; scheduling, day-of operations and fundraising totals for a Scout
+    group, on Firebase's free tier. Every name and figure on these pages is invented.
+  </div>
+</footer>
+
+</body>
+</html>

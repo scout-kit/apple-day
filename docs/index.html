@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Apple Day</title>
+<meta name="description" content="Scheduling, day-of operations and fundraising totals for a Scouts Apple Day." />
+<link rel="stylesheet" href="style.css" />
+<script src="theme.js"></script>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="wrap">
+    <a class="brand" href="index.html"><span class="mark"></span> Apple Day</a>
+    <nav>
+      <a href="index.html" aria-current="page">Overview</a>
+      <a href="schedule.html">Schedule</a>
+      <a href="locations.html">Locations</a>
+      <a href="day-of.html">Day of</a>
+      <a href="money.html">Money</a>
+      <a href="passes.html">Passes</a>
+      <a href="security.html">Access</a>
+      <a href="development.html">Development</a>
+      <a href="deploying.html">Deploying</a>
+    </nav>
+    <button class="themer" type="button">Match device</button>
+  </div>
+</div>
+
+<main>
+  <div class="wrap">
+    <p class="kicker">A Scout group fundraiser, run properly</p>
+    <h1>Apple Day</h1>
+    <p class="lede">
+      The shifts, the jars, the money, and the personal link every volunteer gets — in one
+      place, on a phone, at a folding table in a church hall.
+    </p>
+
+    <div class="pills">
+      <span class="pill">Runs on Firebase's free tier</span>
+      <span class="pill">No server to keep alive</span>
+      <span class="pill">Nothing to install on the day</span>
+    </div>
+
+    <h2>What Apple Day is</h2>
+
+    <p>
+      Youth stand outside shops on a Friday evening and a Saturday, hand out apples, and
+      collect donations in numbered jars. Somebody has to decide who stands where, hand out
+      the jars, count them back in, and work out at the end of it what the weekend raised
+      and which shops were worth the hours.
+    </p>
+
+    <p>
+      That is usually a spreadsheet. Swapping two people means retyping cells in two places.
+      A shop spelled slightly differently on the Friday sheet and the Saturday sheet becomes
+      two shops, each with half the takings. Money gets totalled by hand in one column and
+      again in another, and by midnight the two disagree by eighty-odd dollars that nobody
+      can find.
+    </p>
+
+    <div class="note">
+      <p>
+        This replaces that. Nothing is joined up by matching names against each other, every
+        jar is counted exactly once, and the arithmetic is checked against a real year's
+        results before it ever runs on a new one.
+      </p>
+    </div>
+
+    <h2>The screens</h2>
+
+    <div class="grid">
+      <a class="card" href="schedule.html">
+        <h3>Schedule</h3>
+        <p>Who is standing where, and when. Signups come in from a form; the board warns you
+        about a shop that is shut at the hour you staffed it.</p>
+        <span class="more">See it &rarr;</span>
+      </a>
+      <a class="card" href="day-of.html">
+        <h3>Day of</h3>
+        <p>Check people in, hand out jars, cover a no-show. Scan the label or type the
+        number — handing the jar over is what sends somebody out.</p>
+        <span class="more">See it &rarr;</span>
+      </a>
+      <a class="card" href="money.html">
+        <h3>Money</h3>
+        <p>What each shop raised, and what each hour raised. Worked out from the jars, so
+        there is no second set of figures to disagree with.</p>
+        <span class="more">See it &rarr;</span>
+      </a>
+      <a class="card" href="passes.html">
+        <h3>Passes and reminders</h3>
+        <p>Every volunteer gets their own link with their shifts and who to ring. Reminders
+        go out from an organizer's own mailbox.</p>
+        <span class="more">See it &rarr;</span>
+      </a>
+      <a class="card" href="locations.html">
+        <h3>Locations</h3>
+        <p>Shops recorded once and reused every year, with their opening hours, their notes,
+        and what each has raised over the years.</p>
+        <span class="more">See it &rarr;</span>
+      </a>
+      <a class="card" href="security.html">
+        <h3>Who can see what</h3>
+        <p>Organizers sign in. Volunteers do not. Nobody is told where they are going until
+        they report to base.</p>
+        <span class="more">See it &rarr;</span>
+      </a>
+      <a class="card" href="development.html">
+        <h3>Running it yourself</h3>
+        <p>Set it up locally in one command, with no Firebase account and no billing.</p>
+        <span class="more">See it &rarr;</span>
+      </a>
+    </div>
+
+    <h2>A Saturday morning, on the Day of screen</h2>
+
+    <div class="mock">
+      <div class="mock-bar">
+        <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+        <span class="mock-title">Day of &middot; Saturday 10:00 AM</span>
+      </div>
+      <div class="mock-body">
+        <table>
+          <thead>
+            <tr><th>Who</th><th>Where</th><th>When</th><th>Jar</th><th></th><th></th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Priya R.</td><td>Corner Grocers</td><td>9:00&ndash;11:00</td>
+              <td>14</td><td><span class="tag out">out collecting</span></td>
+              <td><div class="btn-row"><span class="btn">Back at base</span></div></td>
+            </tr>
+            <tr>
+              <td>Tomas L.</td><td>Market Square</td><td>10:00&ndash;11:00</td>
+              <td>&mdash;</td><td><span class="tag here">checked in</span></td>
+              <td><div class="btn-row"><span class="btn primary">Issue a jar</span><span class="btn">Not here</span></div></td>
+            </tr>
+            <tr>
+              <td>Amara O.</td><td>Riverside Hardware</td><td>10:00&ndash;11:00</td>
+              <td>&mdash;</td><td><span class="tag">expected</span></td>
+              <td><div class="btn-row"><span class="btn primary">Check in</span><span class="btn">No show</span></div></td>
+            </tr>
+            <tr>
+              <td>Kofi &amp; Ama B.</td><td>Station Bakery</td><td>9:00&ndash;10:00</td>
+              <td>8</td><td><span class="tag back">back, jar counted</span></td>
+              <td><div class="btn-row"><span class="btn">Send out again</span></div></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <p class="mock-caption">
+      Two shifts back to back at one shop are one row. The person doing them does not come
+      back to the table in between, and does not want checking in twice.
+    </p>
+
+    <h2>Two decisions worth naming</h2>
+
+    <h3>Nobody is told where they are going until they arrive</h3>
+    <p>
+      A volunteer's link shows their times straight away, but names the shop only once an
+      organizer has checked them in at base. Everybody reports to base first anyway, and a
+      link that gets forwarded around should not say where a named child will be standing
+      for the next two hours. Reminder emails carry the times and never the places.
+    </p>
+
+    <h3>A jar that is still out is not a jar that came back empty</h3>
+    <p>
+      Until a jar is counted, it has no amount &mdash; which is different from having an
+      amount of nothing. Treating the two the same drags a shop's takings-per-hour down
+      while the day is still running, and hides how much is still out on the street. Jars
+      that have not come back are listed separately so somebody can go and find them.
+    </p>
+
+<div class="next"><span></span><a href="schedule.html">Schedule &rarr;</a></div>
+
+  </div>
+</main>
+
+<footer>
+  <div class="wrap">
+    Apple Day &mdash; scheduling, day-of operations and fundraising totals for a Scout
+    group, on Firebase's free tier. Every name and figure on these pages is invented.
+  </div>
+</footer>
+
+</body>
+</html>

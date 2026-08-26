@@ -1,0 +1,85 @@
+# Local configuration. `*.local` below covers Vite's .env.local and friends; these are
+# the ones it does not. The Firebase web config is public by design, but a file called
+# .env is where a real secret ends up sooner or later.
+.env
+.env.*
+!.env.example
+
+# ---------------------------------------------------------------------------
+# Credentials.
+#
+# The one mistake here that cannot be walked back. A Firebase service account
+# key is full admin on the project: it bypasses `firestore.rules` entirely, so
+# it reads every child's name and every parent's phone number regardless of
+# what the rules say. The console hands them out as a download, which lands in
+# whatever directory the browser is pointed at — often this one.
+#
+# Named widely on purpose. Nothing in this app needs one: it is a browser app
+# with no server, and the emulator scripts use the emulator's own fake owner
+# token.
+# ---------------------------------------------------------------------------
+*serviceAccount*.json
+*-adminsdk-*.json
+*firebase-adminsdk*
+*.pem
+*.p12
+*.key
+
+# Dependencies / build
+node_modules/
+dist/
+coverage/
+test-results/
+*.local
+*.tsbuildinfo
+
+# Firebase
+.firebase/
+.runtimeconfig.json
+
+# Logs, all of them. None belongs in here, and the ones worth having are named
+# by whatever produced them — a blanket rule is fewer things to remember than a
+# list that has to grow every time a tool is added.
+*.log
+
+# Local process bookkeeping from `make up` and `make firstrun`.
+*.pid
+
+# Emulator snapshots (regenerate from scripts; never commit real data)
+seed/
+firebase-export-*/
+
+# ---------------------------------------------------------------------------
+# PII — the Apple Day workbook and every export derived from it contain youth
+# names, parent names, emails and phone numbers. None of it belongs in git.
+# Keep the source workbook and any generated person data local only.
+# ---------------------------------------------------------------------------
+*.xlsx
+*.xls
+data/local/
+*.responses.csv
+
+# ---------------------------------------------------------------------------
+# One group's own setup, which is not this app.
+#
+# The shop list is 1st Waterloo's — eighteen real businesses, their pitches and
+# their group codes — and it is generated from the workbook by
+# `scripts/extract_workbook.py`, so it is not lost by being left out. Committing
+# it would hand every other group a location library it has to empty before it
+# can start, and put one group's arrangements in a public repository.
+data/locations.seed.json
+
+# Which Firebase projects to deploy to, and under what alias. Real project ids
+# for real groups; `.firebaserc.example` shows the shape. Same reasoning as
+# `.env` above — this is configuration for one installation, not the app.
+.firebaserc
+
+# Editor / OS
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+

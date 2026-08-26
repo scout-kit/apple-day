@@ -1,0 +1,47 @@
+{
+  "name": "apple-day",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "1st Waterloo Scouts Apple Day — scheduling, day-of operations and fundraising totals",
+  "scripts": {
+    "dev": "VITE_USE_EMULATOR=1 vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc -b --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:rules": "firebase emulators:exec --only firestore \"vitest run --config vitest.rules.config.ts\"",
+    "emulators": "mkdir -p seed && firebase emulators:start --only auth,firestore --import ./seed --export-on-exit",
+    "seed": "python3 scripts/extract_workbook.py && node scripts/seed.mjs",
+    "deploy:rules": "node -e \"console.error('Use: make deploy-rules GROUP=<alias>')\" && exit 1"
+  },
+  "dependencies": {
+    "firebase": "^11.1.0",
+    "jsqr": "^1.4.0",
+    "leaflet": "^1.9.4",
+    "nanoid": "^5.0.9",
+    "papaparse": "^5.4.1",
+    "qrcode": "^1.5.4",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.28.0"
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^4.0.1",
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.5",
+    "@types/leaflet": "^1.9.22",
+    "@types/papaparse": "^5.3.15",
+    "@types/qrcode": "^1.5.5",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.4",
+    "firebase-tools": "^13.29.1",
+    "jsdom": "^29.1.1",
+    "typescript": "^5.7.2",
+    "vite": "^6.0.5",
+    "vitest": "^3.2.7"
+  }
+}

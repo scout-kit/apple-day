@@ -1,0 +1,532 @@
+rules_version = '2';
+
+// Apple Day — all authorization lives here. There is no server (Spark plan, no Cloud
+// Functions), so these rules are the ONLY thing standing between the public internet and
+// the data. Two properties matter most:
+//
+//   1. Minors' names and parent contact details are never publicly readable. There is no
+//      public schedule any more: nothing in this database is readable without either an
+//      account on the roster or an unguessable pass token.
+//   2. Anyone who works a screen holds an account on the roster. A volunteer holds only
+//      an unguessable pass token, which reaches exactly one document: their own pass.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---------------------------------------------------------------- helpers
+    //
+    // Two notes on the cross-document lookups below.
+    //
+    // Budget: Firestore allows 10 document access calls per single-document request.
+    // `isOrganizer()` costs one `exists`, so there is headroom — but adding another
+    // lookup-based helper to a rule that already calls it is not free. Keep an eye on it.
+    //
+    // Emulator noise: a denied request whose rule needed a lookup logs an
+    // "evaluation error at L<n>" before the real verdict. That is the emulator
+    // evaluating the ruleset speculatively before the lookup resolves; the authoritative
+    // result is the plain `false` later in the same log line. It is not a rule defect.
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    /*
+      Two tiers on one roster.
+
+      A roster entry may carry `level: 'organizer'`, which is somebody trusted to run the
+      event — build the schedule, check people in, count jars, publish — but not to change
+      the shape of it: the location library, the sections, the events themselves. Those are
+      shared across years, and a wrong edit to one of them is not a wrong edit to a shift,
+      it is a wrong edit to every year at once.
+
+      A roster entry with no level is a full admin. That default matters: every entry
+      written before this existed is one, and reading them as the lesser tier would have
+      quietly locked the group out of its own setup screens.
+    */
+    function onRoster() {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
+    function rosterLevel() {
+      // `get` with a default, not `.level`: reading a key that is not there is an error in
+      // rules, not a null, so a roster entry written before the tiers existed would have
+      // failed every check rather than defaulting to the fuller one.
+      return get(/databases/$(database)/documents/admins/$(request.auth.uid))
+        .data.get('level', 'admin');
+    }
+
+    /** Anybody on the roster: organizers and admins alike. Runs the event. */
+    function isOrganizer() {
+      return onRoster();
+    }
+
+    /** Full access, including the setup that spans every year. */
+    function isAdmin() {
+      return onRoster() && rosterLevel() != 'organizer';
+    }
+
+    function isUnchanged(field) {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny([field]);
+    }
+
+    // ----------------------------------------------------------------- admins
+    // Membership is granted out-of-band (Firebase console, or the emulator UI locally).
+    // Never writable from the client — otherwise anyone could promote themselves.
+
+    /*
+      Who may use the app.
+
+      Managed in the app rather than the console, which means this collection is writable by
+      a signed-in session — a real change in exposure, bounded by three rules.
+
+      One: only an admin may write it at all. Two: *nobody* may change their own entry, which
+      is what makes locking the group out impossible. An admin can remove any other admin, so
+      with two either can remove the other, but neither can remove themselves — one always
+      remains. Three: a new entry may also be created by the person it belongs to, and only
+      when a fresh invitation exists for the verified address on their token. That is how
+      somebody gets in before anyone knows their uid.
+    */
+    function invitePath(email) {
+      return /databases/$(database)/documents/invites/$(email);
+    }
+
+    function ownVerifiedEmail() {
+      return isSignedIn()
+        && request.auth.token.email_verified == true
+        && request.auth.token.email != null;
+    }
+
+    /*
+      A claim writes its own roster entry, so nothing in it is taken on trust.
+
+      The tier is the only field that grants anything — `rosterLevel()` reads it — and it is
+      checked against the invitation, so a caller that reads "organizer" and writes "admin"
+      is refused. The rest is checked too, for a different reason: the access screen shows
+      each entry's address and who granted it, and an unconstrained claim could write a
+      different address than the one it signed in with, making that column say whatever it
+      liked. A record of who let somebody in is worth nothing if the person let in wrote it.
+    */
+    function claimingOwnInvite(uid) {
+      return ownVerifiedEmail()
+        && request.auth.uid == uid
+        && exists(invitePath(request.auth.token.email))
+        // The tier is the invitation's, never the claimant's choice.
+        && request.resource.data.level == get(invitePath(request.auth.token.email)).data.level
+        // Nothing beyond the four fields the app writes, so an entry cannot carry passengers.
+        && request.resource.data.keys().hasOnly(['email', 'level', 'addedAt', 'addedBy'])
+        // The address it actually signed in with, not one it fancies.
+        && request.resource.data.email == request.auth.token.email
+        // Provenance it cannot forge into a name.
+        && request.resource.data.addedBy == 'invitation'
+        && request.resource.data.addedAt is int
+        // Bounded: an invitation is a standing grant to whoever controls that mailbox.
+        && request.time.toMillis()
+             - get(invitePath(request.auth.token.email)).data.invitedAt
+           < 30 * 24 * 60 * 60 * 1000;
+    }
+
+    match /admins/{uid} {
+      // Your own entry, so the app knows which tier to show. Admins see the whole roster,
+      // which is the screen that answers "who has access".
+      allow get: if isAdmin() || (isSignedIn() && request.auth.uid == uid);
+      allow list: if isAdmin();
+
+      allow create: if claimingOwnInvite(uid)
+        || (isAdmin() && request.auth.uid != uid);
+      allow update, delete: if isAdmin() && request.auth.uid != uid;
+    }
+
+    /*
+      Invitations, keyed by lowercased email.
+
+      Admins see and write them. The invitee may also read *their own* — and only their own —
+      because the app has to learn which tier it was invited to before it can write the
+      roster entry claiming it. Leaving this out is what made the whole flow silently do
+      nothing: the rule above reads the invitation on the claimant's behalf, which needs no
+      read permission, but the client asking first was denied and swallowed the error.
+
+      `list` stays closed, so the collection cannot be walked for addresses.
+    */
+    match /invites/{email} {
+      allow get: if isAdmin()
+        || (ownVerifiedEmail() && email == request.auth.token.email);
+      allow list: if isAdmin();
+      allow write: if isAdmin();
+
+      /*
+        Claiming an invitation uses it up.
+
+        Only the person it names, and only once they hold a verified address matching it —
+        the same test that lets them read it and write themselves onto the roster. Without
+        this the invitation outlived its purpose: the person signed in, got their access,
+        and sat in the admin's "waiting to sign in" list for ever, which is a list of people
+        to chase.
+      */
+      allow delete: if isAdmin()
+        || (ownVerifiedEmail() && email == request.auth.token.email);
+    }
+
+    // ------------------------------------------------------------------ audit
+    /*
+      Who changed what. Append-only, and that is the whole point.
+
+      Every entry is written by the app in the same batch as the change it describes, so a
+      jar's new amount and the line naming who typed it land together or not at all.
+
+      The rules here do two things a client cannot undo: an entry can only be created, never
+      edited or removed — not by an organizer, not by an admin, not by the person who wrote
+      it — and `by` has to be the uid making the request, so nobody can write a line in
+      somebody else's name.
+
+      What this does not do, and cannot on the free plan: force a change to carry an entry.
+      Rules can only look up a document by a path they already know, so requiring one would
+      mean stamping every jar with the id of its own audit entry and paying a lookup on every
+      write. Worth it against a determined insider; not worth it here, where the app is the
+      only way anybody touches this and the question being answered is "who typed 80 instead
+      of 180". Somebody with Firebase console access bypasses all of this regardless — that
+      is what a server-side log fixes, and it needs Cloud Functions.
+    */
+    match /audit/{entryId} {
+      /*
+        Read by admins only.
+
+        Everyone running the event writes to it — that is the point — but it is a record about
+        the organizers themselves, not a working screen. Who marked which child a no-show, and
+        who corrected whose jar, is for whoever is answerable for the event, not for everyone
+        who happens to be at base ops.
+      */
+      allow read: if isAdmin();
+
+      allow create: if isOrganizer()
+        && request.resource.data.by == request.auth.uid
+        /*
+          Stamped when it happened, not whenever the writer fancies.
+
+          `at is int` on its own let an entry be dated years ahead, which pins it to the top
+          of a log that is read newest-first and files it under a day that never happened —
+          in a record whose whole purpose is the order things occurred in. The window is
+          generous because the clock is the client's, and still leaves the ordering worth
+          reading.
+        */
+        && request.resource.data.at > request.time.toMillis() - 24 * 60 * 60 * 1000
+        && request.resource.data.at < request.time.toMillis() + 24 * 60 * 60 * 1000
+        /*
+          Against this year or against nothing.
+
+          Null is the shared setup — the library, the sections, the access list — which
+          belongs to no single Apple Day. What an entry may not do is name some other year
+          and quietly appear in its history.
+        */
+        && (request.resource.data.eventId == null
+            || exists(/databases/$(database)/documents/events/$(request.resource.data.eventId)))
+        && request.resource.data.action in ['created', 'updated', 'deleted']
+        && request.resource.data.entityId is string
+        && request.resource.data.summary is string;
+
+      // Never. An audit trail that can be tidied up is not one.
+      allow update, delete: if false;
+    }
+
+    // -------------------------------------------------------------- locations
+    // Business addresses and store-manager contacts. Organizers only; a volunteer sees the
+    // one location they are sent to, denormalized onto their own pass.
+
+    match /locations/{locationId} {
+      allow read: if isOrganizer();
+      /*
+        Adding a shop and correcting an address are things that happen on the day, by
+        whoever is standing there finding out the address is wrong — so an organizer does
+        them. A rename does not lose a year of history: the roll-ups resolve old spellings
+        through `aliases`, and every edit is on the audit log with a name against it.
+
+        Deleting is the exception, and stays with an admin. A location is what three years
+        of jars and assignments hang off; removing one orphans all of it, and unlike a bad
+        address it cannot be noticed and fixed later.
+      */
+      allow create, update: if isOrganizer();
+      allow delete: if isAdmin();
+    }
+
+    // ------------------------------------------------------- reminderTemplates
+    /*
+      How the group words its reminders, where it differs from the built-in.
+
+      Organizer-writable, like sending itself: the person who has to send a reminder is the
+      one who knows how it should read. Shared across years rather than per event, so it is
+      written once — which also means an edit changes what everybody sends, and every edit
+      is on the audit log with a name against it.
+
+      A missing document means the built-in wording, so deleting one is how it is reset.
+    */
+    match /reminderTemplates/{templateId} {
+      allow read: if isOrganizer();
+      allow create, update: if isOrganizer()
+        && request.resource.data.keys().hasOnly(['subject', 'body', 'updatedAt', 'updatedBy'])
+        && request.resource.data.keys().hasAll(['subject', 'body'])
+        && request.resource.data.subject is string
+        && request.resource.data.subject.size() > 0
+        && request.resource.data.subject.size() <= 200
+        && request.resource.data.body is string
+        && request.resource.data.body.size() > 0
+        // Long enough for anything worth saying, short enough that a paste accident is not
+        // mailed to sixty families.
+        && request.resource.data.body.size() <= 4000;
+      // Deleting is how a wording is put back to the built-in.
+      allow delete: if isOrganizer();
+    }
+
+    // ----------------------------------------------------------------- passes
+    // Capability documents. `get` is open because the document id IS the secret: a
+    // 22-character random token that cannot be guessed or enumerated. `list` is closed,
+    // which is what keeps the collection from being walked.
+
+    match /passes/{token} {
+      allow get: if true;
+      allow list: if isOrganizer();
+      allow write: if isOrganizer();
+    }
+
+    // ----------------------------------------------------------------- people
+    // Youth names, sections, parent names, emails, phone numbers. Organizers only.
+    // A volunteer reads their OWN details from their pass document instead.
+
+    // ---------------------------------------------------------------- sections
+    // The group's own sections. Anybody running the event reads them so a name and colour
+    // can be shown on the day; only admins change the list.
+
+    match /sections/{sectionId} {
+      allow read: if isOrganizer();
+      // Setup: every year's figures are grouped by these.
+      allow write: if isAdmin();
+    }
+
+    // ----------------------------------------------------------------- events
+
+    match /events/{eventId} {
+      allow read: if isOrganizer();
+      /*
+        Editing the year that is being run — its dates, its hours, the number to ring — is
+        organizing it, and wanting the support number changed at 8am on the Saturday is not
+        an unreasonable thing to want.
+
+        Creating and deleting stay with an admin. Deleting an event is the single most
+        destructive act available here: a year of jars, shifts and audit entries hang off
+        it and go with it, and nothing in the app can put them back.
+      */
+      allow update: if isOrganizer();
+      allow create, delete: if isAdmin();
+
+      // Which library locations this year uses, and in what order. Read by anybody running
+      // the event so the jar screen can name a location; only admins set them.
+      match /eventLocations/{locationId} {
+        allow read: if isOrganizer();
+        /*
+          Which shops this year uses is this year's schedule, not the shape of the app —
+          the same decision as which hour somebody works, made by the same person, often in
+          the same sitting. It was behind the cross-year gate only because it is nested
+          under the event alongside things that are.
+        */
+        allow write: if isOrganizer();
+      }
+
+      /*
+        The youth and leaders taking part in this event.
+
+        Under the event, not shared across years: a system-wide register of children meant
+        that removing somebody from this year left their name and their parent's phone number
+        in the database indefinitely. Here, deleting them deletes them.
+
+        Deletion is an organizer's, unlike before — it now affects one event rather than
+        every year at once, which is exactly the sort of decision somebody running the day
+        should be able to make.
+      */
+      match /people/{personId} {
+        allow read: if isOrganizer();
+        allow write: if isOrganizer();
+      }
+
+      match /signups/{signupId} {
+        // Availability gets corrected while the schedule is being built.
+        allow read, write: if isOrganizer();
+      }
+
+      match /assignments/{assignmentId} {
+        /*
+          Attendance (did they turn up) and whereabouts (are they out collecting) are
+          separate fields on purpose: one field meant issuing a jar overwrote the check-in.
+
+          Both enums are checked even though only organizers write here — not because an
+          organizer is not trusted, but because a typo in a client would otherwise park a
+          shift in a state no screen knows how to render, and the board would simply stop
+          showing that person. This check used to live on a rule for base-ops counters,
+          and was very nearly lost when they were removed.
+        */
+        function validShift() {
+          return (!('status' in request.resource.data)
+                  || request.resource.data.status in [
+                       'planned', 'confirmed', 'checkedIn', 'noShow', 'swapped'
+                     ])
+            && (!('whereabouts' in request.resource.data)
+                || request.resource.data.whereabouts in ['here', 'out', 'back']);
+        }
+
+        allow read: if isOrganizer();
+        allow create, update: if isOrganizer() && validShift();
+        allow delete: if isOrganizer();
+      }
+
+      // ------------------------------------------------------------------ jars
+      // The money. Doc id is the jar's identity, which is what makes duplicate jar
+      // numbers impossible. Only organizers
+      // may delete, so a miscount is always an edit with an audit trail, never a
+      // vanished row.
+
+      match /jars/{jarId} {
+        // A jar exists from the moment it is handed over. While it is out there is no
+        // amount yet — null, not zero: a jar still on the street is not a jar that came
+        // back empty, and the money screens depend on being able to tell them apart.
+        function validJar() {
+          return request.resource.data.keys().hasAll(['jarNumber', 'day', 'locationId', 'status'])
+            // Null for money that never went through a numbered jar: bushel sales at a
+            // location, a donation, a card tap away from the table.
+            && (request.resource.data.jarNumber == null
+                || (request.resource.data.jarNumber is int
+                    && request.resource.data.jarNumber > 0))
+            && request.resource.data.day in ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat']
+            && request.resource.data.locationId is string
+            && request.resource.data.status in ['out', 'counted']
+            && request.resource.data.method in ['cash', 'square']
+            && validShifts()
+            && validAmount();
+        }
+
+        // The shifts a jar was out for. Its takings divide across them, so a runaway list
+        // would spread one jar's money over an implausible stretch of the evening; capped
+        // at more hours than any event runs.
+        function validShifts() {
+          return !('assignmentIds' in request.resource.data)
+            || (request.resource.data.assignmentIds is list
+                && request.resource.data.assignmentIds.size() <= 24);
+        }
+
+        function validAmount() {
+          return request.resource.data.status == 'out'
+            ? request.resource.data.amount == null
+            : (request.resource.data.amount is number
+                && request.resource.data.amount >= 0
+                && request.resource.data.amount <= 10000);
+        }
+
+        allow read: if isOrganizer();
+        allow create, update: if isOrganizer() && validJar();
+
+        allow delete: if isOrganizer();
+      }
+
+      /*
+        What the last publish wrote: when, and a hash of what went out.
+
+        Organizer-writable, unlike the event document itself — publishing is organizer work
+        and must not need the admin tier. Nothing here is readable without an account, which
+        is where it differs from the public schedule document this replaced.
+      */
+      match /meta/{docId} {
+        allow read: if isOrganizer();
+        allow write: if isOrganizer();
+      }
+
+      match /reconciliation/{docId} {
+        allow read, write: if isOrganizer();
+      }
+
+      // ---------------------------------------------------------- swapRequests
+      // A volunteer on their own pass can ask for a swap or report a no-show. Create
+      // only, size-capped, and never readable by the public — organizers triage in-app.
+      //
+      // TODO before go-live: enable App Check enforcement in the console and add
+      //   && request.app != null
+      // to the create rule. Left off here because the emulator does not enforce App
+      // Check, and adding it would fail every local and CI test.
+
+      /*
+        What reminders have already gone out, and to whom.
+
+        Append-only for the same reason the audit log is: a send either happened or it did
+        not, and a record that can be tidied away leaves nobody able to answer whether a
+        parent was actually told. It is also what stops a second click sending a second
+        copy, which only works if the first record cannot be removed.
+
+        One document per youth, keyed `${templateId}__${selectionKey}__${personId}` so the
+        check is a lookup by id rather than a query. No address is stored here — contact
+        details stay in `people`, which fewer screens read.
+      */
+      match /reminders/{reminderId} {
+        allow read: if isOrganizer();
+        allow create: if isOrganizer()
+          && request.resource.data.keys().hasOnly([
+               'templateId', 'selectionKey', 'personId', 'assignmentIds',
+               'sentAt', 'sentBy', 'sentByEmail', 'channel'
+             ])
+          && request.resource.data.keys().hasAll([
+               'templateId', 'selectionKey', 'personId', 'sentAt', 'channel'
+             ])
+          && request.resource.data.templateId in
+               ['event_schedule', 'shift_upcoming', 'not_checked_in']
+          && request.resource.data.channel in ['gmail', 'csv']
+          && request.resource.data.personId is string
+          && request.resource.data.selectionKey is string
+          // Capped for the same reason a jar's shift list is: a runaway list is a bug, and
+          // no youth works more hours than an event has.
+          && (!('assignmentIds' in request.resource.data)
+              || (request.resource.data.assignmentIds is list
+                  && request.resource.data.assignmentIds.size() <= 24))
+          // Stamped when it happened. The clock is the client's, so the window is generous
+          // and still leaves the record worth reading in order.
+          && request.resource.data.sentAt is int
+          && request.resource.data.sentAt > request.time.toMillis() - 24 * 60 * 60 * 1000
+          && request.resource.data.sentAt < request.time.toMillis() + 24 * 60 * 60 * 1000;
+
+        // Never. A record that can be edited is not one.
+        allow update, delete: if false;
+      }
+
+      match /swapRequests/{requestId} {
+        allow get, list: if isOrganizer();
+        allow create: if request.resource.data.keys()
+             .hasOnly(['passToken', 'kind', 'slotId', 'message', 'createdAt'])
+          && request.resource.data.keys().hasAll(['passToken', 'kind', 'createdAt'])
+          && request.resource.data.kind in ['swap', 'cancel', 'help', 'noShow', 'question']
+          && request.resource.data.passToken is string
+          && exists(/databases/$(database)/documents/passes/$(request.resource.data.passToken))
+          && (!('slotId' in request.resource.data)
+              || (request.resource.data.slotId is string
+                  && request.resource.data.slotId.size() <= 40))
+          && (!('message' in request.resource.data)
+              || (request.resource.data.message is string && request.resource.data.message.size() <= 500))
+          /*
+            A time, and roughly now.
+
+            This was allowed through unchecked, and the queue is worked oldest-first — so
+            `createdAt: 0` put whoever sent it at the front of it, ahead of somebody who
+            wrote in on the Wednesday. A string got through too, and read back as 0, which
+            did the same thing by accident.
+
+            A day either side, which is slack for a phone with the wrong clock and nothing
+            like enough to jump a queue with.
+          */
+          && request.resource.data.createdAt is int
+          && request.resource.data.createdAt
+               > request.time.toMillis() - 24 * 60 * 60 * 1000
+          && request.resource.data.createdAt
+               < request.time.toMillis() + 24 * 60 * 60 * 1000;
+        allow update, delete: if isOrganizer();
+      }
+    }
+
+    // Anything not matched above is denied.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

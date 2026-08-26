@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Locations &mdash; Apple Day</title>
+<meta name="description" content="The shop library, which places a year uses, and what each one has raised over the years." />
+<link rel="stylesheet" href="style.css" />
+<script src="theme.js"></script>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="wrap">
+    <a class="brand" href="index.html"><span class="mark"></span> Apple Day</a>
+    <nav>
+      <a href="index.html">Overview</a>
+      <a href="schedule.html">Schedule</a>
+      <a href="locations.html" aria-current="page">Locations</a>
+      <a href="day-of.html">Day of</a>
+      <a href="money.html">Money</a>
+      <a href="passes.html">Passes</a>
+      <a href="security.html">Access</a>
+      <a href="development.html">Development</a>
+      <a href="deploying.html">Deploying</a>
+    </nav>
+    <button class="themer" type="button">Match device</button>
+  </div>
+</div>
+
+<main>
+  <div class="wrap">
+    <p class="kicker">The places</p>
+    <h1>Locations</h1>
+    <p class="lede">
+      Shops are recorded once and reused every year, so their history follows them.
+    </p>
+
+    <h2>The library</h2>
+
+    <p>
+      One entry per real place, shared by every year: the address, a map link, who to ask
+      for at the shop, its insurance paperwork, and any note worth passing on &mdash; which
+      door to stand at, where not to block, who to check in with on arrival.
+    </p>
+
+    <div class="mock">
+      <div class="mock-bar">
+        <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+        <span class="mock-title">Library</span>
+      </div>
+      <div class="mock-body">
+        <table>
+          <thead>
+            <tr><th>Shop</th><th>Address</th><th>Open Saturday</th><th>Also known as</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Market Square</td><td>2 Market Street</td><td>7:00 AM &ndash; 2:00 PM</td>
+                <td class="muted small">Market Sq, The Market</td></tr>
+            <tr><td>Corner Grocers</td><td>640 Parkside Drive</td><td>8:00 AM &ndash; 9:00 PM</td>
+                <td class="muted small">Corner Grocery</td></tr>
+            <tr><td>Riverside Hardware</td><td>11 Mill Lane</td><td>10:00 AM &ndash; 5:00 PM</td>
+                <td class="muted small">&mdash;</td></tr>
+            <tr><td>Station Bakery</td><td>3 Station Approach</td><td><span class="tag warn">closed</span></td>
+                <td class="muted small">&mdash;</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <p class="mock-caption">
+      Opening hours are recorded for every day of the week, whether or not you staff that
+      day. That is what lets the schedule warn you about a locked door.
+    </p>
+
+    <h3>Also known as</h3>
+
+    <p>
+      A shop gets written down differently by different people, and across years the spelling
+      drifts. Recording the other names it has gone by means a shop's history stays on one
+      row rather than splitting into two half-shops, each with half the takings and neither
+      ranking properly.
+    </p>
+
+    <h2>Which shops a year uses</h2>
+
+    <p>
+      Each year picks from the library and puts them in order, with a switch for each. A
+      shop that closed is switched off rather than deleted, so the years it did run still
+      read correctly.
+    </p>
+
+    <p>
+      The order is a priority: work this one first. It changes year to year, so it belongs
+      to the year rather than to the shop.
+    </p>
+
+    <h2>All of them on one map</h2>
+
+    <p>
+      A year's shops, laid out as they actually sit. It answers the questions a list cannot:
+      which two are close enough for one person to cover both, whether base is anywhere
+      sensible in the middle of them, and whether a whole side of town has been forgotten.
+    </p>
+
+    <div class="mock">
+      <div class="mock-bar">
+        <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+        <span class="mock-title">Locations &middot; map</span>
+      </div>
+      <div class="mock-body">
+        <div class="pinmap" aria-hidden="true">
+          <span class="pin" style="left:14%;top:22%">7</span>
+          <span class="pin" style="left:38%;top:16%">3</span>
+          <span class="pin" style="left:26%;top:38%">1</span>
+          <span class="pin" style="left:60%;top:34%">5</span>
+          <span class="pin base" style="left:44%;top:52%">&starf;</span>
+          <span class="pin lit" style="left:70%;top:48%">2</span>
+          <span class="pin" style="left:82%;top:62%">4</span>
+          <span class="pin" style="left:20%;top:64%">6</span>
+          <span class="pin" style="left:52%;top:74%">8</span>
+        </div>
+        <ol class="small map-key-demo">
+          <li>Market Square</li>
+          <li class="lit">Corner Grocers</li>
+          <li>Riverside Hardware</li>
+          <li>Station Bakery</li>
+        </ol>
+        <p class="small muted" style="margin:.7rem 0 0">
+          Pins are numbered in the order the year works them. The star is base.
+        </p>
+      </div>
+    </div>
+    <p class="mock-caption">
+      Organizers only. This is exactly the thing a volunteer&rsquo;s link is written to
+      avoid saying &mdash; see <a href="security.html">who can see what</a>.
+    </p>
+
+    <p>
+      The map and the list beside it are two views of one thing. Point at a name and its pin
+      lights up; point at a pin and its name does. A numbered pin only answers &ldquo;which
+      of these is Corner Grocers&rdquo; if you go hunting for the number, and a list of
+      nineteen names says nothing about where any of them is &mdash; each is half an answer
+      until they are joined up.
+    </p>
+
+    <p class="small muted">
+      It follows the keyboard as well as the pointer, so tabbing down the list walks the map
+      with you.
+    </p>
+
+    <h3>Where the pins come from</h3>
+
+    <p>
+      From each shop&rsquo;s address, looked up once and remembered. A button on the
+      locations screen works through the ones that have not been placed yet, a second at a
+      time, and says how long that will take before you press it &mdash; the service doing
+      the looking up is free and run on donated hardware, so it is asked politely.
+    </p>
+
+    <p>
+      Anything it cannot find is named rather than quietly left off, because a shop it could
+      not place usually means an address worth checking. A shop with no address at all is
+      counted separately: that is a different problem, and it is one somebody has to type.
+    </p>
+
+    <h2>A shop's own page</h2>
+
+    <p>
+      Every shop name in the app is a link. Following one gives you everything about that
+      place in one screen:
+    </p>
+
+    <ul>
+      <li><strong>Arranging it</strong> &mdash; the address, a map, when it is open, who to
+      ask for, and the notes.</li>
+      <li><strong>Year by year</strong> &mdash; what it raised each year, and the hours it
+      took, so a shop quietly falling off is visible.</li>
+      <li><strong>Hour by hour, year on year</strong> &mdash; which hours are worth staffing
+      <em>here</em>, which is not the same answer as for the event overall.</li>
+      <li><strong>This event</strong> &mdash; who is scheduled, and when.</li>
+      <li><strong>Jars counted here</strong> &mdash; every jar, with what was in it.</li>
+    </ul>
+
+    <div class="mock">
+      <div class="mock-bar">
+        <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+        <span class="mock-title">Market Square &middot; hour by hour, year on year</span>
+      </div>
+      <div class="mock-body">
+        <table>
+          <thead>
+            <tr><th>Hour</th><th>This year</th><th>Last year</th><th>Per person-hour</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>9:00 AM</td><td>$286</td><td class="muted">$241</td><td>$143</td></tr>
+            <tr><td>10:00 AM</td><td>$412</td><td class="muted">$388</td><td>$206</td></tr>
+            <tr><td>11:00 AM</td><td>$498</td><td class="muted">$455</td><td>$249</td></tr>
+            <tr><td>12:00 PM</td><td>$330</td><td class="muted">$402</td><td>$165</td></tr>
+            <tr><td class="muted">1:00 PM</td><td class="muted">not staffed</td><td class="muted">$298</td><td class="muted">&mdash;</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <p class="mock-caption">
+      An hour nobody staffed this year is shown as such rather than as zero. The two are
+      different facts, and only one of them is a reason to stop staffing it.
+    </p>
+
+    <h2>Location cards</h2>
+
+    <div class="split">
+      <div class="card rowline">
+        <span class="qr" aria-hidden="true"><i></i><i></i><i></i><i></i><i class="o"></i><i></i><i></i><i></i><i></i><i></i><i class="o"></i><i></i><i class="o"></i><i class="o"></i><i></i><i></i><i class="o"></i><i></i><i></i><i></i><i></i><i></i><i class="o"></i><i></i><i></i><i></i><i></i><i></i><i class="o"></i><i class="o"></i><i class="o"></i><i class="o"></i><i class="o"></i><i></i><i class="o"></i><i class="o"></i><i class="o"></i><i class="o"></i><i class="o"></i><i></i><i class="o"></i><i class="o"></i><i></i><i></i><i class="o"></i><i class="o"></i><i class="o"></i><i class="o"></i><i class="o"></i><i class="o"></i><i></i><i class="o"></i><i></i><i class="o"></i><i></i><i></i><i></i><i class="o"></i><i></i><i></i><i></i><i class="o"></i><i></i><i></i><i class="o"></i><i></i><i class="o"></i><i></i><i class="o"></i><i></i><i></i><i class="o"></i><i></i><i></i><i></i><i class="o"></i><i class="o"></i><i class="o"></i><i class="o"></i><i class="o"></i><i class="o"></i></span>
+        <div>
+          <strong class="small">Market Square</strong>
+          <p class="small" style="margin:.2rem 0 0">2 Market Street<br />Priority 1</p>
+        </div>
+      </div>
+      <div>
+        <p class="small">
+          Each shop gets a printable card with a code on it. Scanning one on the Jars screen
+          selects that shop, so whoever is counting at the end of the evening picks the
+          right place without scrolling a list of eighteen by torchlight.
+        </p>
+      </div>
+    </div>
+
+<div class="next"><a href="schedule.html">&larr; Schedule</a><a href="day-of.html">Day of &rarr;</a></div>
+
+  </div>
+</main>
+
+<footer>
+  <div class="wrap">
+    Apple Day &mdash; scheduling, day-of operations and fundraising totals for a Scout
+    group, on Firebase's free tier. Every name and figure on these pages is invented.
+  </div>
+</footer>
+
+</body>
+</html>

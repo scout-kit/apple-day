@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Schedule &mdash; Apple Day</title>
+<meta name="description" content="Building the schedule: signups, days and hours, and the shops a year uses." />
+<link rel="stylesheet" href="style.css" />
+<script src="theme.js"></script>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="wrap">
+    <a class="brand" href="index.html"><span class="mark"></span> Apple Day</a>
+    <nav>
+      <a href="index.html">Overview</a>
+      <a href="schedule.html" aria-current="page">Schedule</a>
+      <a href="locations.html">Locations</a>
+      <a href="day-of.html">Day of</a>
+      <a href="money.html">Money</a>
+      <a href="passes.html">Passes</a>
+      <a href="security.html">Access</a>
+      <a href="development.html">Development</a>
+      <a href="deploying.html">Deploying</a>
+    </nav>
+    <button class="themer" type="button">Match device</button>
+  </div>
+</div>
+
+<main>
+  <div class="wrap">
+    <p class="kicker">Before the day</p>
+    <h1>Schedule</h1>
+    <p class="lede">
+      Who is standing where, and when. Built once in the week before, then left alone.
+    </p>
+
+    <div class="mock">
+      <div class="mock-bar">
+        <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+        <span class="mock-title">Schedule &middot; Saturday</span>
+      </div>
+      <div class="mock-body">
+        <table>
+          <thead>
+            <tr><th>Shop</th><th>9:00</th><th>10:00</th><th>11:00</th><th>12:00</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Corner Grocers</td>
+              <td>Priya R.<br /><span class="small muted">Tomas L.</span></td>
+              <td>Priya R.<br /><span class="small muted">Tomas L.</span></td>
+              <td>Amara O.</td>
+              <td><span class="small muted">&mdash;</span></td>
+            </tr>
+            <tr>
+              <td>Market Square</td>
+              <td>Kofi &amp; Ama B.</td>
+              <td>Kofi &amp; Ama B.</td>
+              <td>Devon M.<br /><span class="small muted">Sara P.</span></td>
+              <td>Devon M.<br /><span class="small muted">Sara P.</span></td>
+            </tr>
+            <tr>
+              <td>Riverside Hardware</td>
+              <td><span class="tag warn">shut until 10</span></td>
+              <td>Noor H.</td>
+              <td>Noor H.</td>
+              <td>Eli T.</td>
+            </tr>
+            <tr>
+              <td>Station Bakery</td>
+              <td>Jonah W.</td>
+              <td><span class="small muted">&mdash;</span></td>
+              <td><span class="small muted">&mdash;</span></td>
+              <td><span class="small muted">&mdash;</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <p class="mock-caption">
+      The columns come from the hours this event runs, not from anything hard-coded. Adding
+      a Sunday is a switch.
+    </p>
+
+    <h2>Signups arrive from a form</h2>
+
+    <p>
+      Parents fill in whatever form the group already uses. The import reads it, matches
+      people against the roster, and shows you what it could not place before anything is
+      saved &mdash; a name spelled two ways, a child who has moved section, a row with no
+      times ticked at all.
+    </p>
+
+    <p>
+      Availability can also be typed in directly, because not everybody uses the form.
+      A paper signup at a meeting, a phone call, a parent changing their mind on the night
+      &mdash; all of it goes in the same place, and somebody who never filled the form in
+      can still be given hours and put on the schedule.
+    </p>
+
+    <div class="mock">
+      <div class="mock-bar">
+        <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+        <span class="mock-title">Import &middot; 94 rows read</span>
+      </div>
+      <div class="mock-body">
+        <table>
+          <thead><tr><th>Row</th><th>Name</th><th>What happened</th></tr></thead>
+          <tbody>
+            <tr><td class="muted">1&ndash;88</td><td class="muted">&hellip;</td>
+                <td><span class="tag back">matched, hours read</span></td></tr>
+            <tr><td>89</td><td>Amara Okafor</td>
+                <td><span class="tag warn">two people match this name</span></td></tr>
+            <tr><td>90</td><td>Tomas Lindqvist</td>
+                <td><span class="tag warn">not on the roster &mdash; add?</span></td></tr>
+            <tr><td>91</td><td>Noor Haddad</td>
+                <td><span class="tag warn">no hours ticked</span></td></tr>
+            <tr><td>92</td><td>Jonah Wray</td>
+                <td><span class="tag warn">"7&ndash;8pm" not understood</span></td></tr>
+          </tbody>
+        </table>
+        <p class="small muted" style="margin:.7rem 0 0">
+          Nothing is saved until these are dealt with.
+        </p>
+      </div>
+    </div>
+    <p class="mock-caption">
+      A time it could not read is reported rather than skipped. Quietly dropping the ones
+      that do not parse is how availability goes missing without anybody noticing.
+    </p>
+
+    <h2>Shops are recorded once, not once a year</h2>
+
+    <p>
+      There is a library of real places, shared by every year: the address, the map link,
+      who to ask for at the shop, and the hours it is actually open on each day of the week.
+      A shop open until ten at night is recorded that way even if you only ever staff until
+      eight.
+    </p>
+
+    <p>
+      That is what lets the board tell you a shop is shut at an hour you have staffed
+      &mdash; which is how a youth ends up standing at a locked door on a Saturday morning.
+    </p>
+
+    <p>
+      Each year then picks which of those places it is using, in what order. Setting up a
+      new year means copying last year's list and switching off whatever closed.
+    </p>
+
+    <div class="mock">
+      <div class="mock-bar">
+        <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+        <span class="mock-title">Riverside Hardware &middot; when it is open</span>
+      </div>
+      <div class="mock-body">
+        <table>
+          <thead><tr><th>Day</th><th></th><th>Open</th></tr></thead>
+          <tbody>
+            <tr><td>Friday</td><td><span class="tag back">open</span></td><td>8:00 AM &ndash; 8:00 PM</td></tr>
+            <tr><td>Saturday</td><td><span class="tag back">open</span></td><td>10:00 AM &ndash; 5:00 PM</td></tr>
+            <tr><td>Sunday</td><td><span class="tag warn">closed</span></td><td class="muted">&mdash;</td></tr>
+            <tr><td>Monday</td><td><span class="tag">nobody has said</span></td><td class="muted">&mdash;</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <p class="mock-caption">
+      "Closed" and "nobody has said" are kept apart. Only the first is a reason to stop
+      somebody scheduling &mdash; refusing on the second would make a shop whose hours were
+      never recorded impossible to staff at all.
+    </p>
+
+    <h2>Siblings stay together</h2>
+
+    <p>
+      Two children from one family can be paired, and the schedule keeps them at the same
+      shop for the same hours. Pairing is a relationship rather than a note on one of them,
+      so it means the same thing said from either end and cannot be half-set.
+    </p>
+
+    <h2>Changing the shape of a year</h2>
+
+    <p>
+      An event is a named thing &mdash; "Apple Day, October 4&ndash;5" or "Spring bottle
+      drive" &mdash; rather than a year. It chooses which days it runs, the hours staffed on
+      each, how long a shift is, and how much each shift overlaps the one before it. An
+      overlap is a handover: the next pair arrive while the current ones are still there,
+      collect their supplies and walk out together.
+    </p>
+
+    <p>
+      Some events do not have shifts at all, and can say so. Every day then becomes one
+      slot and people come for the duration.
+    </p>
+
+    <p>
+      Changing the hours after people are scheduled does not delete anybody's shifts.
+      Shifts that no longer line up with an hour are flagged on the board so you can move
+      them.
+    </p>
+
+<div class="next"><a href="index.html">&larr; Overview</a><a href="day-of.html">Day of &rarr;</a></div>
+
+  </div>
+</main>
+
+<footer>
+  <div class="wrap">
+    Apple Day &mdash; scheduling, day-of operations and fundraising totals for a Scout
+    group, on Firebase's free tier. Every name and figure on these pages is invented.
+  </div>
+</footer>
+
+</body>
+</html>
