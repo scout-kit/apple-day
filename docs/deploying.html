@@ -489,6 +489,116 @@ make deploy GROUP=waterloo</code></pre>
       origins allowlist above, which is why it is safe in a built file at all.
     </p>
 
+    <h2>Going from staging to production</h2>
+
+    <p>
+      Staging and production are two Firebase projects, so some of the setup happens again and
+      some of it does not. The dividing line is worth knowing before you start clicking:
+      anything belonging to the <em>project</em> has to be redone, and anything belonging to a
+      <em>Google account</em> or a <em>domain</em> can be shared.
+    </p>
+
+    <h3>Do again, for the new project</h3>
+
+    <table>
+      <thead><tr><th>Thing</th><th>Why it cannot carry over</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>Create the Firestore database, and pick its region</td>
+          <td><strong>Permanent.</strong> Pick the same region as staging, or the two behave
+            differently under load for no reason you will remember later.</td>
+        </tr>
+        <tr>
+          <td>Authentication &rarr; enable Google sign-in</td>
+          <td>Per project. Firebase provisions its own OAuth client for this, which is not the
+            one you made for Gmail.</td>
+        </tr>
+        <tr>
+          <td>Add a web app, copy its <code>firebaseConfig</code></td>
+          <td>New project, new keys. All four <code>VITE_FIREBASE_*</code> values change.</td>
+        </tr>
+        <tr>
+          <td>A <code>.firebaserc</code> alias and a matching <code>.env.&lt;alias&gt;</code></td>
+          <td>One build belongs to one project. Reusing a build points the new site at the old
+            project's data, and it looks entirely normal while it does so.</td>
+        </tr>
+        <tr>
+          <td>The first admin</td>
+          <td>Nobody is on the new roster. <code>make bootstrap-admin</code> again.</td>
+        </tr>
+        <tr>
+          <td>Locations, sections, events</td>
+          <td>Data does not follow. Production starts empty, which is usually what you want —
+            staging is full of things you typed to see what would happen.</td>
+        </tr>
+        <tr>
+          <td>App Check: register the new web app</td>
+          <td>The registration is per app. The reCAPTCHA keys behind it can be the same ones
+            &mdash; see below.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>Share, rather than doing twice</h3>
+
+    <h4>The OAuth client, for sending email and building forms</h4>
+
+    <p>
+      Keep the one you have and add the production origin to it. Google Cloud console &rarr;
+      <strong>APIs &amp; Services</strong> &rarr; <strong>Credentials</strong> &rarr; your OAuth
+      client &rarr; <strong>Authorized JavaScript origins</strong> &rarr; add
+      <code>https://your-production-project.web.app</code>. Then use the same
+      <code>VITE_GOOGLE_CLIENT_ID</code> in both env files.
+    </p>
+
+    <p>
+      This works because that client is not doing anything to your Firebase project. It asks an
+      organizer for permission to send mail from <em>their own</em> Gmail and to create a form
+      in <em>their own</em> Drive — so it belongs to the people using it, not to the database
+      they are looking at.
+    </p>
+
+    <p>
+      The reason to prefer sharing is the consent screen. On <strong>External + Testing</strong>
+      every organizer has to be added as a test user by hand, and that list is per Cloud
+      project. Two clients means keeping two lists in step, and the failure when you forget is
+      somebody being refused with an error about verification that says nothing about test
+      users. The Gmail and Forms APIs stay enabled where that client lives; you do not enable
+      them again.
+    </p>
+
+    <h4>The reCAPTCHA keys, if you turned App Check on</h4>
+
+    <p>
+      A reCAPTCHA site takes a list of domains, so add the production ones to the site you
+      already made and reuse both keys: the same secret pasted into the new project's App Check
+      registration, the same site key in the new <code>.env</code>.
+    </p>
+
+    <p class="small muted">
+      Make a second reCAPTCHA site instead if you would rather the scores stayed separate. It
+      changes nothing else.
+    </p>
+
+    <h3>Nothing to do at all</h3>
+
+    <p>
+      The rules and the indexes. <code>make deploy GROUP=&lt;alias&gt;</code> uploads
+      <code>firestore.rules</code> and <code>firestore.indexes.json</code> along with the site,
+      so the new project gets the same protection as the old one with no console work &mdash;
+      and gets it in the same deploy, rather than a window where the data is up and the rules
+      are not.
+    </p>
+
+    <div class="note">
+      <p style="margin:0"><strong>Worth doing once, before the day.</strong></p>
+      <p class="small" style="margin:0.35rem 0 0">
+        Deploy production, sign in as the first admin, create one event and one location, and
+        send yourself a pass. That exercises the parts that only break on a real project:
+        the config, the rules, the sign-in, and the link in the email.
+      </p>
+    </div>
+
     <h2>What the free tier allows</h2>
 
     <div class="table-wrap">
