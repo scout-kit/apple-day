@@ -165,3 +165,38 @@ describe('where the control appears', () => {
     expect(css).toContain('.row.end')
   })
 })
+
+describe('the test environment is the same on every machine', () => {
+  /*
+    Reported: `make deploy` on a second machine lost two whole files and twenty-three tests,
+    all of them in setup, none of them an assertion. The cause was jsdom serving
+    `about:blank`, whose origin is opaque — and `localStorage` on an opaque origin throws
+    `SecurityError` instead of returning null.
+
+    Which default applies was left to the resolved toolchain, so the suite genuinely behaved
+    differently in different places. A source check, because a passing run on this machine is
+    exactly what failed to catch it.
+  */
+  const CONFIG = readFileSync('vite.config.ts', 'utf8')
+
+  it('pins a real origin for jsdom', () => {
+    expect(CONFIG).toMatch(/environmentOptions/)
+    expect(CONFIG).toMatch(/jsdom:\s*\{\s*url:\s*'https?:\/\//)
+  })
+
+  it('does not leave it at about:blank, which is the opaque one', () => {
+    expect(CONFIG).not.toMatch(/url:\s*'about:blank'/)
+  })
+
+  it('is what lets a test call localStorage without guarding it', () => {
+    /*
+      Several do, in `beforeEach`, which is why the failure took whole files rather than
+      single tests. They are right to: storage is available in a browser, and a test that
+      wraps every access in try/catch is a test that passes when storage is broken.
+    */
+    expect(() => {
+      window.localStorage.setItem('probe', '1')
+      window.localStorage.removeItem('probe')
+    }).not.toThrow()
+  })
+})

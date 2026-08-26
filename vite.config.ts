@@ -25,5 +25,17 @@ export default defineConfig({
     include: ['test/**/*.test.ts', 'test/**/*.test.tsx'],
     // Rules tests need the emulator and are run separately via `npm run test:rules`.
     exclude: ['test/rules/**', 'node_modules/**'],
+    /*
+      Give jsdom a real origin.
+
+      Without one it serves `about:blank`, whose origin is opaque — and `localStorage` on an
+      opaque origin throws `SecurityError` rather than returning null. Any file that touches
+      it then dies whole, in setup, before a single assertion runs.
+
+      Whether that happens is left to whatever default the resolved toolchain has, so the
+      suite passed on one machine and lost two files and twenty-three tests on another.
+      Pinning it here makes the answer the same everywhere.
+    */
+    environmentOptions: { jsdom: { url: 'http://localhost/' } },
   },
 })
