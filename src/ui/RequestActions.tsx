@@ -8,6 +8,7 @@ import type { Person } from '../domain/types'
 import { useEvent } from '../lib/eventContext'
 import {
   markRequestHandled,
+  reopenRequest,
   setAssignmentStatusMany,
   useAssignments,
   useLocations,
@@ -63,6 +64,8 @@ export interface RequestActions {
   markAbsent: (request: VolunteerRequest, assignmentIds: string[], alsoClose: boolean) => void
   /** Mark it dealt with, without changing the board. */
   close: (request: VolunteerRequest) => void
+  /** Put one back in the queue. Says nothing about the board either. */
+  reopen: (request: VolunteerRequest) => void
 }
 
 export function useRequestActions(): RequestActions {
@@ -151,6 +154,22 @@ export function useRequestActions(): RequestActions {
       .finally(() => setBusy(null))
   }
 
+  /*
+    Back into the queue, for one closed by mistake.
+
+    The board is untouched: this says nothing about whether somebody is working, only that
+    the request still needs an answer. So it is safe in a way "Done" is not, and needs no
+    confirming.
+  */
+  const reopen = (request: VolunteerRequest): void => {
+    if (!event) return
+    setError(null)
+    setBusy(request.id)
+    void reopenRequest(event.id, request.id, subjectOf(request))
+      .catch((e: Error) => setError(e.message))
+      .finally(() => setBusy(null))
+  }
+
   const markAbsent = (
     request: VolunteerRequest,
     assignmentIds: string[],
@@ -171,7 +190,17 @@ export function useRequestActions(): RequestActions {
       .finally(() => setBusy(null))
   }
 
-  return { loading: requests.loading, open, closed, error, busy, detail, markAbsent, close }
+  return {
+    loading: requests.loading,
+    open,
+    closed,
+    error,
+    busy,
+    detail,
+    markAbsent,
+    close,
+    reopen,
+  }
 }
 
 /** How a request reads in one line: "Edsger Dijkstra cannot make it — Sat 9:00 AM". */

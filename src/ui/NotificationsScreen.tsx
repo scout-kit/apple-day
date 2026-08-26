@@ -70,12 +70,14 @@ function Details({
   onClose,
   onMarkAbsent,
   onDone,
+  onReopen,
 }: {
   detail: RequestDetail
   busy: boolean
   onClose: () => void
   onMarkAbsent: (ids: string[], alsoClose: boolean) => void
   onDone: () => void
+  onReopen: () => void
 }): ReactNode {
   const { pathFor } = useEvent()
   const { request, person, shifts, standing } = detail
@@ -93,6 +95,25 @@ function Details({
             to tell them apart.
           */}
           <button onClick={onClose}>Close</button>
+          {/*
+            The way back, for the row pressed by mistake.
+
+            Dealing with a request is otherwise the one thing here that cannot be undone, and
+            a queue worked through on a Friday evening is exactly where the wrong row gets
+            pressed — leaving a volunteer waiting on somebody who thinks they have answered.
+
+            It touches nothing but the request, so it needs no confirming: nobody's shifts
+            move, and marking it dealt with again is one press away.
+          */}
+          {dealtWith && (
+            <button
+              disabled={busy}
+              title="Put it back on the waiting list. Nobody's shifts change."
+              onClick={onReopen}
+            >
+              {busy ? 'Saving…' : 'Put back in the queue'}
+            </button>
+          )}
           {!dealtWith && (
             <>
               {standing.length > 1 && (
@@ -237,7 +258,8 @@ function Details({
 
 export function NotificationsScreen(): ReactNode {
   const { event } = useEvent()
-  const { loading, open, closed, error, busy, detail, markAbsent, close } = useRequestActions()
+  const { loading, open, closed, error, busy, detail, markAbsent, close, reopen } =
+    useRequestActions()
   const [openId, setOpenId] = useState<string | null>(null)
 
   /*
@@ -350,6 +372,10 @@ export function NotificationsScreen(): ReactNode {
           }}
           onDone={() => {
             close(showing)
+            setOpenId(null)
+          }}
+          onReopen={() => {
+            reopen(showing)
             setOpenId(null)
           }}
         />

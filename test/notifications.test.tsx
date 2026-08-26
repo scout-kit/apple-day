@@ -35,6 +35,7 @@ const shift = (id: string, slotId: string): Assignment => ({
 let assignments: Assignment[] = []
 
 const markRequestHandled = vi.fn()
+const reopenRequest = vi.fn()
 const setAssignmentStatusMany = vi.fn()
 
 let requests: VolunteerRequest[] = []
@@ -50,6 +51,7 @@ vi.mock('../src/lib/repo', () => ({
   useAssignments: () => ({ data: assignments, loading: false, error: null }),
   useLocations: () => ({ data: [{ id: 'braemar', name: 'Braemar' }], loading: false, error: null }),
   markRequestHandled: (...a: unknown[]) => markRequestHandled(...a),
+  reopenRequest: (...a: unknown[]) => reopenRequest(...a),
   setAssignmentStatusMany: (...a: unknown[]) => setAssignmentStatusMany(...a),
 }))
 
@@ -94,7 +96,7 @@ const section = (name: string): HTMLElement =>
 beforeEach(() => {
   requests = []
   assignments = [shift('a1', 'fri-1700')]
-  for (const fn of [markRequestHandled, setAssignmentStatusMany]) {
+  for (const fn of [markRequestHandled, setAssignmentStatusMany, reopenRequest]) {
     fn.mockReset()
     fn.mockResolvedValue(undefined)
   }
@@ -433,5 +435,68 @@ describe('who dealt with it', () => {
     fireEvent.click(within(section('Dealt with')).getAllByRole('button')[0]!)
 
     expect(screen.getByText(/by u-old/)).toBeTruthy()
+  })
+})
+
+describe('putting one back in the queue', () => {
+  /*
+    The way back from the one action here that is otherwise final.
+
+    A queue gets worked through quickly on a Friday evening, so the wrong row gets pressed —
+    and a request marked dealt with is off the waiting list, leaving the volunteer who wrote
+    in waiting on somebody who believes they have already answered.
+  */
+  const openDealtWith = async (): Promise<void> => {
+    requests = [request({ id: 'done', handledAt: 200, handledBy: 'organizer' })]
+    render(<NotificationsScreen />)
+    await userEvent.click(document.querySelector('.mail-card') as HTMLElement)
+  }
+
+  it('is offered on one already dealt with', async () => {
+    await openDealtWith()
+    expect(screen.getByRole('button', { name: /Put back in the queue/ })).toBeTruthy()
+  })
+
+  it('is not offered on one still waiting, which is already there', async () => {
+    requests = [request({ id: 'open' })]
+    render(<NotificationsScreen />)
+    await userEvent.click(document.querySelector('.mail-card') as HTMLElement)
+    expect(screen.queryByRole('button', { name: /Put back in the queue/ })).toBeNull()
+  })
+
+  it('reopens that request, and says which it was about', async () => {
+    /*
+      The log gets two lines that read "dealt with" and then "put back". Without naming who
+      wrote in and what they asked for, the second says nothing a reader can match to the
+      first.
+    */
+    await openDealtWith()
+    await userEvent.click(screen.getByRole('button', { name: /Put back in the queue/ }))
+
+    expect(reopenRequest).toHaveBeenCalled()
+    const [eventId, requestId, about] = reopenRequest.mock.calls[0]! as [
+      string,
+      string,
+      { personId: string; what: string },
+    ]
+    expect(eventId).toBe('2026')
+    expect(requestId).toBe('done')
+    expect(about.personId).toBe('p-one')
+    expect(about.what).toBeTruthy()
+  })
+
+  it('leaves the board alone', async () => {
+    // It says nothing about whether anybody is working — only that the request still needs
+    // an answer. That is what makes it safe enough to need no confirming.
+    await openDealtWith()
+    await userEvent.click(screen.getByRole('button', { name: /Put back in the queue/ }))
+    expect(setAssignmentStatusMany).not.toHaveBeenCalled()
+    expect(markRequestHandled).not.toHaveBeenCalled()
+  })
+
+  it('closes the dialog, so the queue is what you are looking at again', async () => {
+    await openDealtWith()
+    await userEvent.click(screen.getByRole('button', { name: /Put back in the queue/ }))
+    expect(screen.queryByRole('dialog')).toBeNull()
   })
 })

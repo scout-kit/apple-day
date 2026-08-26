@@ -202,6 +202,65 @@ describe('taking somebody off the schedule', () => {
   })
 })
 
+describe('a request, dealt with and put back', () => {
+  /*
+    Two lines that have to be readable against each other.
+
+    Marking a request dealt with is the one action on that screen with no other way back, so
+    putting it back is offered — and the log then holds a pair. If the second line says only
+    "put a request back in the queue", nobody reading it can tell which of the evening's
+    requests it was about, which is the question that sends somebody looking.
+
+    The request document holds a pass token rather than a person, so who wrote in is passed
+    in by the screen that already resolved it.
+  */
+  const about = { personId: 'y01', slotId: 'fri-1700', what: 'Cannot make Friday 5:00 PM' }
+
+  it('names who wrote in and what they asked for, on the way out', async () => {
+    const { markRequestHandled } = await import('../src/lib/repo')
+    await markRequestHandled('2026', 'r1', 'organizer-uid', about)
+
+    const entry = auditEntries()[0]!
+    expect(entry.summary).toContain('Cannot make Friday 5:00 PM')
+    expect(JSON.stringify(entry.changes)).toContain('y01')
+  })
+
+  it('names the same things on the way back in', async () => {
+    const { reopenRequest } = await import('../src/lib/repo')
+    await reopenRequest('2026', 'r1', about)
+
+    const entry = auditEntries()[0]!
+    expect(entry.summary).toContain('Cannot make Friday 5:00 PM')
+    expect(JSON.stringify(entry.changes)).toContain('y01')
+  })
+
+  it('records the reopening as the reverse of the closing', async () => {
+    const { reopenRequest } = await import('../src/lib/repo')
+    await reopenRequest('2026', 'r1', about)
+
+    expect(auditEntries()[0]!.changes).toContainEqual({
+      field: 'handled', from: 'yes', to: 'no',
+    })
+  })
+
+  it('clears who dealt with it, so the queue does not credit anybody', async () => {
+    // It is waiting on somebody again. Leaving a name on it reads as answered.
+    const { reopenRequest } = await import('../src/lib/repo')
+    await reopenRequest('2026', 'r1', about)
+
+    const write = committed()[0]!.writes.find((w) => w.path.includes('swapRequests'))!
+    expect(write.data.handledAt).toBeNull()
+    expect(write.data.handledBy).toBe('')
+    expect(write.data.handledByEmail).toBe('')
+  })
+
+  it('reopens and records in one commit', async () => {
+    const { reopenRequest } = await import('../src/lib/repo')
+    await reopenRequest('2026', 'r1', about)
+    expect(committed()).toHaveLength(1)
+  })
+})
+
 describe('editing somebody', () => {
   /*
     One path saves a person, so it has to record everything worth recording.

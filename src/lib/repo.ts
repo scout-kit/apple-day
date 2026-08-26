@@ -1434,8 +1434,23 @@ function requestFacts(about: RequestSubject): AuditChange[] {
   ]
 }
 
-/** Put one back in the queue, for a request closed by mistake. */
-export async function reopenRequest(eventId: string, requestId: string): Promise<void> {
+/**
+ * Put one back in the queue, for a request closed by mistake.
+ *
+ * The one thing dealing with a request cannot otherwise be: undone. Marking it handled takes
+ * it off the waiting list, and on a Friday evening a queue gets worked through quickly — so
+ * the wrong row gets pressed, and the volunteer who wrote in is waiting on somebody who
+ * thinks they have already answered.
+ *
+ * Recorded like the closing was, naming who wrote in and what they asked for. Two lines that
+ * read "dealt with" and then "put back" say what happened; a bare second line would leave
+ * whoever reads the log to guess which request it was about.
+ */
+export async function reopenRequest(
+  eventId: string,
+  requestId: string,
+  about: RequestSubject,
+): Promise<void> {
   await auditedSet(
     paths.swapRequest(eventId, requestId),
     { handledAt: null, handledBy: '', handledByEmail: '' },
@@ -1443,9 +1458,9 @@ export async function reopenRequest(eventId: string, requestId: string): Promise
       entity: 'signup',
       entityId: requestId,
       eventId,
-      summary: 'Put a request back in the queue',
+      summary: `Put a request back in the queue: ${about.what}`,
       fields: [],
-      changes: [{ field: 'handled', from: 'yes', to: 'no' }],
+      changes: [{ field: 'handled', from: 'yes', to: 'no' }, ...requestFacts(about)],
     },
   )
 }
