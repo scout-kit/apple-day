@@ -475,10 +475,19 @@ service cloud.firestore {
       // A volunteer on their own pass can ask for a swap or report a no-show. Create
       // only, size-capped, and never readable by the public — organizers triage in-app.
       //
-      // TODO before go-live: enable App Check enforcement in the console and add
-      //   && request.app != null
-      // to the create rule. Left off here because the emulator does not enforce App
-      // Check, and adding it would fail every local and CI test.
+      /*
+        No `request.app != null` here, deliberately.
+
+        App Check is worth having and belongs in the console, not in this file: enforcement
+        is switched on per service under Build -> App Check, and once it is, unverified
+        requests are turned away before any of these rules are consulted. Repeating the
+        check here would add nothing and would fail every local and CI test, because the
+        emulator does not issue App Check tokens at all.
+
+        The client sends tokens whenever VITE_APPCHECK_SITE_KEY is set, which has to be
+        deployed and seen working before enforcement is turned on — otherwise the first
+        thing enforcement rejects is the app itself.
+      */
 
       /*
         What reminders have already gone out, and to whom.

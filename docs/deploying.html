@@ -287,6 +287,72 @@ make deploy GROUP=waterloo</code></pre>
       is worth guarding: it is admin access, one step removed.
     </p>
 
+    <h2>Locking it to your own app, with App Check</h2>
+
+    <p>
+      Optional, and worth doing before a real Apple Day. The rules decide what a request is
+      allowed to do. App Check decides whether the request came from your app at all &mdash;
+      which the rules cannot know.
+    </p>
+
+    <p>
+      It matters because the Firebase config is public by design: it is compiled into the
+      site, and anybody can read it out. With it, they can point their own script at your
+      project, and the only thing standing in the way is the rules. That is a real defence,
+      not a paper one, but it is the last one.
+    </p>
+
+    <div class="note">
+      <p style="margin:0"><strong>Do these in order.</strong></p>
+      <p class="small" style="margin:0.35rem 0 0">
+        Turning enforcement on before your site is sending tokens means the first request it
+        rejects is your own. Nobody can sign in, including you, and the fix is another deploy.
+      </p>
+    </div>
+
+    <h3>1. Register the app</h3>
+    <ol>
+      <li>Firebase console &rarr; left sidebar <strong>Build</strong> &rarr;
+        <strong>App Check</strong>.</li>
+      <li><strong>Apps</strong> tab. Your web app is listed &mdash; the one you added when you
+        set the project up.</li>
+      <li>Click it, choose <strong>reCAPTCHA v3</strong>, and register. Google creates the
+        reCAPTCHA site for you and shows a <strong>site key</strong>.</li>
+      <li>Put that key in <code>.env.&lt;alias&gt;</code> as
+        <code>VITE_APPCHECK_SITE_KEY</code> and deploy again. It is compiled in, like the
+        rest of the Firebase settings, so it needs a build.</li>
+    </ol>
+
+    <h3>2. Watch it before you switch it on</h3>
+    <ol>
+      <li>Use the deployed site normally for a day &mdash; sign in, open a screen or two.</li>
+      <li>App Check &rarr; <strong>APIs</strong> tab &rarr; <strong>Cloud Firestore</strong>.
+        It shows verified and unverified request counts.</li>
+      <li>You are looking for your own traffic showing up as <em>verified</em>. If it is all
+        unverified, the key is not reaching the build &mdash; check it deployed, and that you
+        are not looking at a cached page.</li>
+    </ol>
+
+    <h3>3. Enforce</h3>
+    <ol>
+      <li>Same <strong>APIs</strong> tab &rarr; <strong>Cloud Firestore</strong> &rarr;
+        <strong>Enforce</strong>.</li>
+      <li>Do Firestore on its own first, and give it a few minutes before doing anything
+        else. If sign-in stops working, unenforce it &mdash; that is instant, and nothing is
+        lost.</li>
+    </ol>
+
+    <p class="small muted">
+      Volunteers' pass links keep working throughout: a pass is served by the same app, so
+      its requests carry a token like any other. Nothing about App Check asks anybody to sign
+      in.
+    </p>
+
+    <p class="small muted">
+      Running locally, the setting is ignored &mdash; the emulator does not issue App Check
+      tokens, so <code>make up</code> is unaffected either way.
+    </p>
+
     <h2>Sending email, if you want reminders</h2>
 
     <p>

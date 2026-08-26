@@ -93,6 +93,22 @@ if (!values.get('VITE_PUBLIC_ORIGIN')) {
   )
 }
 
+/*
+  Not fatal either, and said once rather than every build.
+
+  App Check is the difference between "the rules allow this request" and "this request came
+  from our app". A group can run an Apple Day without it, so this is a note; but a deploy
+  that has never heard of it is worth telling, because the setting has to be shipped and seen
+  working before enforcement can be switched on.
+*/
+if (!values.get('VITE_APPCHECK_SITE_KEY')) {
+  console.warn(
+    `  Note: ${path} has no VITE_APPCHECK_SITE_KEY, so App Check is off. Anybody who reads\n` +
+      '  the config out of the built site can reach the project with their own script,\n' +
+      '  bound only by the rules. docs/deploying.html has the four-step setup.',
+  )
+}
+
 if (problems.length > 0) {
   console.error(`\n${problems.join('\n\n')}\n`)
   process.exit(1)

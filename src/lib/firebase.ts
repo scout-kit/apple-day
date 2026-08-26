@@ -1,4 +1,5 @@
 import { initializeApp } from 'firebase/app'
+import { ReCaptchaV3Provider, initializeAppCheck } from 'firebase/app-check'
 import {
   connectAuthEmulator,
   getAuth,
@@ -84,6 +85,38 @@ export const db = initializeFirestore(app, {
 })
 
 export const auth = getAuth(app)
+
+/*
+  App Check, when a site key has been configured.
+
+  It answers a question the rules cannot: they say what a *request* may do, and App Check
+  says whether the request came from this app at all. Without it, anybody who reads the
+  Firebase config out of the bundle — it is in there, by design — can talk to the project
+  with their own script and is bound only by the rules.
+
+  Off unless VITE_APPCHECK_SITE_KEY is set, and never against the emulator, which does not
+  enforce it. That ordering matters on the way in: the client has to be sending tokens
+  *before* enforcement is switched on in the console, or the app locks itself out the moment
+  it is. So this ships first, quietly, and the console switch comes after.
+
+  Tokens refresh themselves; a failure here is not worth taking the app down for, because
+  with enforcement off nothing depends on it yet and with enforcement on the rejection will
+  say so plainly.
+*/
+const appCheckSiteKey = (import.meta.env.VITE_APPCHECK_SITE_KEY as string | undefined) ?? ''
+
+export const appCheckOn = !useEmulator && appCheckSiteKey !== ''
+
+if (appCheckOn) {
+  try {
+    initializeAppCheck(app, {
+      provider: new ReCaptchaV3Provider(appCheckSiteKey),
+      isTokenAutoRefreshEnabled: true,
+    })
+  } catch {
+    /* Already initialised, or the provider refused. Nothing here depends on it yet. */
+  }
+}
 
 if (useEmulator) {
   connectFirestoreEmulator(db, '127.0.0.1', firestorePort)
