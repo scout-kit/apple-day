@@ -378,6 +378,15 @@ make deploy GROUP=waterloo</code></pre>
       step. That is what the next step is for.
     </p>
 
+    <p class="small muted">
+      The site&rsquo;s content security policy already allows reCAPTCHA &mdash; the script on
+      <code>www.google.com/recaptcha/</code> and <code>www.gstatic.com/recaptcha/</code>, the
+      iframe, and the token exchange &mdash; and it ships with the deploy, so there is nothing
+      to configure. If the browser console still reports a policy violation naming reCAPTCHA,
+      read which directive it names: anything about <code>eval</code> is not something to widen
+      the policy for, and is a good reason to leave App Check off instead.
+    </p>
+
     <h3>4. Watch it before you switch it on</h3>
     <ol>
       <li>Use the deployed site normally for a day &mdash; sign in, open a screen or two.</li>

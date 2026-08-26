@@ -59,6 +59,33 @@ describe('the headers every page is served with', () => {
     expect(csp).toMatch(/connect-src[^;]*identitytoolkit\.googleapis\.com/)
   })
 
+  it('can load reCAPTCHA, which is what App Check runs on', () => {
+    /*
+      Missed once already, and the way it fails is instructive: the policy is written in
+      firebase.json, the App Check client is written in TypeScript, and nothing connects them
+      — so switching App Check on shipped a site whose own policy blocked the script it had
+      just been told to load. It surfaces only against a deployed project, on somebody's first
+      sign-in, as a console violation rather than an error the app can report.
+
+      Path-scoped rather than whole-origin: `https://www.google.com` on script-src would let
+      anything Google serves from that host run, and only /recaptcha/ is wanted.
+    */
+    const csp = everywhere()['Content-Security-Policy']!
+    expect(csp).toMatch(/script-src[^;]*www\.google\.com\/recaptcha\//)
+    expect(csp).toMatch(/script-src[^;]*www\.gstatic\.com\/recaptcha\//)
+    // The challenge runs in an iframe on www.google.com, and the badge image is on gstatic.
+    expect(csp).toMatch(/frame-src[^;]*www\.google\.com/)
+    expect(csp).toMatch(/img-src[^;]*www\.gstatic\.com/)
+  })
+
+  it('can reach the App Check exchange, which is what the token is for', () => {
+    // A reCAPTCHA token is traded for an App Check token at firebaseappcheck.googleapis.com.
+    // Blocked there, every request goes out unverified and enforcement turns them all away.
+    const csp = everywhere()['Content-Security-Policy']!
+    const connect = csp.split('; ').find((d) => d.startsWith('connect-src'))!
+    expect(connect).toMatch(/\*\.googleapis\.com|firebaseappcheck\.googleapis\.com/)
+  })
+
   it("still allows no inline or evaluated script", () => {
     // Widening for one Google origin must not become widening in general.
     const scripts = everywhere()['Content-Security-Policy']!
