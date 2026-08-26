@@ -213,3 +213,34 @@ describe('the test environment is the same on every machine', () => {
     }).not.toThrow()
   })
 })
+
+describe('the rules suite only talks to a Firestore emulator', () => {
+  /*
+    Reported: the rules tests failed with "client sent an HTTP request to an HTTPS server",
+    which says nothing about the actual problem.
+
+    The cause was the reuse check. It asked whether *something* held the Firestore port, not
+    whether that something was an emulator — and 8080 is a popular port. Whatever was there
+    got the whole suite pointed at it, and the error came from that stranger rather than
+    from anything in this repository.
+  */
+  const MAKEFILE = readFileSync('Makefile', 'utf8')
+
+  it('asks what is on the port, not merely whether anything is', () => {
+    // The emulator answers "Ok" at its root; nothing else reliably does.
+    expect(MAKEFILE).toMatch(/firestore_on\s*=/)
+    expect(MAKEFILE).toMatch(/firestore_on,\$\(FIRESTORE_PORT\)\)"?\s*=\s*"Ok"/)
+  })
+
+  it('refuses rather than testing against whatever answered', () => {
+    const target = MAKEFILE.slice(MAKEFILE.indexOf('test-rules:'))
+    const body = target.slice(0, target.indexOf('\n\n'))
+    expect(body).toMatch(/not by a Firestore emulator/)
+    expect(body).toMatch(/exit 1/)
+  })
+
+  it('says which process is in the way, so it can be dealt with', () => {
+    const target = MAKEFILE.slice(MAKEFILE.indexOf('test-rules:'))
+    expect(target.slice(0, target.indexOf('\n\n'))).toMatch(/lsof -i:/)
+  })
+})

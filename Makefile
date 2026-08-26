@@ -26,6 +26,13 @@ EMU_LOG  := .emulator.log
 # True when something is listening on $(1).
 listening = $$(lsof -ti:$(1) 2>/dev/null | head -1)
 
+# True when that something is actually a Firestore emulator, which answers "Ok" at its
+# root over plain HTTP. Holding the port is not the same as being the thing we want: 8080
+# is a popular port, and pointing the rules suite at a stranger produces errors that say
+# nothing about the real problem — "client sent an HTTP request to an HTTPS server" being
+# the memorable one.
+firestore_on = $$(curl -fsS -m 2 http://127.0.0.1:$(1)/ 2>/dev/null | head -c 2)
+
 .PHONY: help doctor install admin seed emulators emulators-start emulators-stop \
         dev up down logs test watch test-rules typecheck build preview check \
         firstrun firstrun-admin firstrun-down \
@@ -266,11 +273,19 @@ watch: install ## Tests in watch mode
 
 test-rules: install ## Security-rules tests (reuses a running emulator, or starts one)
 	@set -e; \
-	if [ -n "$(call listening,$(FIRESTORE_PORT))" ]; then \
-	  echo "Reusing the emulator already on port $(FIRESTORE_PORT)."; \
+	if [ "$(call firestore_on,$(FIRESTORE_PORT))" = "Ok" ]; then \
+	  echo "Reusing the Firestore emulator already on port $(FIRESTORE_PORT)."; \
 	  echo "The suite runs in its own project, so your dev data is untouched."; \
 	  FIRESTORE_EMULATOR_HOST=127.0.0.1:$(FIRESTORE_PORT) \
 	    npx vitest run --config vitest.rules.config.ts; \
+	elif [ -n "$(call listening,$(FIRESTORE_PORT))" ]; then \
+	  echo "Port $(FIRESTORE_PORT) is taken, but not by a Firestore emulator."; \
+	  echo; \
+	  lsof -i:$(FIRESTORE_PORT) 2>/dev/null | head -3; \
+	  echo; \
+	  echo "Running the rules against it would test somebody else's server. Stop it, or"; \
+	  echo "set FIRESTORE_PORT to a free port and try again."; \
+	  exit 1; \
 	else \
 	  $(NPM) run test:rules; \
 	fi
