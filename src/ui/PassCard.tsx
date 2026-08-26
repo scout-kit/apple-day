@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { toQrDataUrl } from '../lib/qr'
+import { CopyButton } from './Bits'
 
 /**
  * One volunteer's own link, with the QR that opens it.
@@ -16,7 +17,6 @@ import { toQrDataUrl } from '../lib/qr'
 export function PassCard({ token, name }: { token: string; name: string }): ReactNode {
   const url = `${window.location.origin}/p/${token}`
   const [qr, setQr] = useState<string | null>(null)
-  const [copied, setCopied] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -54,22 +54,7 @@ export function PassCard({ token, name }: { token: string; name: string }): Reac
             {url}
           </a>
           <div className="row">
-            <button
-              className="tiny"
-              onClick={() => {
-                /*
-                  Clipboard access is refused outside a secure context and can be denied
-                  outright, so the button says what happened either way rather than
-                  appearing to work.
-                */
-                void navigator.clipboard
-                  ?.writeText(url)
-                  .then(() => setCopied(true))
-                  .catch(() => setCopied(false))
-              }}
-            >
-              {copied ? 'Copied' : 'Copy link'}
-            </button>
+            <CopyButton text={url} label="Copy link" />
             <a className="btn tiny" href={url} target="_blank" rel="noreferrer">
               Open it
             </a>

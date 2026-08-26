@@ -12,6 +12,7 @@ import type { SectionDef } from '../domain/sections'
 import { GOOGLE_CLIENT_ID } from '../lib/mail/config'
 import { connect, createForm } from '../lib/googleForms'
 import type { CreatedForm } from '../lib/googleForms'
+import { CopyButton } from './Bits'
 
 /**
  * Building the form families fill in, from the event that will read it back.
@@ -36,7 +37,6 @@ export function SignupFormCard({
   const [busy, setBusy] = useState(false)
   const [made, setMade] = useState<CreatedForm | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [copied, setCopied] = useState(false)
 
   /*
     What the form offered when it was built, kept so it can be checked against the event.
@@ -66,13 +66,6 @@ export function SignupFormCard({
     } finally {
       setBusy(false)
     }
-  }
-
-  const copy = (): void => {
-    void navigator.clipboard?.writeText(describeSpec(spec)).then(() => {
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
-    })
   }
 
   return (
@@ -144,9 +137,7 @@ export function SignupFormCard({
       {showing && (
         <div className="stack" style={{ marginTop: '0.7rem' }}>
           <div className="row" style={{ gap: '0.4rem', alignItems: 'center' }}>
-            <button className="tiny" onClick={copy}>
-              {copied ? 'Copied' : 'Copy all of it'}
-            </button>
+            <CopyButton text={describeSpec(spec)} label="Copy all of it" />
             <span className="small muted">
               Titles have to match exactly — they are what the import matches on.
             </span>

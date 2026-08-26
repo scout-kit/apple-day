@@ -1,9 +1,106 @@
+import { useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { useSections } from '../lib/sections'
 import type { Section } from '../domain/types'
 import type { IssueSeverity, ScheduleIssue } from '../domain/validation'
 
 /** Small shared pieces, kept together rather than one file each. */
+
+/**
+ * Copy something, and say that it happened.
+ *
+ * A button that does its work invisibly reads as a button that did nothing, so people press
+ * it again and paste it twice — or give up and select the text by hand, which is the thing
+ * the button existed to avoid. What it copies here is mostly links that are the whole of
+ * somebody's access, so "did that work" is a question worth answering.
+ *
+ * One component rather than the same three lines everywhere, because the interesting parts
+ * are easy to leave out: resetting afterwards, and saying so when the browser refuses.
+ * Clipboard access needs a secure context, so a phone opening the dev server over a LAN
+ * address has none — and being told is much better than a button that shrugs.
+ */
+export function CopyButton({
+  text,
+  label = 'Copy',
+  className = 'tiny',
+}: {
+  text: string
+  label?: string
+  className?: string
+}): ReactNode {
+  const [state, setState] = useState<'idle' | 'done' | 'failed'>('idle')
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Back to normal after a moment, and never against a button that has since gone.
+  useEffect(
+    () => () => {
+      if (timer.current) clearTimeout(timer.current)
+    },
+    [],
+  )
+
+  const settle = (result: 'done' | 'failed'): void => {
+    setState(result)
+    if (timer.current) clearTimeout(timer.current)
+    timer.current = setTimeout(() => setState('idle'), 2000)
+  }
+
+  const copy = (): void => {
+    /*
+      The old way, kept as a fallback rather than for old browsers.
+
+      `navigator.clipboard` is absent outside a secure context, which is not an exotic case:
+      it is what happens when somebody opens the dev server on their phone by IP address.
+      A hidden textarea and `execCommand` still work there.
+    */
+    const theHardWay = (): boolean => {
+      const field = document.createElement('textarea')
+      field.value = text
+      field.setAttribute('readonly', '')
+      field.style.position = 'fixed'
+      field.style.opacity = '0'
+      document.body.appendChild(field)
+
+      /*
+        Taken back out whatever happens. It is a real textarea in the document, so one left
+        behind is a stray focus target on every screen that has a copy button — and the way
+        it gets left behind is `execCommand` throwing rather than returning false.
+      */
+      try {
+        field.select()
+        return document.execCommand('copy')
+      } catch {
+        return false
+      } finally {
+        field.remove()
+      }
+    }
+
+    if (navigator.clipboard?.writeText) {
+      void navigator.clipboard
+        .writeText(text)
+        .then(() => settle('done'))
+        .catch(() => settle(theHardWay() ? 'done' : 'failed'))
+      return
+    }
+    settle(theHardWay() ? 'done' : 'failed')
+  }
+
+  return (
+    <button
+      className={className}
+      onClick={copy}
+      /*
+        Announced, not just recoloured. The label changing is the confirmation for anybody
+        looking at it; a live region is the confirmation for anybody who is not.
+      */
+      aria-live="polite"
+      title={state === 'failed' ? 'Select the text and copy it by hand' : undefined}
+    >
+      {state === 'done' ? 'Copied' : state === 'failed' ? 'Could not copy' : label}
+    </button>
+  )
+}
 
 export function Money({ value }: { value: number | null }): ReactNode {
   if (value === null) {

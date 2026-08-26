@@ -23,6 +23,9 @@ vi.mock('../src/lib/mail/config', () => ({
   },
 }))
 
+// Reached through the shared copy button, which lives with the other small pieces.
+vi.mock('../src/lib/firebase', () => ({ missingConfig: [], auth: {}, db: {} }))
+
 vi.mock('../src/lib/googleForms', () => ({
   connect: (...a: unknown[]) => connect(...a),
   createForm: (...a: unknown[]) => createForm(...a),

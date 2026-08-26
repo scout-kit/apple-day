@@ -24,7 +24,7 @@ import {
   useRoster,
 } from '../lib/repo'
 import { useSession } from '../lib/session'
-import { ErrorNote, Loading } from './Bits'
+import { CopyButton, ErrorNote, Loading } from './Bits'
 import { Modal } from './Modal'
 
 /**
@@ -358,12 +358,7 @@ export function AccessScreen(): ReactNode {
               {madeLink}
             </p>
             <div className="row" style={{ gap: '0.4rem' }}>
-              <button
-                className="tiny"
-                onClick={() => void navigator.clipboard?.writeText(madeLink)}
-              >
-                Copy link
-              </button>
+              <CopyButton text={madeLink} label="Copy link" />
             </div>
             <p className="small muted" style={{ margin: '0.35rem 0 0' }}>
               It is also in the list below until it is used. Holding the link is the whole of
@@ -444,14 +439,7 @@ export function AccessScreen(): ReactNode {
                     )}
                   </div>
                   <div className="row" style={{ gap: '0.3rem' }}>
-                    {!stale && (
-                      <button
-                        className="tiny"
-                        onClick={() => void navigator.clipboard?.writeText(link)}
-                      >
-                        Copy link
-                      </button>
-                    )}
+                    {!stale && <CopyButton text={link} label="Copy link" />}
                     {!stale && canEmail && (
                       <button
                         className="tiny"
