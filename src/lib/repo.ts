@@ -261,7 +261,9 @@ export function usePeople(): Loadable<Person[]> {
  * The group's sections.
  *
  * Falls back to the built-in set while none are configured, so a fresh install is not a
- * blank dropdown.
+ * blank dropdown. That fallback is a display of data that does not exist yet, which makes
+ * the first change to any section destructive unless the whole set is written first — see
+ * `adoptDefaultSections`, which every one of them calls.
  */
 export function useSectionDefs(): Loadable<SectionDef[]> {
   const stored = useCollectionData(paths.sections(), toSection)
@@ -625,7 +627,45 @@ export async function copyEventLocations(
   return written
 }
 
+/**
+ * Make the built-in sections real, if nobody has yet.
+ *
+ * Until a group configures its own, every screen shows the built-in set — but it is a
+ * fallback for an empty collection, not data. So the first change to any of them writes only
+ * that one, the collection stops being empty, the fallback stops applying, and the other four
+ * disappear from the app along with the figures grouped by them.
+ *
+ * The same holds for the other two ways to change them: reordering sets `order` on ids that
+ * do not exist, leaving documents with an order and no name; deleting one appears to work and
+ * the fallback puts it straight back.
+ *
+ * So every one of them adopts the whole set first. After that the collection is the truth and
+ * this costs one read that finds something and returns.
+ */
+async function adoptDefaultSections(): Promise<void> {
+  const stored = await getDocs(paths.sections())
+  if (stored.docs.length > 0) return
+
+  const batch = auditedBatch({
+    action: 'created',
+    entity: 'event',
+    entityId: 'sections',
+    eventId: null,
+    // Worth a line: five sections appearing at once, from one edit, is otherwise unexplained.
+    summary: 'Started from the built-in sections',
+    changes: [
+      { field: 'sections', from: '—', to: DEFAULT_SECTIONS.map((s) => s.name).join(', ') },
+    ],
+  })
+  for (const section of DEFAULT_SECTIONS) {
+    const { id, ...rest } = section
+    batch.set(paths.section(id), rest)
+  }
+  await batch.commit()
+}
+
 export async function saveSection(section: SectionDef): Promise<void> {
+  await adoptDefaultSections()
   const id = section.id || slugifySection(section.name)
   const { id: _ignored, ...rest } = { ...section, id }
   await auditedSet(paths.section(id), rest, {
@@ -644,6 +684,7 @@ export async function saveSection(section: SectionDef): Promise<void> {
  * section must not quietly remove hours from the totals.
  */
 export async function deleteSection(sectionId: string): Promise<void> {
+  await adoptDefaultSections()
   await auditedDelete(paths.section(sectionId), {
     entity: 'event',
     entityId: sectionId,
@@ -654,6 +695,7 @@ export async function deleteSection(sectionId: string): Promise<void> {
 
 /** Renumber the sections from a given order. */
 export async function reorderSections(orderedIds: string[]): Promise<void> {
+  await adoptDefaultSections()
   const batch = writeBatch(db)
   recordInBatch(batch, {
     action: 'updated',
