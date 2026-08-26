@@ -52,16 +52,51 @@
     <h2>Getting somebody in</h2>
 
     <p>
-      An organizer invites somebody by email address from the Access screen. When that
-      person signs in with that address, they are in. No console, no waiting on whoever
-      set the project up.
+      An admin makes an invitation on the Access screen and gets back a link. Send it however
+      suits &mdash; text, email, read it out &mdash; and whoever opens it and signs in is in.
+      No console, no waiting on whoever set the project up.
     </p>
 
     <p>
-      Invitations tidy themselves up: one that has already been used, or that belongs to
-      somebody who is now on the roster by another route, is cleared the next time they sign
-      in. Otherwise the "waiting to sign in" list fills up with people who are already here,
-      and a list like that stops being read.
+      The link is the invitation. It carries a code nobody can guess, and holding it is the
+      whole of the permission, so treat it the way you would treat a password: one person,
+      not a group chat. It works once, and stops working after thirty days.
+    </p>
+
+    <p>
+      Deliberately, an invitation is not tied to an email address. Plenty of people are
+      reachable at one address and sign in with a Google account at a completely different
+      one, and being invited at the first and refused at the second looks exactly like being
+      refused outright. So the invitation asks only who it is for, in your own words, for
+      your own list &mdash; the person is never shown what you typed.
+    </p>
+
+    <p>
+      If sending email is set up, the Access screen will also offer to mail the link for you.
+      That address is used for that one message and stored nowhere.
+    </p>
+
+    <p>
+      Signing in without an invitation gets you nothing, and leaves nothing behind: the
+      account it created is deleted on the spot. A free Firebase project allows a hundred
+      accounts in total, and without this every stranger who ever pressed the button would
+      hold one of them for good.
+    </p>
+
+    <h3>If everybody is locked out</h3>
+
+    <p>
+      The Access screen needs somebody already inside, so if every admin loses access — an
+      account closed, somebody removed by mistake, a leader who has left — nobody can invite
+      anybody. The way back is one invitation created by hand in the Firebase console, which
+      the rules do not bind. It needs no account to exist first, which is exactly why it works
+      when nothing else does.
+    </p>
+
+    <p>
+      Worth knowing before you need it, and worth knowing the other way round too: console
+      access to the project <em>is</em> admin access, one step removed. Whoever holds it can
+      let themselves in.
     </p>
 
     <h3>Admins and organizers</h3>

@@ -1,9 +1,9 @@
-import { onAuthStateChanged } from 'firebase/auth'
+import { deleteUser, onAuthStateChanged, signOut } from 'firebase/auth'
 import type { User } from 'firebase/auth'
 import { getDoc, onSnapshot, setDoc } from 'firebase/firestore'
 import { createContext, useContext, useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
-import { auditedBatch, auditedDelete } from './audit'
+import { auditedDelete } from './audit'
 import { auth } from './firebase'
 import { isFatalClientFailure } from '../domain/clientFailure'
 import { recoverFromFatalFailure } from './recover'
@@ -87,12 +87,21 @@ export interface Session {
   user: User | null
   role: Role
   loading: boolean
+  /**
+   * An account was created by signing in, had no access, and was taken away again.
+   *
+   * Worth saying rather than leaving to be inferred. Without it the page flickers — signed
+   * in, then signed out — and looks like sign-in failing, which is the one thing it did not
+   * do. Held after the account is gone, so the message survives the `user` going null.
+   */
+  discarded: boolean
 }
 
 const SessionContext = createContext<Session>({
   user: null,
   role: 'none',
   loading: true,
+  discarded: false,
 })
 
 /**
@@ -103,98 +112,123 @@ const SessionContext = createContext<Session>({
  * invitation, and that the invitation is fresh — so the worst this can do is fail.
  */
 /**
- * An invitation this account has already outlived.
+ * The invitation code somebody arrived with, kept across signing in.
  *
- * Only a first sign-in claims one; after that the roster entry exists and that branch is
- * never taken. So an invitation left behind by a sign-in that predates claiming sits on the
- * admin's "waiting to sign in" list for somebody already in, and a list of people to chase
- * that fills with people already here stops being read.
- *
- * Deliberately not a roster write: the tier on an old invitation may be one an admin has
- * since changed, and re-applying it would quietly undo them.
+ * Signing in with Google leaves the page and comes back, so the code cannot simply be held
+ * in state. Session storage rather than local: an invitation is being accepted now, in this
+ * tab, and a code still sitting there in a fortnight is a stale grant nobody meant to keep.
  */
-async function discardSpentInvitation(user: User): Promise<void> {
-  const email = user.email?.trim().toLowerCase()
-  if (!email || !user.emailVerified) return
+const PENDING_INVITE = 'apple-day:invite'
 
+export function rememberInvite(code: string): void {
   try {
-    // Read first: a blind delete costs a write on every sign-in to remove nothing.
-    const invite = await getDoc(paths.invite(email))
-    if (invite.exists()) {
-      // Recorded, because "the invitation is gone and I never used it" is a thing somebody
-      // says. The account is already on the roster here, so there is permission to write it.
-      await auditedDelete(paths.invite(email), {
-        entity: 'access',
-        entityId: email,
-        eventId: null,
-        summary: `Cleared a spent invitation for ${email}`,
-        fields: ['level'],
-      })
-    }
+    window.sessionStorage.setItem(PENDING_INVITE, code)
   } catch {
-    // No permission to look, or it went while we were looking. Nothing owed either way.
+    /* Private browsing. The code is still in the address bar, which is the other copy. */
   }
 }
 
-async function tryClaimInvitation(user: User): Promise<void> {
-  const email = user.email?.trim().toLowerCase()
-  if (!email || !user.emailVerified) return
-
+export function pendingInvite(): string {
   try {
-    const invite = await getDoc(paths.invite(email))
-    if (!invite.exists()) return
-    const tier = (invite.data() as { level?: string }).level === 'organizer'
-      ? 'organizer'
-      : 'admin'
+    return window.sessionStorage.getItem(PENDING_INVITE) ?? ''
+  } catch {
+    return ''
+  }
+}
+
+function forgetInvite(): void {
+  try {
+    window.sessionStorage.removeItem(PENDING_INVITE)
+  } catch {
+    /* Nothing to do. */
+  }
+}
+
+/**
+ * Turn an invitation code into access, for the account that just signed in.
+ *
+ * The roster entry carries the code as `via`, which is what lets the rules read the
+ * invitation and check the tier against it. They also check the code is fresh and that the
+ * address written is the one on the token — so the worst this can do is fail.
+ *
+ * Whatever Google account they used. That is the whole point: an invitation addressed to an
+ * email could only be claimed by an account carrying that address, which is a guess about
+ * somebody else's arrangements and wrong often enough to matter.
+ */
+async function claimInvite(user: User, code: string): Promise<boolean> {
+  try {
+    const invite = await getDoc(paths.invite(code))
+    if (!invite.exists()) return false
+
+    const tier =
+      (invite.data() as { level?: string }).level === 'organizer' ? 'organizer' : 'admin'
+
     await setDoc(paths.admin(user.uid), {
-      email,
+      email: user.email ?? '',
       level: tier,
       addedAt: Date.now(),
       addedBy: 'invitation',
+      via: code,
     })
 
     /*
-      After the roster write, and on its own — the one place the same-batch rule cannot hold.
+      Spent, in a separate write and after the roster entry.
 
-      Writing an entry requires being on the roster, and the thing being recorded is getting
-      onto the roster. Batched, the entry would be checked against the database as it is
-      before the batch, and the refusal would take the roster write with it.
-
-      So access is granted first and recorded second. A failed record leaves somebody in
-      without a line saying so, which is the right way round to fail: the access screen still
-      shows them, added `by invitation`.
+      Batched with it, the delete would be evaluated against the database as it is before the
+      batch — where this account is nobody — and the refusal would take the roster write with
+      it. So access is granted first and the invitation cleared second. If the clear fails the
+      access stands, which is the right way round: an admin can revoke a leftover link, and
+      nobody is locked out by a failed tidy-up.
     */
+    forgetInvite()
     try {
-      const batch = auditedBatch({
-        action: 'created',
+      await auditedDelete(paths.invite(code), {
         entity: 'access',
+        // Never the code. An audit entry is read by admins and kept for years, and a live
+        // invitation code sitting in one is a way in.
         entityId: user.uid,
         eventId: null,
-        summary: `${email} accepted an invitation as ${tier}`,
-        changes: [{ field: 'level', from: '—', to: tier }],
+        summary: `Accepted an invitation as ${tier}`,
+        fields: ['level'],
       })
-      await batch.commit()
     } catch {
-      // See above: the access stands either way.
+      /* The access stands. */
     }
 
-    /*
-      Used up, so it stops being a job. The roster entry is what grants access; the
-      invitation was only a way to name somebody before they had ever signed in.
-
-      After the roster write, never before: the other order loses the invitation and grants
-      nothing.
-    */
-    await auditedDelete(paths.invite(email), {
-      entity: 'access',
-      entityId: email,
-      eventId: null,
-      summary: `Used up the invitation for ${email}`,
-      fields: ['level'],
-    })
+    return true
   } catch {
-    // No invitation, or no permission to look: either way there is no access, which the
+    // No such invitation, expired, or refused. Either way there is no access, which the
     // roster listener has already reported.
+    return false
+  }
+}
+
+/**
+ * Take away the account this sign-in just created.
+ *
+ * Signing in with Google creates a Firebase account whether or not the person is anybody
+ * here, so a project collects one for every stranger who presses the button — and the ones
+ * it collects count against what the project is allowed.
+ *
+ * Deleting is the only lever available without a server: blocking sign-up before it happens
+ * needs Identity Platform and a Cloud Function, which the free plan has neither of. So the
+ * account is made and then unmade, a second later, by itself. `delete()` needs a recent
+ * login and has just had one.
+ *
+ * Only ever for somebody with no roster entry and no invitation in hand. Getting that wrong
+ * would delete an organizer's account, so the caller checks both before asking.
+ */
+async function discardAccount(user: User): Promise<void> {
+  try {
+    await deleteUser(user)
+  } catch {
+    // Refused, or the token was too old. Signing out at least does not leave them looking at
+    // a half-signed-in app; the account remains for an admin to clear.
+    try {
+      await signOut(auth)
+    } catch {
+      /* Nothing left to try. */
+    }
   }
 }
 
@@ -203,6 +237,7 @@ export function SessionProvider({ children }: { children: ReactNode }): ReactNod
     user: null,
     role: 'none',
     loading: true,
+    discarded: false,
   })
 
   useEffect(() => {
@@ -221,14 +256,21 @@ export function SessionProvider({ children }: { children: ReactNode }): ReactNod
       stopRoleListeners()
 
       if (!user) {
-        setSession({ user: null, role: 'none', loading: false })
+        // `discarded` is preserved across this transition on purpose: it is set as the
+        // account is deleted, and deleting it is what brings us back through here.
+        setSession((was) => ({
+          user: null,
+          role: 'none',
+          loading: false,
+          discarded: was.discarded,
+        }))
         return
       }
 
       // Signed in but not yet known. Without this the session carries the signed-out answer
       // for as long as the roster read takes, and the app says "you are not an organizer"
       // to somebody who has just signed in as one.
-      setSession({ user, role: 'none', loading: true })
+      setSession({ user, role: 'none', loading: true, discarded: false })
 
       // Watched, not fetched once. Being made an organizer happens outside the app, so a
       // one-shot read makes the grant appear to do nothing until a manual reload.
@@ -236,7 +278,7 @@ export function SessionProvider({ children }: { children: ReactNode }): ReactNod
       let claimAttempted = false
 
       const applyRole = (): void => {
-        setSession({ user, role: rostered ?? 'none', loading: false })
+        setSession({ user, role: rostered ?? 'none', loading: false, discarded: false })
       }
 
       const watchRoster = (attempt: number): void => {
@@ -249,16 +291,33 @@ export function SessionProvider({ children }: { children: ReactNode }): ReactNod
             rostered = snap.exists() ? (level === 'organizer' ? 'organizer' : 'admin') : null
             applyRole()
             /*
-              No entry yet? See whether somebody invited this address.
+              No entry yet? See whether they arrived holding an invitation.
 
-              An invitation is keyed by email, which is all anyone knows about a person
-              before they have signed in. The tier comes from the invitation and the rules
-              check that it does. Attempted once and silently — a failure just means there
-              was no invitation, which is the ordinary case.
+              The code was put aside before signing in, because signing in with Google leaves
+              the page. The tier comes from the invitation and the rules check that it does.
+              Attempted once and silently — a failure just means there was no invitation,
+              which is the ordinary case.
             */
-            if (!claimAttempted) {
+            if (!snap.exists() && !claimAttempted) {
               claimAttempted = true
-              void (snap.exists() ? discardSpentInvitation(user) : tryClaimInvitation(user))
+              const code = pendingInvite()
+
+              void (async () => {
+                if (code && (await claimInvite(user, code))) {
+                  // The roster listener sees the entry land and reports the role.
+                  return
+                }
+                /*
+                  Nobody here, and nothing in hand.
+
+                  Signing in created an account regardless, and left there it counts against
+                  what the project is allowed — for somebody who was never going to get in.
+                  So it goes. Only ever in this branch: no roster entry, and no invitation
+                  that resolved.
+                */
+                setSession((was) => ({ ...was, discarded: true }))
+                await discardAccount(user)
+              })()
             }
           },
           /*

@@ -87,8 +87,8 @@ service cloud.firestore {
       when a fresh invitation exists for the verified address on their token. That is how
       somebody gets in before anyone knows their uid.
     */
-    function invitePath(email) {
-      return /databases/$(database)/documents/invites/$(email);
+    function invitePath(code) {
+      return /databases/$(database)/documents/invites/$(code);
     }
 
     function ownVerifiedEmail() {
@@ -107,24 +107,47 @@ service cloud.firestore {
       different address than the one it signed in with, making that column say whatever it
       liked. A record of who let somebody in is worth nothing if the person let in wrote it.
     */
-    function claimingOwnInvite(uid) {
-      return ownVerifiedEmail()
+    /*
+      Claiming an invitation, by holding its code.
+
+      The code is the invitation, on the same reasoning as a volunteer's pass: unguessable,
+      `list` closed so the collection cannot be walked, and spent by being used. Nothing about
+      the claimant is required to match it — an address would be a guess about somebody else's
+      arrangements, and wrong often enough to lock out the people it was written for.
+
+      The code arrives as `via` on the entry being written, which is what lets this read the
+      invitation. The app deletes that invitation immediately after, so a code is good once.
+    */
+    function claimingInvite(uid) {
+      return isSignedIn()
         && request.auth.uid == uid
-        && exists(invitePath(request.auth.token.email))
+        && request.resource.data.via is string
+        && exists(invitePath(request.resource.data.via))
         // The tier is the invitation's, never the claimant's choice.
-        && request.resource.data.level == get(invitePath(request.auth.token.email)).data.level
-        // Nothing beyond the four fields the app writes, so an entry cannot carry passengers.
-        && request.resource.data.keys().hasOnly(['email', 'level', 'addedAt', 'addedBy'])
-        // The address it actually signed in with, not one it fancies.
-        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.level == get(invitePath(request.resource.data.via)).data.level
+        // Nothing beyond the fields the app writes, so an entry cannot carry passengers.
+        && request.resource.data.keys().hasOnly(['email', 'level', 'addedAt', 'addedBy', 'via'])
+        && request.resource.data.keys().hasAll(['email', 'level', 'addedAt', 'addedBy', 'via'])
+        /*
+          Whatever address the account actually has — which is the point of the change — but
+          its own, not one it fancies.
+
+          Asked as "does the token carry one" rather than "is it null", because reading a key
+          a token does not have is an error, and an error here refuses the claim. An account
+          with no address writes an empty one and gets in.
+        */
+        && request.resource.data.email == (
+             request.auth.token.keys().hasAny(['email']) ? request.auth.token.email : ''
+           )
         // Provenance it cannot forge into a name.
         && request.resource.data.addedBy == 'invitation'
         && request.resource.data.addedAt is int
-        // Bounded: an invitation is a standing grant to whoever controls that mailbox.
+        // Bounded: a link that has sat in an inbox for a year is not a standing grant.
         && request.time.toMillis()
-             - get(invitePath(request.auth.token.email)).data.invitedAt
+             - get(invitePath(request.resource.data.via)).data.invitedAt
            < 30 * 24 * 60 * 60 * 1000;
     }
+
 
     match /admins/{uid} {
       // Your own entry, so the app knows which tier to show. Admins see the whole roster,
@@ -132,40 +155,47 @@ service cloud.firestore {
       allow get: if isAdmin() || (isSignedIn() && request.auth.uid == uid);
       allow list: if isAdmin();
 
-      allow create: if claimingOwnInvite(uid)
+      allow create: if claimingInvite(uid)
         || (isAdmin() && request.auth.uid != uid);
       allow update, delete: if isAdmin() && request.auth.uid != uid;
     }
 
     /*
-      Invitations, keyed by lowercased email.
+      Invitations, keyed by a code nobody can guess.
 
-      Admins see and write them. The invitee may also read *their own* — and only their own —
-      because the app has to learn which tier it was invited to before it can write the
-      roster entry claiming it. Leaving this out is what made the whole flow silently do
-      nothing: the rule above reads the invitation on the claimant's behalf, which needs no
-      read permission, but the client asking first was denied and swallowed the error.
+      An invitation names no address. Keying one by email would assume that an admin knows
+      which address somebody signs in with, and that it is the address they were written at —
+      and plenty of people sign in with an account nothing like the one their group has for
+      them. Invited at one and refused at the other looks exactly like being refused outright.
 
-      `list` stays closed, so the collection cannot be walked for addresses.
+      So it is a code in a link, plus a label saying who it is for in the admin's own words.
+      Whoever opens the link is who it lets in, and it is spent the moment it is used.
     */
-    match /invites/{email} {
-      allow get: if isAdmin()
-        || (ownVerifiedEmail() && email == request.auth.token.email);
+    match /invites/{code} {
+      /*
+        Readable by whoever holds the code, so the join page can say what it is an invitation
+        to before anybody signs in to accept it.
+
+        Holding the code is the permission — twenty-two characters from a fifty-eight
+        character alphabet — and `list` stays closed, so the collection cannot be walked for
+        codes. The same shape as a volunteer's pass, open to `get` and closed to `list` for
+        the same reason.
+      */
+      allow get: if true;
       allow list: if isAdmin();
       allow write: if isAdmin();
 
       /*
-        Claiming an invitation uses it up.
+        Claiming spends it.
 
-        Only the person it names, and only once they hold a verified address matching it —
-        the same test that lets them read it and write themselves onto the roster. Without
-        this the invitation outlived its purpose: the person signed in, got their access,
-        and sat in the admin's "waiting to sign in" list for ever, which is a list of people
-        to chase.
+        Whoever holds the code may delete it, which is what makes it single-use: the app
+        deletes it in the same batch that writes the roster entry, so the two land together
+        or not at all. An admin may also delete one to revoke it, which is the only way to
+        take a sent link back.
       */
-      allow delete: if isAdmin()
-        || (ownVerifiedEmail() && email == request.auth.token.email);
+      allow delete: if isAdmin() || isSignedIn();
     }
+
 
     // ------------------------------------------------------------------ audit
     /*

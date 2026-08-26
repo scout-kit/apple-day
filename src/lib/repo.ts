@@ -1,7 +1,6 @@
 import { customAlphabet } from 'nanoid'
 import {
   collection,
-  deleteDoc,
   getDoc,
   getDocs,
   limit,
@@ -39,6 +38,7 @@ import { useEvent } from './eventContext'
 import { auth, db } from './firebase'
 import type { Invitation, RosterEntry, Tier } from '../domain/access'
 import { readAssignment } from '../domain/assignments'
+import { generateToken } from '../domain/publishing'
 import { EVENT_SUBCOLLECTIONS } from '../domain/eventRemoval'
 import type { EventTally } from '../domain/eventRemoval'
 import type { EventData } from '../domain/history'
@@ -1646,15 +1646,19 @@ function toRosterEntry(uid: string, d: Record<string, unknown>): RosterEntry {
   }
 }
 
-function toInvitation(email: string, d: Record<string, unknown>): Invitation {
+function toInvitation(code: string, d: Record<string, unknown>): Invitation {
   return {
-    email,
+    code,
+    // Older invitations were keyed by address and carried no label; the address they were
+    // keyed by is the best label there is for one.
+    label: typeof d.label === 'string' && d.label.trim() ? d.label : code,
     tier: d.level === 'organizer' ? 'organizer' : 'admin',
     invitedAt: typeof d.invitedAt === 'number' ? d.invitedAt : 0,
     invitedBy: typeof d.invitedBy === 'string' ? d.invitedBy : '',
     note: typeof d.note === 'string' ? d.note : '',
   }
 }
+
 
 /** Everybody with access. Admins only — the rules refuse the query to anyone else. */
 export const useRoster = (): Loadable<RosterEntry[]> =>
@@ -1664,35 +1668,58 @@ export const useInvitations = (): Loadable<Invitation[]> =>
   useCollectionData(paths.invites(), toInvitation)
 
 /**
- * Invite somebody by email.
+ * Make an invitation, and return the code that claims it.
  *
- * The address, not a uid: this is somebody who may never have opened the app. Signing in
- * with that address claims the invitation and creates their roster entry.
+ * The label is for the admin's own list and is checked against nothing — the person is never
+ * shown it. What grants the access is the code, which goes in a link, and whoever opens it
+ * and signs in gets the tier it names.
  */
 export async function inviteToTier(
-  email: string,
+  label: string,
   tier: Tier,
   invitedBy: string,
   note = '',
-): Promise<void> {
+): Promise<string> {
+  /*
+    The code is the invitation, so it is made here and returned for the screen to show.
+
+    Same generator as a volunteer's pass: holding it is the whole of the permission, so the
+    only thing protecting it is that it cannot be guessed.
+  */
+  const code = generateToken()
+
   await auditedSet(
-    paths.invite(email),
-    { level: tier, invitedAt: Date.now(), invitedBy, note: note.slice(0, 200) },
+    paths.invite(code),
+    {
+      label: label.trim().slice(0, 120),
+      level: tier,
+      invitedAt: Date.now(),
+      invitedBy,
+      note: note.slice(0, 200),
+    },
     {
       entity: 'access',
-      entityId: email,
+      // The label, never the code. An audit entry is read by admins and kept for years, and
+      // a live invitation code in one is a way in sitting in the record.
+      entityId: label.trim() || 'invitation',
       eventId: null,
-      summary: `Invited somebody as ${tier}`,
+      summary: `Invited ${label.trim() || 'somebody'} as ${tier}`,
       fields: ['level'],
     },
     {},
   )
+
+  return code
 }
 
-export async function cancelInvitation(email: string): Promise<void> {
-  await auditedDelete(paths.invite(email), {
+
+/** Revoke one. The only way to take a sent link back, since holding it is the permission. */
+export async function cancelInvitation(code: string): Promise<void> {
+  await auditedDelete(paths.invite(code), {
     entity: 'access',
-    entityId: email,
+    // Not the code. Audit entries are kept for years and read by admins, and a code in one
+    // is a way in — this one is being revoked, but the habit is what keeps the log safe.
+    entityId: 'invitation',
     eventId: null,
     summary: 'Cancelled an invitation',
   })
@@ -1713,41 +1740,17 @@ export async function setTier(uid: string, tier: Tier): Promise<void> {
 /**
  * Take somebody's access away.
  *
- * Their invitation goes too, or they could sign in and claim their way straight back in.
+ * Just the roster entry. An invitation is spent when it is claimed, so somebody already on
+ * the roster has nothing left to come back through — and there is no way to look for one by
+ * their address, because an invitation records no address to look for.
  */
-export async function removeAccess(uid: string, email: string): Promise<void> {
+export async function removeAccess(uid: string): Promise<void> {
   await auditedDelete(paths.admin(uid), {
     entity: 'access',
     entityId: uid,
     eventId: null,
     summary: 'Removed somebody\u2019s access',
   })
-  // Not swallowed. Deleting a document that is not there succeeds, so an error here is
-  // real — and a surviving invitation is a way back in for somebody just removed.
-  if (email.trim()) await deleteDoc(paths.invite(email))
-}
-
-/**
- * Claim an invitation for the signed-in account.
- *
- * Called once on sign-in when there is no roster entry. The tier comes from the invitation:
- * the rules check that the level written matches the one invited, so this cannot ask for
- * more than it was given.
- */
-export async function claimInvitation(uid: string, email: string, tier: Tier): Promise<void> {
-  await auditedSet(
-    paths.admin(uid),
-    { email, level: tier, addedAt: Date.now(), addedBy: 'invitation' },
-    {
-      entity: 'access',
-      entityId: uid,
-      eventId: null,
-      // Somebody granting themselves access, by invitation. Exactly the write worth a name.
-      summary: `Claimed an invitation as ${tier}`,
-      fields: ['level'],
-    },
-    {},
-  )
 }
 
 export async function requestSwap(

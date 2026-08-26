@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import {
   INVITE_DAYS,
+  canInvite,
   changeProblem,
+  inviteDaysLeft,
   inviteExpired,
-  inviteSpent,
+  inviteIsLive,
+  inviteLink,
   inviteProblem,
   looksLikeEmail,
   normaliseEmail,
@@ -55,29 +58,43 @@ describe('nobody may change their own access', () => {
 })
 
 describe('inviting somebody', () => {
+  /*
+    There is less to validate than there was. An invitation is no longer addressed to
+    anybody — it is a code somebody will be handed — so what is typed is a label, and a
+    label cannot be checked against reality.
+  */
   const roster = [entry('a', 'devin@example.org', 'admin')]
-  const invites = [{ email: 'pending@example.org' }]
+  const invites = [{ label: 'Jo Bailey' }]
 
-  it('accepts a fresh address', () => {
+  it('accepts anything that names a person', () => {
+    expect(inviteProblem('Sam from Cubs', roster, invites)).toBeNull()
     expect(inviteProblem('new@example.org', roster, invites)).toBeNull()
   })
 
   it('says nothing while the field is still empty', () => {
-    // A red message under a box somebody has not typed in yet is noise.
+    // Not a complaint about a form nobody has filled in yet.
     expect(inviteProblem('', roster, invites)).toBeNull()
-    expect(inviteProblem('   ', roster, invites)).toBeNull()
+    expect(canInvite('')).toBe(false)
+    expect(canInvite('   ')).toBe(false)
   })
 
-  it('refuses something that is not an address', () => {
-    expect(inviteProblem('devin', roster, invites)).toMatch(/does not look like/)
+  it('does not complain about an address that is not one', () => {
+    /*
+      It used to refuse anything that did not look like an email, which was right when the
+      address was the identity. It is a label now, and "Jo from Cubs" is a perfectly good
+      one.
+    */
+    expect(inviteProblem('Jo from Cubs', roster, invites)).toBeNull()
   })
 
-  it('refuses somebody who already has access, whatever the case', () => {
+  it('catches somebody who plainly already has access', () => {
+    expect(inviteProblem('devin@example.org', roster, invites)).toMatch(/already have access/)
     expect(inviteProblem('DEVIN@example.org', roster, invites)).toMatch(/already have access/)
   })
 
-  it('refuses somebody already invited', () => {
-    expect(inviteProblem('pending@example.org', roster, invites)).toMatch(/already been invited/)
+  it('catches a label already waiting', () => {
+    expect(inviteProblem('Jo Bailey', roster, invites)).toMatch(/already been invited|already an invitation/)
+    expect(inviteProblem('jo bailey', roster, invites)).toMatch(/already an invitation|already been invited/)
   })
 })
 
@@ -110,36 +127,35 @@ describe('the roster reads admins first', () => {
   })
 })
 
-describe('an invitation that has already been used', () => {
-  /*
-    Reported from the running app: somebody signs in with their invitation and stays on the
-    "waiting to sign in" list. Claiming now deletes the invitation, but the ones left behind
-    before that are still there — and a list of people to chase that fills up with people
-    already in stops being read.
-  */
-
-  const rostered = (email: string): RosterEntry => ({
-    uid: 'u1', email, tier: 'organizer', addedAt: 1, addedBy: 'invitation',
+describe('an invitation, while it is waiting', () => {
+  const invited = (agoDays: number) => ({
+    invitedAt: Date.now() - agoDays * 24 * 60 * 60 * 1000,
   })
 
-  it('is spent once that address is on the roster', () => {
-    expect(inviteSpent({ email: 'new@example.org' }, [rostered('new@example.org')])).toBe(true)
+  it('is live inside the window', () => {
+    expect(inviteIsLive(invited(1), Date.now())).toBe(true)
+    expect(inviteIsLive(invited(INVITE_DAYS - 1), Date.now())).toBe(true)
   })
 
-  it('is still waiting when nobody has signed in with it', () => {
-    expect(inviteSpent({ email: 'new@example.org' }, [rostered('other@example.org')])).toBe(
-      false,
+  it('is not, past it', () => {
+    // A link that has sat in an inbox for a year is not a standing grant.
+    expect(inviteIsLive(invited(INVITE_DAYS + 1), Date.now())).toBe(false)
+  })
+
+  it('says how long is left, in days somebody can read', () => {
+    expect(inviteDaysLeft(invited(0), Date.now())).toBe(INVITE_DAYS)
+    expect(inviteDaysLeft(invited(INVITE_DAYS - 1), Date.now())).toBe(1)
+    expect(inviteDaysLeft(invited(INVITE_DAYS + 5), Date.now())).toBe(0)
+  })
+
+  it('makes a link that carries the code and nothing else', () => {
+    expect(inviteLink('https://apple.web.app', 'k3Ns8pQ2')).toBe(
+      'https://apple.web.app/join/k3Ns8pQ2',
     )
-  })
-
-  it('does not care how the address was typed', () => {
-    // Roster entries record whatever the account reported; invitations are keyed lowercased.
-    expect(inviteSpent({ email: 'new@example.org' }, [rostered('  New@Example.ORG ')])).toBe(
-      true,
+    // A trailing slash on the origin must not become a double one in the link.
+    expect(inviteLink('https://apple.web.app/', 'k3Ns8pQ2')).toBe(
+      'https://apple.web.app/join/k3Ns8pQ2',
     )
-  })
-
-  it('is waiting when the roster is empty', () => {
-    expect(inviteSpent({ email: 'new@example.org' }, [])).toBe(false)
   })
 })
+

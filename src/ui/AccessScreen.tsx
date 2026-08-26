@@ -2,13 +2,18 @@ import { useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import {
   INVITE_DAYS,
-  inviteExpired,
-  inviteSpent,
-  inviteProblem,
+  canInvite,
   changeProblem,
-  normaliseEmail,
+  inviteDaysLeft,
+  inviteExpired,
+  inviteLink,
+  inviteMessage,
+  inviteProblem,
+  looksLikeEmail,
   sortRoster,
 } from '../domain/access'
+import { GOOGLE_CLIENT_ID, originLooksPublic, publicOrigin } from '../lib/mail/config'
+import { gmailSender } from '../lib/mail/gmail'
 import type { Invitation, RosterEntry, Tier } from '../domain/access'
 import {
   cancelInvitation,
@@ -27,12 +32,12 @@ import { Modal } from './Modal'
  *
  * This screen exists so that granting somebody access is not a trip to the Firebase console
  * at nine o'clock on a Friday: find them under Authentication, copy a uid, create a document
- * by hand. Here it is an email address and a tier.
+ * by hand. Here it is a name, a tier, and a link to send them.
  *
  * Two things are deliberately not possible. You cannot change your own access — that is what
  * makes locking the group out impossible, since an admin can remove any other admin but
  * never themselves, so one always remains. And an invitation does not last forever: it is a
- * standing grant to whoever controls that mailbox.
+ * standing grant to whoever holds the link.
  */
 
 const TIER_LABEL: Record<Tier, string> = {
@@ -50,7 +55,8 @@ export function AccessScreen(): ReactNode {
   const roster = useRoster()
   const invites = useInvitations()
 
-  const [email, setEmail] = useState('')
+  const [label, setLabel] = useState('')
+  const [sendTo, setSendTo] = useState('')
   const [tier, setTierChoice] = useState<Tier>('organizer')
   const [note, setNote] = useState('')
   const [busy, setBusy] = useState(false)
@@ -59,18 +65,68 @@ export function AccessScreen(): ReactNode {
 
   const entries = useMemo(() => sortRoster(roster.data), [roster.data])
   const problem = useMemo(
-    () => inviteProblem(email, roster.data, invites.data),
-    [email, roster.data, invites.data],
+    () => inviteProblem(label, roster.data, invites.data),
+    [label, roster.data, invites.data],
   )
 
+  /*
+    The link the last invitation produced, held so it can be copied.
+
+    Shown once, here, because there is nowhere else it can come from: the code is the
+    permission, and an admin who closes this screen without copying it has to make another.
+  */
+  const [madeLink, setMadeLink] = useState<string | null>(null)
+
+  /*
+    Emailing it is an extra, and the link is the thing.
+
+    Sending needs an OAuth client id and a consent screen; copying a link needs nothing. So
+    the address is asked for only when Gmail is set up, it is optional even then, and it is
+    never stored — an invitation records no address, which is the whole point of the change.
+    Whether the mail arrives or not, the link is on screen and in the list below.
+  */
+  const canEmail = GOOGLE_CLIENT_ID !== '' && originLooksPublic(publicOrigin())
+  const [sent, setSent] = useState<string | null>(null)
+
+  const emailIt = async (link: string, to: string): Promise<void> => {
+    const sender = gmailSender(GOOGLE_CLIENT_ID)
+    await sender.connect()
+    const { subject, body } = inviteMessage(link, tier, user?.email ?? 'An organizer')
+    await sender.send({ to, subject, body })
+  }
+
   const invite = (): void => {
-    if (!user || problem !== null || normaliseEmail(email) === '') return
+    if (!user || problem !== null || !canInvite(label)) return
     setBusy(true)
     setError(null)
-    void inviteToTier(email, tier, user.email ?? user.uid, note)
-      .then(() => {
-        setEmail('')
+    setMadeLink(null)
+    setSent(null)
+
+    const to = sendTo.trim()
+    void inviteToTier(label, tier, user.email ?? user.uid, note)
+      .then(async (code) => {
+        const link = inviteLink(publicOrigin(), code)
+        setMadeLink(link)
+        setLabel('')
         setNote('')
+        setSendTo('')
+
+        if (!canEmail || !looksLikeEmail(to)) return
+        /*
+          The invitation exists either way. A send that fails is worth saying so about, not
+          worth undoing anything over — the admin can copy the link and send it themselves,
+          which is what they would have done anyway.
+        */
+        try {
+          await emailIt(link, to)
+          setSent(to)
+        } catch (e) {
+          setError(
+            `The invitation was created, but emailing it to ${to} failed: ${
+              e instanceof Error ? e.message : String(e)
+            }. Copy the link below and send it yourself.`,
+          )
+        }
       })
       .catch((e: Error) => setError(e.message))
       .finally(() => setBusy(false))
@@ -91,7 +147,7 @@ export function AccessScreen(): ReactNode {
     if (!entry) return
     setConfirmRemove(null)
     setError(null)
-    void removeAccess(entry.uid, entry.email).catch((e: Error) => setError(e.message))
+    void removeAccess(entry.uid).catch((e: Error) => setError(e.message))
   }
 
   if (roster.loading) return <Loading what="Reading who has access" />
@@ -171,19 +227,17 @@ export function AccessScreen(): ReactNode {
       <div className="card">
         <h2>Invite somebody</h2>
         <p className="small muted" style={{ marginTop: 0 }}>
-          By email, because that is all anyone knows about a person before they have signed in.
-          They get access the first time they sign in with that address. An invitation lasts{' '}
-          {INVITE_DAYS} days.
+          An invitation is a link. Send it however you like — whoever opens it and signs in
+          gets the access, with whatever Google account they have. It does not have to match
+          the address you know them by. Lasts {INVITE_DAYS} days, and works once.
         </p>
         <div className="row">
           <label style={{ flex: '2 1 14rem' }}>
-            Email
+            Who it is for
             <input
-              type="email"
-              inputMode="email"
-              value={email}
-              placeholder="name@example.org"
-              onChange={(e) => setEmail(e.target.value)}
+              value={label}
+              placeholder="Jo Bailey, or jo@example.org"
+              onChange={(e) => setLabel(e.target.value)}
             />
           </label>
           <label style={{ flex: '1 1 9rem' }}>
@@ -202,19 +256,60 @@ export function AccessScreen(): ReactNode {
             />
           </label>
         </div>
+        {canEmail && (
+          <label style={{ display: 'block', marginTop: '0.5rem' }}>
+            Email the link to (optional)
+            <input
+              type="email"
+              value={sendTo}
+              placeholder="jo@example.org"
+              onChange={(e) => setSendTo(e.target.value)}
+            />
+            <span className="small muted">
+              Only used to send this one message. Leave it blank and copy the link instead.
+            </span>
+          </label>
+        )}
         <p className="small muted">{TIER_BLURB[tier]}</p>
         {problem && (
           <p className="small" style={{ color: 'var(--bad)' }}>
             {problem}
           </p>
         )}
+        <p className="small muted">
+          A label for your own list — nothing is checked against it, and the person is not
+          told what you typed.
+        </p>
         <button
           className="primary"
-          disabled={busy || problem !== null || normaliseEmail(email) === ''}
+          disabled={busy || problem !== null || !canInvite(label)}
           onClick={invite}
         >
-          {busy ? 'Inviting…' : 'Send invitation'}
+          {busy ? 'Creating…' : 'Create invitation'}
         </button>
+
+        {madeLink && (
+          <div className="note info" style={{ marginTop: '0.6rem' }}>
+            <p style={{ margin: 0 }}>
+              <strong>{sent ? `Emailed to ${sent}.` : 'Send them this link.'}</strong>
+            </p>
+            <p className="small mono" style={{ margin: '0.3rem 0', overflowWrap: 'anywhere' }}>
+              {madeLink}
+            </p>
+            <div className="row" style={{ gap: '0.4rem' }}>
+              <button
+                className="tiny"
+                onClick={() => void navigator.clipboard?.writeText(madeLink)}
+              >
+                Copy link
+              </button>
+            </div>
+            <p className="small muted" style={{ margin: '0.35rem 0 0' }}>
+              It is also in the list below until it is used. Holding the link is the whole of
+              the permission, so treat it like a password and do not post it anywhere public.
+            </p>
+          </div>
+        )}
       </div>
 
       {invites.data.length > 0 && (
@@ -223,39 +318,53 @@ export function AccessScreen(): ReactNode {
           <ul className="issue-list">
             {invites.data.map((i: Invitation) => {
               const stale = inviteExpired(i, Date.now())
-              /*
-                Claiming an invitation deletes it now. The ones left behind before that did
-                are still here, and they are the reason this list needs to say so: it is a
-                list of people to chase, and one that fills up with people already in stops
-                being read.
-              */
-              const spent = inviteSpent(i, roster.data)
+              const left = inviteDaysLeft(i, Date.now())
+              const link = inviteLink(publicOrigin(), i.code)
               return (
-                <li key={i.email}>
-                  <div>
-                    <strong className="small">{i.email}</strong>
+                <li key={i.code}>
+                  <div style={{ minWidth: 0 }}>
+                    <strong className="small">{i.label}</strong>
                     <div className="small muted">
                       {TIER_LABEL[i.tier]} · invited by {i.invitedBy}
                       {i.note && ` · ${i.note}`}
                     </div>
-                    {spent ? (
-                      <div className="small" style={{ color: 'var(--good)' }}>
-                        Already signed in and on the roster — this invitation is spent.
+                    {stale ? (
+                      <div className="small" style={{ color: 'var(--warn)' }}>
+                        Expired — make another if they still need access.
                       </div>
                     ) : (
-                      stale && (
-                        <div className="small" style={{ color: 'var(--warn)' }}>
-                          Expired — invite them again if they still need access.
+                      <>
+                        <div className="small muted mono" style={{ overflowWrap: 'anywhere' }}>
+                          {link}
                         </div>
-                      )
+                        <div className="small muted">
+                          {left === 1 ? 'Expires tomorrow' : `Expires in ${left} days`}
+                        </div>
+                      </>
                     )}
                   </div>
-                  <button
-                    className="tiny"
-                    onClick={() => void cancelInvitation(i.email).catch((e: Error) => setError(e.message))}
-                  >
-                    {spent ? 'Clear' : 'Cancel'}
-                  </button>
+                  <div className="row" style={{ gap: '0.3rem' }}>
+                    {!stale && (
+                      <button
+                        className="tiny"
+                        onClick={() => void navigator.clipboard?.writeText(link)}
+                      >
+                        Copy link
+                      </button>
+                    )}
+                    {/*
+                      Revoking is the only way to take a link back. It is a bearer token:
+                      once sent, nothing stops whoever holds it but deleting it here.
+                    */}
+                    <button
+                      className="tiny danger"
+                      onClick={() =>
+                        void cancelInvitation(i.code).catch((e: Error) => setError(e.message))
+                      }
+                    >
+                      Revoke
+                    </button>
+                  </div>
                 </li>
               )
             })}
@@ -281,8 +390,8 @@ export function AccessScreen(): ReactNode {
             open the app again.
           </p>
           <p className="small">
-            Any invitation for that address goes too — otherwise they could sign in and claim
-            their way straight back in.
+            They can be invited again later. The invitation they used is long spent, so
+            removing this is enough — there is no old link that still works.
           </p>
         </Modal>
       )}

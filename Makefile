@@ -35,7 +35,7 @@ firestore_on = $$(curl -fsS -m 2 http://127.0.0.1:$(1)/ 2>/dev/null | head -c 2)
 
 .PHONY: help doctor install admin seed emulators emulators-start emulators-stop \
         dev up down logs test watch test-rules typecheck build preview check \
-        firstrun firstrun-admin firstrun-down \
+        firstrun firstrun-admin firstrun-down bootstrap-admin \
         deploy deploy-one deploy-all deploy-rules verify clean clean-all
 
 # ---------------------------------------------------------------------- meta
@@ -82,19 +82,23 @@ install: node_modules ## Install dependencies (only if the lockfile changed)
 
 # ---------------------------------------------------------------------- data
 
-admin: ## Grant full access to a signed-in account (EMAIL=... to pick one)
+admin: ## Let yourself in as an admin: prints an invitation link, or promotes an account already in
 	@if [ -z "$(call listening,$(FIRESTORE_PORT))" ]; then \
 	  echo "The emulator is not running. Start it with 'make up'."; \
 	  exit 1; \
 	fi
-	@ADMIN_ONLY=1 ADMIN_EMAIL="$(EMAIL)" node scripts/seed.mjs
+	@ADMIN_ONLY=1 ADMIN_EMAIL="$(EMAIL)" APP_ORIGIN=http://localhost:$(VITE_PORT) node scripts/seed.mjs
 
-organizer: ## Grant event-running access, without the setup screens (EMAIL=... to pick one)
+bootstrap-admin: ## Print an invitation to create by hand, for the first admin or a lockout (ORIGIN=..., TIER=organizer)
+	@node scripts/bootstrap-admin.mjs
+
+organizer: ## The same, one tier down: runs the event but not the setup screens
 	@if [ -z "$(call listening,$(FIRESTORE_PORT))" ]; then \
 	  echo "The emulator is not running. Start it with 'make up'."; \
 	  exit 1; \
 	fi
-	@ROLE=organizer ADMIN_ONLY=1 ADMIN_EMAIL="$(EMAIL)" node scripts/seed.mjs
+	@ROLE=organizer ADMIN_ONLY=1 ADMIN_EMAIL="$(EMAIL)" APP_ORIGIN=http://localhost:$(VITE_PORT) \
+	  node scripts/seed.mjs
 
 seed: ## Load data/locations.seed.json into a running emulator
 	@if [ -z "$(call listening,$(FIRESTORE_PORT))" ]; then \
@@ -211,9 +215,11 @@ firstrun: install ## Start an empty emulator and app, to see the first-run exper
 	@echo
 	@echo "Open the port above, not $(VITE_PORT) — that one is your own data."
 	@echo
-	@echo "Sign in and you will be refused: there is no roster yet. Then, in another"
-	@echo "terminal, grant yourself the first account:"
-	@echo "    make firstrun-admin EMAIL=you@example.com"
+	@echo "There is nobody on the roster yet, so start with an invitation — in another"
+	@echo "terminal, before you sign in:"
+	@echo "    make firstrun-admin"
+	@echo
+	@echo "Signing in without one is refused, and the account it made is deleted again."
 	@echo
 	@echo "Ctrl-C stops the app; 'make firstrun-down' stops the sandbox emulator."
 	@echo
@@ -223,12 +229,12 @@ firstrun: install ## Start an empty emulator and app, to see the first-run exper
 	  VITE_EMULATOR_AUTH_PORT=$(FIRSTRUN_AUTH) \
 	  $(NPM) run dev -- --port $(FIRSTRUN_PORT)
 
-firstrun-admin: ## Grant the first account in the sandbox (EMAIL=...)
-	@if [ -z "$(EMAIL)" ]; then echo "Which account? make firstrun-admin EMAIL=you@example.com"; exit 1; fi
+firstrun-admin: ## Print an invitation for the sandbox, or promote an account already in it
 	@if [ -z "$(call listening,$(FIRSTRUN_FIRESTORE))" ]; then \
 	  echo "The sandbox is not running. Start it with 'make firstrun'."; exit 1; \
 	fi
-	@ADMIN_ONLY=1 ADMIN_EMAIL="$(EMAIL)" GCLOUD_PROJECT=$(FIRSTRUN_PROJECT) \
+	@ADMIN_ONLY=1 ADMIN_EMAIL="$(EMAIL)" APP_ORIGIN=http://localhost:$(FIRSTRUN_PORT) \
+	  GCLOUD_PROJECT=$(FIRSTRUN_PROJECT) \
 	  FIRESTORE_EMULATOR_HOST=127.0.0.1:$(FIRSTRUN_FIRESTORE) \
 	  FIREBASE_AUTH_EMULATOR_HOST=127.0.0.1:$(FIRSTRUN_AUTH) node scripts/seed.mjs
 

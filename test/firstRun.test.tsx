@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-import { render, screen } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { cleanup, render, screen } from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 /**
  * What somebody sees when they sign in without access.
@@ -13,8 +13,14 @@ import { describe, expect, it, vi } from 'vitest'
  * console, and it lives in the README where they are.
  */
 
+let session: { user: { uid: string; email?: string } | null; role: string; discarded: boolean } = {
+  user: { uid: 'u-first', email: 'first@example.org' },
+  role: 'none',
+  discarded: false,
+}
+
 vi.mock('../src/lib/session', () => ({
-  useSession: () => ({ user: { uid: 'u-first', email: 'first@example.org' }, role: 'none' }),
+  useSession: () => session,
   runsTheEvent: () => false,
   canEditSetup: () => false,
   canEditLibrary: () => false,
@@ -40,10 +46,16 @@ vi.mock('../src/lib/eventContext', () => ({
 
 const { SignInPrompt } = await import('../src/App')
 
+beforeEach(() => {
+  session = { user: { uid: 'u-first', email: 'first@example.org' }, role: 'none', discarded: false }
+})
+
+afterEach(cleanup)
+
 describe('being told how to get in', () => {
-  it('says who to ask, and nothing about how access is granted', () => {
+  it('says how to get access, and nothing about how it is granted', () => {
     render(<SignInPrompt />)
-    expect(screen.getByText(/Ask an organizer to add you/)).toBeTruthy()
+    expect(screen.getByText(/Ask an organizer for an invitation link/)).toBeTruthy()
   })
 
   it('does not describe the internals to whoever happens to sign in', () => {
@@ -51,25 +63,49 @@ describe('being told how to get in', () => {
       No collection names, no field names, no console steps. Rules stop a stranger acting on
       any of it, but there is no reason to tell them where to aim.
     */
-    const shown = document.body.textContent ?? ''
     render(<SignInPrompt />)
     const after = document.body.textContent ?? ''
     for (const leak of ['admins', 'Firestore', 'console', 'collection', 'addedAt', 'level']) {
       expect(after, `mentions ${leak}`).not.toContain(leak)
     }
-    expect(shown).not.toContain('admins')
   })
 
-  it('still gives the account id, which is what somebody quotes when stuck', () => {
+  it('offers no account id, because it is about to stop existing', () => {
+    /*
+      An account that reaches this screen with no invitation is deleted a moment later, so its
+      id is not something anybody can be given or asked to quote. The first admin is set up
+      from an invitation instead, which needs no account to exist at all.
+    */
     render(<SignInPrompt />)
-    expect(screen.getByText('u-first')).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Copy' })).toBeTruthy()
+    expect(screen.queryByText('u-first')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Copy' })).toBeNull()
+  })
+})
+
+describe('when the account was taken away again', () => {
+  /*
+    What a stranger actually sees: press sign in, a flash, back to the sign-in page. Without
+    a word about it the obvious reading is that signing in is broken, and the obvious
+    response is to press it again — which does the same thing.
+  */
+  it('says the account was not kept, and that nothing went wrong', () => {
+    session = { user: null, role: 'none', discarded: true }
+    render(<SignInPrompt />)
+    expect(screen.getByText(/was not kept/)).toBeTruthy()
+    expect(screen.getByText(/Nothing went wrong and nothing was saved/)).toBeTruthy()
   })
 
-  it('says the page notices on its own, so nobody signs in twice', () => {
-    // The roster is a listener, so access arrives without another sign-in. Worth saying,
-    // because the instinct after being added is to reload and try again.
+  it('says pressing sign in again will not help, and what would', () => {
+    session = { user: null, role: 'none', discarded: true }
     render(<SignInPrompt />)
-    expect(screen.getByText(/without signing in again/)).toBeTruthy()
+    expect(screen.getByText(/invitation link/)).toBeTruthy()
+    expect(screen.getByText(/signing in again will do the same thing/)).toBeTruthy()
+  })
+
+  it('says nothing of the sort to somebody who has simply not signed in', () => {
+    session = { user: null, role: 'none', discarded: false }
+    render(<SignInPrompt />)
+    expect(screen.queryByText(/was not kept/)).toBeNull()
+    expect(screen.getByRole('button', { name: 'Sign in with Google' })).toBeTruthy()
   })
 })

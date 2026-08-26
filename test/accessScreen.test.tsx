@@ -104,24 +104,28 @@ describe('who has access', () => {
       .find((r) => r.querySelector('td')?.textContent?.startsWith('sam@example.org'))!
     await userEvent.click(within(theirRow).getByRole('button', { name: 'Remove' }))
 
-    // Their invitation goes too, or they could claim their way back in.
-    expect(screen.getByText(/claim their way straight back in/)).toBeTruthy()
+    /*
+      Nothing to chase afterwards, and the dialog says so. An invitation is spent the moment
+      it is claimed, so anybody on the roster has none outstanding — removing the entry is the
+      whole job, and there is no leftover link to go and find.
+    */
+    expect(screen.getByText(/no old link that still works/)).toBeTruthy()
     expect(removeAccess).not.toHaveBeenCalled()
 
     const dialog = screen.getByText(/Remove their access\?/).closest('.modal') as HTMLElement
     await userEvent.click(within(dialog).getByRole('button', { name: 'Remove' }))
-    expect(removeAccess).toHaveBeenCalledWith('them', 'sam@example.org')
+    expect(removeAccess).toHaveBeenCalledWith('them')
   })
 })
 
 describe('inviting somebody', () => {
-  const emailField = (): HTMLInputElement => screen.getByLabelText('Email') as HTMLInputElement
+  const emailField = (): HTMLInputElement => screen.getByLabelText('Who it is for') as HTMLInputElement
 
-  it('takes an address and a tier, with no uid anywhere in sight', async () => {
+  it('takes a label and a tier, with no uid and no address required', async () => {
     // Which is the point: a uid does not exist until their first sign-in.
     render(<AccessScreen />)
     await userEvent.type(emailField(), 'new@example.org')
-    await userEvent.click(screen.getByRole('button', { name: 'Send invitation' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Create invitation' }))
 
     expect(inviteToTier).toHaveBeenCalledWith(
       'new@example.org',
@@ -136,11 +140,11 @@ describe('inviting somebody', () => {
     expect((screen.getByLabelText('Tier') as HTMLSelectElement).value).toBe('organizer')
   })
 
-  it('carries a note, so a list of addresses stays readable later', async () => {
+  it('carries a note, so a list of invitations stays readable later', async () => {
     render(<AccessScreen />)
     await userEvent.type(emailField(), 'new@example.org')
     await userEvent.type(screen.getByLabelText('Note'), 'Cub leader')
-    await userEvent.click(screen.getByRole('button', { name: 'Send invitation' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Create invitation' }))
     expect(inviteToTier.mock.calls[0]![3]).toBe('Cub leader')
   })
 
@@ -148,13 +152,13 @@ describe('inviting somebody', () => {
     render(<AccessScreen />)
     await userEvent.type(emailField(), 'SAM@example.org')
     expect(screen.getByText(/already have access/)).toBeTruthy()
-    expect((screen.getByRole('button', { name: 'Send invitation' }) as HTMLButtonElement).disabled).toBe(true)
+    expect((screen.getByRole('button', { name: 'Create invitation' }) as HTMLButtonElement).disabled).toBe(true)
   })
 
   it('says nothing while the field is empty', () => {
     render(<AccessScreen />)
     expect(screen.queryByText(/does not look like/)).toBeNull()
-    expect((screen.getByRole('button', { name: 'Send invitation' }) as HTMLButtonElement).disabled).toBe(true)
+    expect((screen.getByRole('button', { name: 'Create invitation' }) as HTMLButtonElement).disabled).toBe(true)
   })
 
   it('explains what each tier can do', async () => {
@@ -168,7 +172,7 @@ describe('inviting somebody', () => {
 describe('invitations waiting to be claimed', () => {
   it('lists them with who invited them and why', () => {
     invites = [
-      { email: 'new@example.org', tier: 'organizer', invitedAt: Date.now(), invitedBy: 'devin@example.org', note: 'Cub leader' },
+      { code: 'c-new', label: 'new@example.org', tier: 'organizer', invitedAt: Date.now(), invitedBy: 'devin@example.org', note: 'Cub leader' },
     ]
     render(<AccessScreen />)
     expect(screen.getByText('new@example.org')).toBeTruthy()
@@ -178,7 +182,7 @@ describe('invitations waiting to be claimed', () => {
   it('marks one that has gone stale', () => {
     invites = [
       {
-        email: 'old@example.org', tier: 'organizer',
+        code: 'c-old', label: 'old@example.org', tier: 'organizer',
         invitedAt: Date.now() - 40 * 86_400_000, invitedBy: 'devin@example.org', note: '',
       },
     ]
@@ -186,13 +190,13 @@ describe('invitations waiting to be claimed', () => {
     expect(screen.getByText(/Expired/)).toBeTruthy()
   })
 
-  it('cancels one', async () => {
+  it('revokes one, which is the only way to take a sent link back', async () => {
     invites = [
-      { email: 'new@example.org', tier: 'admin', invitedAt: Date.now(), invitedBy: 'devin@example.org', note: '' },
+      { code: 'c-new', label: 'new@example.org', tier: 'admin', invitedAt: Date.now(), invitedBy: 'devin@example.org', note: '' },
     ]
     render(<AccessScreen />)
-    await userEvent.click(screen.getByRole('button', { name: 'Cancel' }))
-    await waitFor(() => expect(cancelInvitation).toHaveBeenCalledWith('new@example.org'))
+    await userEvent.click(screen.getByRole('button', { name: 'Revoke' }))
+    await waitFor(() => expect(cancelInvitation).toHaveBeenCalledWith('c-new'))
   })
 
   it('shows nothing at all when nobody is waiting', () => {
@@ -201,46 +205,54 @@ describe('invitations waiting to be claimed', () => {
   })
 })
 
-describe('an invitation somebody has already used', () => {
+describe('the link an invitation is', () => {
   /*
-    Reported twice from the running app: sign in with an invitation and stay on the "waiting
-    to sign in" list for ever. Claiming deletes the invitation now — but the ones left
-    behind before that still exist, and this list is a list of people to chase. One that
-    fills up with people already in stops being read at all.
+    The invitation is a code now, not an address. Claiming deletes it, so there is no such
+    thing as one that has been used and is still listed — what there is, is a link that has
+    to be copied and sent, and revoked if it should not have been.
   */
-
-  const used = (): void => {
+  it('shows the link, so it can be sent', () => {
     invites = [
       {
-        email: 'sam@example.org', tier: 'organizer',
-        invitedAt: Date.now(), invitedBy: 'devin@example.org', note: '',
-      },
-    ]
-  }
-
-  it('says the person is already in, rather than leaving them looking pending', () => {
-    // sam@example.org is on the roster in the fixture.
-    used()
-    render(<AccessScreen />)
-    expect(screen.getByText(/Already signed in and on the roster/)).toBeTruthy()
-  })
-
-  it('offers to clear it rather than to cancel it', () => {
-    // Cancelling suggests taking something away from somebody who is waiting on it.
-    used()
-    render(<AccessScreen />)
-    expect(screen.getByRole('button', { name: 'Clear' })).toBeTruthy()
-  })
-
-  it('still says cancel for one that really is waiting', () => {
-    invites = [
-      {
-        email: 'nobody@example.org', tier: 'organizer',
+        code: 'k3Ns8pQ2', label: 'Jo Bailey', tier: 'organizer',
         invitedAt: Date.now(), invitedBy: 'devin@example.org', note: '',
       },
     ]
     render(<AccessScreen />)
-    expect(screen.getByRole('button', { name: 'Cancel' })).toBeTruthy()
-    expect(screen.queryByText(/Already signed in/)).toBeNull()
+    expect(screen.getByText(/\/join\/k3Ns8pQ2/)).toBeTruthy()
+  })
+
+  it('offers to copy it rather than making somebody select it', () => {
+    invites = [
+      {
+        code: 'k3Ns8pQ2', label: 'Jo Bailey', tier: 'organizer',
+        invitedAt: Date.now(), invitedBy: 'devin@example.org', note: '',
+      },
+    ]
+    render(<AccessScreen />)
+    expect(screen.getByRole('button', { name: 'Copy link' })).toBeTruthy()
+  })
+
+  it('says how long is left, so a stale one is obvious before it expires', () => {
+    invites = [
+      {
+        code: 'k3Ns8pQ2', label: 'Jo Bailey', tier: 'organizer',
+        invitedAt: Date.now() - 29 * 86_400_000, invitedBy: 'devin@example.org', note: '',
+      },
+    ]
+    render(<AccessScreen />)
+    expect(screen.getByText(/Expires tomorrow/)).toBeTruthy()
+  })
+
+  it('offers no link for an expired one, since sending it would be pointless', () => {
+    invites = [
+      {
+        code: 'k3Ns8pQ2', label: 'Jo Bailey', tier: 'organizer',
+        invitedAt: Date.now() - 40 * 86_400_000, invitedBy: 'devin@example.org', note: '',
+      },
+    ]
+    render(<AccessScreen />)
+    expect(screen.queryByRole('button', { name: 'Copy link' })).toBeNull()
+    expect(screen.getByRole('button', { name: 'Revoke' })).toBeTruthy()
   })
 })

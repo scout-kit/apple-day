@@ -1,8 +1,9 @@
-import { Suspense, lazy } from 'react'
+import { Suspense, lazy, useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { NavLink, Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { useEvent } from './lib/eventContext'
 import { missingConfig, signInWithGoogle, signOutEverywhere } from './lib/firebase'
+import { JoinPage } from './ui/JoinPage'
 import { runsTheEvent, useSession } from './lib/session'
 import { useRequestActions } from './ui/RequestActions'
 import type { Role } from './lib/session'
@@ -203,8 +204,97 @@ function EventPicker(): ReactNode {
   )
 }
 
-function Shell({ children }: { children: ReactNode }): ReactNode {
+/**
+ * Which account you are signed in as.
+ *
+ * Worth a control of its own because nothing else implies it. An invitation names no
+ * address, so whoever opens the link gets in with whatever account they signed in with —
+ * and plenty of people have more than one Google account and land in the wrong one without
+ * noticing. The symptom is not an error: it is being told they have no access, or quietly
+ * working somewhere they did not mean to.
+ *
+ * The button shows enough to recognise; the panel shows the whole address and the tier, so
+ * "am I the right person here" is answerable without signing out to find out.
+ */
+export function AccountButton(): ReactNode {
   const { user, role } = useSession()
+  const [open, setOpen] = useState(false)
+  const box = useRef<HTMLDivElement>(null)
+
+  // Closed by a click outside, the same way every other panel here is, and for the same
+  // reason: a full-page backdrop swallows the scroll of whatever is under it.
+  useEffect(() => {
+    if (!open) return
+
+    const closeIfOutside = (event: Event): void => {
+      const target = event.target
+      if (target instanceof Node && !box.current?.contains(target)) setOpen(false)
+    }
+    const closeOnEscape = (event: KeyboardEvent): void => {
+      if (event.key === 'Escape') setOpen(false)
+    }
+
+    document.addEventListener('mousedown', closeIfOutside)
+    document.addEventListener('touchstart', closeIfOutside)
+    document.addEventListener('keydown', closeOnEscape)
+    return () => {
+      document.removeEventListener('mousedown', closeIfOutside)
+      document.removeEventListener('touchstart', closeIfOutside)
+      document.removeEventListener('keydown', closeOnEscape)
+    }
+  }, [open])
+
+  if (!user) {
+    return (
+      <button className="primary tiny" onClick={() => void signInWithGoogle()}>
+        Organizer sign in
+      </button>
+    )
+  }
+
+  // The part before the @ is what tells two of somebody's own accounts apart, and it fits
+  // in a topbar that already has to hold a year picker and a bell on a phone.
+  const short = user.email ? user.email.split('@')[0] : (user.displayName ?? 'Account')
+
+  return (
+    <div className="account" ref={box}>
+      <button
+        className="ghost tiny account-button"
+        aria-expanded={open}
+        onClick={() => setOpen(!open)}
+      >
+        {short}
+      </button>
+
+      {open && (
+        <div className="card account-panel">
+          <div className="small muted">Signed in as</div>
+          <div className="account-email">{user.email || 'this account has no email address'}</div>
+          {user.displayName && <div className="small muted">{user.displayName}</div>}
+
+          <div className="small muted" style={{ marginTop: '0.5rem' }}>
+            {role === 'admin'
+              ? 'Admin — you can change who has access and how each year is set up.'
+              : role === 'organizer'
+                ? 'Organizer — you can build the schedule, run the day and record the money.'
+                : 'This account has no access yet.'}
+          </div>
+
+          <button
+            className="ghost"
+            style={{ marginTop: '0.6rem' }}
+            onClick={() => void signOutEverywhere()}
+          >
+            Sign out
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function Shell({ children }: { children: ReactNode }): ReactNode {
+  const { role } = useSession()
   const { pathFor } = useEvent()
   /*
     Screens above this tier are hidden, not shown and refused.
@@ -232,17 +322,8 @@ function Shell({ children }: { children: ReactNode }): ReactNode {
         {runsTheEvent(role) && <NotificationBell />}
         {runsTheEvent(role) && <RepublishFlag />}
         <div className="spacer" />
-        {role !== 'none' && <span className="small muted nowrap">{role}</span>}
         <ThemeButton />
-        {user ? (
-          <button className="ghost tiny" onClick={() => void signOutEverywhere()}>
-            Sign out
-          </button>
-        ) : (
-          <button className="primary tiny" onClick={() => void signInWithGoogle()}>
-            Organizer sign in
-          </button>
-        )}
+        <AccountButton />
       </header>
       {nav.length > 0 && (
         <nav className="nav">
@@ -299,7 +380,7 @@ function Landing({ screen }: { screen: string }): ReactNode {
 }
 
 export function SignInPrompt(): ReactNode {
-  const { user } = useSession()
+  const { user, discarded } = useSession()
 
   /*
     A build that went out without its Firebase config.
@@ -335,8 +416,8 @@ export function SignInPrompt(): ReactNode {
         <h1>Not an organizer yet</h1>
         <p>
           You are signed in{user.email ? ` as ${user.email}` : ''}, but this account does not
-          have access. Ask an organizer to add you — this page lets you in on its own the
-          moment they do, without signing in again.
+          have access. Ask an organizer for an invitation link — anybody who can already get
+          in can make you one.
         </p>
         {/*
           Nothing here about how access is granted.
@@ -344,22 +425,13 @@ export function SignInPrompt(): ReactNode {
           This screen is shown to whoever signs in, which in a deployed app is mostly people
           who should not be here at all. It used to spell out the collection and the fields
           an admin document needs — no use to a volunteer, and a description of the internals
-          handed to a stranger. Setting up the first account is a deployment step, done once
-          by somebody holding the console, and it lives in the README where they are.
+          handed to a stranger.
 
-          The account id stays: it is what somebody quotes when they cannot get in, and what
-          the person doing that first setup needs to paste.
+          No account id either. An account that reaches this screen with no invitation is
+          deleted a moment later, so its id is not a thing anybody can be given or asked to
+          quote. Setting up the first admin starts from a link instead, which needs no
+          account to exist at all.
         */}
-        <p className="small muted">
-          Account id, if anyone asks: <span className="mono">{user.uid}</span>{' '}
-          <button
-            className="tiny"
-            onClick={() => void navigator.clipboard?.writeText(user.uid)}
-          >
-            Copy
-          </button>
-        </p>
-
         <div className="row">
           <button className="ghost" onClick={() => void signOutEverywhere()}>
             Sign out
@@ -376,6 +448,27 @@ export function SignInPrompt(): ReactNode {
         Organizers sign in with Google. Volunteers use the link or QR
         code they were sent — no account needed.
       </p>
+
+      {/*
+        Said plainly, because the alternative is a flicker that reads as a broken sign-in.
+
+        An account with no invitation is created by signing in and deleted a second later, so
+        what somebody sees is: press the button, a flash, back to this page. Without a word
+        about it, the obvious conclusion is that sign-in is broken and the thing to do is
+        press it again.
+      */}
+      {discarded && (
+        <div className="note warning">
+          <p style={{ margin: 0 }}>
+            <strong>That account has no access here, so it was not kept.</strong>
+          </p>
+          <p className="small" style={{ margin: '0.35rem 0 0' }}>
+            Nothing went wrong and nothing was saved. To get in you need an invitation link
+            from somebody who already can — signing in again will do the same thing.
+          </p>
+        </div>
+      )}
+
       <div className="row">
         <button className="primary" onClick={() => void signInWithGoogle()}>
           Sign in with Google
@@ -478,6 +571,11 @@ export function App(): ReactNode {
         reachable without an account is a volunteer's own pass, by a token nobody can guess.
       */}
       <Route path="/p/:token" element={<PassPage />} />
+      {/*
+        Accepting an invitation. Open to anybody, like a pass: the code in the link is the
+        permission, and the page reads it before asking anyone to sign in.
+      */}
+      <Route path="/join/:code" element={<JoinPage />} />
 
       <Route
         path="/"

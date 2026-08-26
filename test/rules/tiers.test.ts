@@ -327,194 +327,215 @@ describe('managing access from the app', () => {
     await assertFails(
       setDoc(doc(asOrganizer(), 'admins', 'new-uid'), { level: 'admin', addedAt: 1 }),
     )
-    await assertFails(getDoc(doc(asOrganizer(), 'invites', 'new@example.org')))
+    await assertFails(getDocs(collection(asOrganizer(), 'invites')))
   })
 })
 
 describe('claiming an invitation', () => {
-  const invite = (email: string, level: string, invitedAt = Date.now()) =>
+  /*
+    An invitation is a code in a link, and holding it is the whole of the permission.
+
+    Keyed by email, this could not work for the people it most needed to. An admin invites
+    the address their group has for somebody; that person signs in with a Google account at
+    a different address, and is refused — which looks exactly like not being invited. So an
+    invitation names no address, and whoever opens the link is who it lets in.
+  */
+  const CODE = 'abcdefghijklmnopqrstuv'
+
+  const invite = (code: string, level: string, invitedAt = Date.now()) =>
     testEnv.withSecurityRulesDisabled(async (ctx) => {
-      await setDoc(doc(ctx.firestore(), 'invites', email), {
-        level, invitedAt, invitedBy: ADMIN, note: '',
+      await setDoc(doc(ctx.firestore(), 'invites', code), {
+        label: 'Somebody', level, invitedAt, invitedBy: ADMIN, note: '',
       })
     })
 
-  const signedInAs = (uid: string, email: string, verified = true) =>
-    testEnv.authenticatedContext(uid, { email, email_verified: verified }).firestore()
+  const signedInAs = (uid: string, email?: string) =>
+    testEnv
+      .authenticatedContext(uid, email == null ? {} : { email, email_verified: true })
+      .firestore()
 
-  it('gets somebody in without anybody knowing their uid', async () => {
-    // Which is the whole point: a uid does not exist until the first sign-in.
-    await invite('new@example.org', 'organizer')
+  const claim = (code: string, level: string, email: string) => ({
+    email, level, addedAt: Date.now(), addedBy: 'invitation', via: code,
+  })
+
+  it('gets somebody in whatever address they sign in with', async () => {
+    await invite(CODE, 'organizer')
     await assertSucceeds(
-      setDoc(doc(signedInAs('fresh-uid', 'new@example.org'), 'admins', 'fresh-uid'), {
-        email: 'new@example.org', level: 'organizer', addedAt: 1, addedBy: 'invitation',
-      }),
+      setDoc(
+        doc(signedInAs('fresh-uid', 'nothing.like.it@example.org'), 'admins', 'fresh-uid'),
+        claim(CODE, 'organizer', 'nothing.like.it@example.org'),
+      ),
     )
   })
 
-  it('cannot ask for a higher tier than it was invited to', async () => {
-    await invite('new@example.org', 'organizer')
-    await assertFails(
-      setDoc(doc(signedInAs('fresh-uid', 'new@example.org'), 'admins', 'fresh-uid'), {
-        email: 'new@example.org', level: 'admin', addedAt: 1, addedBy: 'invitation',
-      }),
+  it('gets in an account with no address at all', async () => {
+    /*
+      An address is a thing the entry records, not a thing it is keyed by, so an account
+      without one is not a special case — it writes an empty string and the roster shows a
+      blank where the address goes.
+    */
+    await invite(CODE, 'organizer')
+    await assertSucceeds(
+      setDoc(doc(signedInAs('fresh-uid'), 'admins', 'fresh-uid'), claim(CODE, 'organizer', '')),
     )
   })
 
-  it('cannot be claimed by somebody else’s account', async () => {
-    await invite('new@example.org', 'admin')
+  it('cannot ask for a higher tier than the invitation grants', async () => {
+    await invite(CODE, 'organizer')
     await assertFails(
-      setDoc(doc(signedInAs('other-uid', 'other@example.org'), 'admins', 'other-uid'), {
-        email: 'other@example.org', level: 'admin', addedAt: 1, addedBy: 'invitation',
-      }),
+      setDoc(
+        doc(signedInAs('fresh-uid', 'new@example.org'), 'admins', 'fresh-uid'),
+        claim(CODE, 'admin', 'new@example.org'),
+      ),
     )
   })
 
   it('cannot be claimed into somebody else’s entry', async () => {
-    await invite('new@example.org', 'admin')
-    await assertFails(
-      setDoc(doc(signedInAs('fresh-uid', 'new@example.org'), 'admins', 'someone-else'), {
-        email: 'new@example.org', level: 'admin', addedAt: 1, addedBy: 'invitation',
-      }),
-    )
-  })
-
-  it('needs a verified address, so an unverified one cannot be asserted', async () => {
-    await invite('new@example.org', 'admin')
+    await invite(CODE, 'admin')
     await assertFails(
       setDoc(
-        doc(signedInAs('fresh-uid', 'new@example.org', false), 'admins', 'fresh-uid'),
-        { email: 'new@example.org', level: 'admin', addedAt: 1, addedBy: 'invitation' },
+        doc(signedInAs('fresh-uid', 'new@example.org'), 'admins', 'someone-else'),
+        claim(CODE, 'admin', 'new@example.org'),
       ),
     )
   })
 
-  it('expires, because it is a standing grant to whoever holds that mailbox', async () => {
+  it('expires, because a link in an inbox is not a standing grant', async () => {
     const fortyDaysAgo = Date.now() - 40 * 24 * 60 * 60 * 1000
-    await invite('old@example.org', 'organizer', fortyDaysAgo)
+    await invite(CODE, 'organizer', fortyDaysAgo)
     await assertFails(
-      setDoc(doc(signedInAs('fresh-uid', 'old@example.org'), 'admins', 'fresh-uid'), {
-        email: 'old@example.org', level: 'organizer', addedAt: 1, addedBy: 'invitation',
-      }),
+      setDoc(
+        doc(signedInAs('fresh-uid', 'new@example.org'), 'admins', 'fresh-uid'),
+        claim(CODE, 'organizer', 'new@example.org'),
+      ),
     )
   })
 
-  it('does nothing for an address nobody invited', async () => {
+  it('claims a bare invitation made by hand in the console', async () => {
+    /*
+      How a project gets its first admin, and how anybody gets back in after a lockout.
+
+      There is no other way in. The Access screen is the only route the app offers and it
+      needs somebody already inside; a roster entry cannot be written by its own account, by
+      design; and signing in without access deletes the account it just made, so there is no
+      account id to read out of the console and paste either.
+
+      An invitation needs none of that, and the console route is two fields typed by hand —
+      so the claim has to work against an invitation carrying *only* those two, with no label,
+      no note and no `invitedBy`. A rule that starts requiring one of them makes the project
+      impossible to set up, and this is the test that says so.
+    */
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), 'invites', CODE), {
+        level: 'admin', invitedAt: Date.now(),
+      })
+    })
+
+    await assertSucceeds(
+      setDoc(
+        doc(signedInAs('founder', 'founder@example.org'), 'admins', 'founder'),
+        claim(CODE, 'admin', 'founder@example.org'),
+      ),
+    )
+  })
+
+  it('does nothing for a code nobody issued', async () => {
+    /*
+      Which is what stops the change from opening the door: an account signing in with no
+      code, or a guessed one, writes nothing. Twenty-two characters from an alphabet of
+      fifty-eight, and the collection cannot be listed.
+    */
     await assertFails(
-      setDoc(doc(signedInAs('fresh-uid', 'stranger@example.org'), 'admins', 'fresh-uid'), {
-        email: 'stranger@example.org', level: 'organizer', addedAt: 1, addedBy: 'invitation',
-      }),
+      setDoc(
+        doc(signedInAs('fresh-uid', 'stranger@example.org'), 'admins', 'fresh-uid'),
+        claim('made-up-code-aaaaaaaaa', 'organizer', 'stranger@example.org'),
+      ),
     )
   })
 })
 
-describe('an invitee reading their own invitation', () => {
-  const signedInAs = (uid: string, email: string, verified = true) =>
-    testEnv.authenticatedContext(uid, { email, email_verified: verified }).firestore()
+describe('reading an invitation by its code', () => {
+  const CODE = 'abcdefghijklmnopqrstuv'
+  const OTHER = 'zyxwvutsrqponmlkjihgfe'
+
+  const signedInAs = (uid: string, email: string) =>
+    testEnv.authenticatedContext(uid, { email, email_verified: true }).firestore()
 
   beforeEach(async () => {
     await testEnv.withSecurityRulesDisabled(async (ctx) => {
       const db = ctx.firestore()
-      await setDoc(doc(db, 'invites', 'new@example.org'), {
-        level: 'organizer', invitedAt: Date.now(), invitedBy: ADMIN, note: '',
+      await setDoc(doc(db, 'invites', CODE), {
+        label: 'A new organizer', level: 'organizer', invitedAt: Date.now(),
+        invitedBy: ADMIN, note: '',
       })
-      await setDoc(doc(db, 'invites', 'other@example.org'), {
-        level: 'admin', invitedAt: Date.now(), invitedBy: ADMIN, note: '',
+      await setDoc(doc(db, 'invites', OTHER), {
+        label: 'Somebody else', level: 'admin', invitedAt: Date.now(),
+        invitedBy: ADMIN, note: '',
       })
     })
   })
 
-  it('can read it, which is how the app learns which tier to claim', async () => {
+  it('can be read without signing in at all', async () => {
     /*
-      The bug this covers made the whole invitation flow silently do nothing.
-
-      The rules read the invitation on the claimant's behalf when it writes its roster entry,
-      and that needs no read permission — so it looked fine. But the client has to learn the
-      tier *before* it can write a matching entry, and asking was denied. The error was
-      swallowed as "no invitation", which is the ordinary case, so nothing surfaced: an
-      invited leader just kept seeing "no access yet".
+      The join page's whole job, and it has to happen first. Asked for a Google account
+      before being told what for, somebody hands one over and — if the link has expired or
+      been withdrawn — is told they have no access, with nothing saying why. Reading it up
+      front means the page can say "this invitation cannot be used" to a stranger.
     */
     await assertSucceeds(
-      getDoc(doc(signedInAs('fresh-uid', 'new@example.org'), 'invites', 'new@example.org')),
+      getDoc(doc(testEnv.unauthenticatedContext().firestore(), 'invites', CODE)),
     )
   })
 
-  it('cannot read anybody else’s', async () => {
-    await assertFails(
-      getDoc(doc(signedInAs('fresh-uid', 'new@example.org'), 'invites', 'other@example.org')),
-    )
-  })
-
-  it('cannot read one on an unverified address', async () => {
-    await assertFails(
-      getDoc(
-        doc(signedInAs('fresh-uid', 'new@example.org', false), 'invites', 'new@example.org'),
-      ),
-    )
-  })
-
-  it('cannot walk the collection for addresses', async () => {
-    const db = signedInAs('fresh-uid', 'new@example.org')
-    await assertFails(getDocs(collection(db, 'invites')))
-  })
-
-  it('can use it up once it has been claimed', async () => {
-    /*
-      An invitation that outlives its claim is a job that never finishes: the person signed
-      in, got their access, and stayed on the admin's "waiting to sign in" list — a list of
-      people to chase that filled up with people already in.
-
-      Only the address it names, and only verified, which is the same test that lets them
-      read it and write themselves onto the roster.
-    */
-    await assertSucceeds(
-      deleteDoc(doc(signedInAs('newbie', 'new@example.org'), 'invites', 'new@example.org')),
-    )
-  })
-
-  it('cannot use up somebody else’s', async () => {
-    await assertFails(
-      deleteDoc(doc(signedInAs('newbie', 'new@example.org'), 'invites', 'other@example.org')),
-    )
-  })
-
-  it('cannot use one up on an unverified address', async () => {
-    // The same bar as claiming it: an address nobody has proved is not an identity.
-    await assertFails(
-      deleteDoc(
-        doc(signedInAs('newbie', 'new@example.org', false), 'invites', 'new@example.org'),
-      ),
-    )
+  it('cannot walk the collection for codes', async () => {
+    // Open to `get` and closed to `list`, the same shape as a volunteer's pass: guessing one
+    // is hopeless, and there is no way to be handed the list.
+    await assertFails(getDocs(collection(testEnv.unauthenticatedContext().firestore(), 'invites')))
   })
 
   it('cannot change what it was invited to', async () => {
     await assertFails(
       setDoc(
-        doc(signedInAs('fresh-uid', 'new@example.org'), 'invites', 'new@example.org'),
+        doc(signedInAs('fresh-uid', 'new@example.org'), 'invites', CODE),
         { level: 'admin' },
         { merge: true },
       ),
     )
   })
 
+  it('is spent by whoever claims it', async () => {
+    /*
+      Single-use, and that is what deleting it means. The app deletes it in the same batch
+      that writes the roster entry, so the two land together or not at all — there is no
+      state where somebody is in and the link still works.
+    */
+    await assertSucceeds(deleteDoc(doc(signedInAs('newbie', 'new@example.org'), 'invites', CODE)))
+  })
+
+  it('can be revoked by an admin, which is how a sent link is taken back', async () => {
+    await assertSucceeds(deleteDoc(doc(asAdmin(), 'invites', CODE)))
+  })
+
   it('reads it and claims it, end to end', async () => {
-    // The two halves together, which is the flow that was broken.
-    const db = signedInAs('fresh-uid', 'new@example.org')
-    const invite = await getDoc(doc(db, 'invites', 'new@example.org'))
+    const db = signedInAs('fresh-uid', 'nothing.like.it@example.org')
+    const invite = await getDoc(doc(db, 'invites', CODE))
     expect(invite.data()!.level).toBe('organizer')
 
     await assertSucceeds(
       setDoc(doc(db, 'admins', 'fresh-uid'), {
-        email: 'new@example.org',
+        email: 'nothing.like.it@example.org',
         level: invite.data()!.level,
         addedAt: Date.now(),
         addedBy: 'invitation',
+        via: CODE,
       }),
     )
   })
 })
 
 describe('nothing in a claim is taken on trust', () => {
+  const CODE = 'abcdefghijklmnopqrstuv'
+
   const signedInAs = (uid: string, email: string) =>
     testEnv.authenticatedContext(uid, { email, email_verified: true }).firestore()
 
@@ -523,13 +544,15 @@ describe('nothing in a claim is taken on trust', () => {
     level: 'organizer',
     addedAt: Date.now(),
     addedBy: 'invitation',
+    via: CODE,
     ...over,
   })
 
   beforeEach(async () => {
     await testEnv.withSecurityRulesDisabled(async (ctx) => {
-      await setDoc(doc(ctx.firestore(), 'invites', 'new@example.org'), {
-        level: 'organizer', invitedAt: Date.now(), invitedBy: ADMIN, note: '',
+      await setDoc(doc(ctx.firestore(), 'invites', CODE), {
+        label: 'Somebody', level: 'organizer', invitedAt: Date.now(),
+        invitedBy: ADMIN, note: '',
       })
     })
   })
@@ -558,6 +581,13 @@ describe('nothing in a claim is taken on trust', () => {
     await assertFails(claiming({ addedBy: 'devin@example.org' }))
   })
 
+  it('refuses a claim naming no invitation', async () => {
+    // The field the whole check hangs off: without a code that exists, there is nothing
+    // granting the tier, and an entry is what a tier is.
+    await assertFails(claiming({ via: 'not-a-real-code-aaaaaa' }))
+    await assertFails(claiming({ via: '' }))
+  })
+
   it('refuses an entry carrying passengers', async () => {
     await assertFails(claiming({ note: 'anything at all' }))
   })
@@ -578,11 +608,10 @@ describe('nothing in a claim is taken on trust', () => {
     await assertFails(deleteDoc(doc(db, 'admins', 'fresh-uid')))
   })
 
-  it('cannot be re-claimed after an admin removes it, because the invitation goes too', async () => {
+  it('cannot be re-claimed after an admin removes it, because the code is spent', async () => {
     await assertSucceeds(claiming())
-    // What `removeAccess` does: the entry, then the invitation.
     await assertSucceeds(deleteDoc(doc(asAdmin(), 'admins', 'fresh-uid')))
-    await assertSucceeds(deleteDoc(doc(asAdmin(), 'invites', 'new@example.org')))
+    await assertSucceeds(deleteDoc(doc(asAdmin(), 'invites', CODE)))
     await assertFails(claiming())
   })
 })

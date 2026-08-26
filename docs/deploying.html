@@ -210,41 +210,81 @@ make deploy GROUP=waterloo</code></pre>
       hosting, the rules and the indexes together.
     </p>
 
-    <h3>7. Grant the first admin</h3>
+    <h3>7. Let the first admin in</h3>
 
     <p>
-      A fresh deployment has nobody on the roster, so the first person to sign in is refused.
-      The app cannot offer a way past that — anything it offered would be a way in for
-      everybody. The rules go further and forbid creating your <em>own</em> roster entry, so
-      this one document has to come from the console, which is not bound by them.
+      A fresh project has nobody on the roster, so the first person to sign in is refused —
+      and the app cannot offer a way past that, because anything it offered would be a way in
+      for everybody. So this one step happens in the console, which the rules do not bind.
+    </p>
+
+    <p>
+      What you create is an <strong>invitation</strong>, not a roster entry. That is not a
+      detail: an invitation needs no Firebase account to exist yet. A roster entry is keyed by
+      an account id, and there is no way to get one — signing in without access deletes the
+      account it just made, and the rules forbid an account writing its own roster entry,
+      which is what stops anybody promoting themselves.
+    </p>
+
+    <p>Run this to get the exact values to type:</p>
+
+    <pre><code>ORIGIN=https://your-project.web.app make bootstrap-admin</code></pre>
+
+    <p class="small muted">
+      It only prints. Nothing here reaches your project, so there is no service-account key to
+      download and no credentials to leave on a laptop. Add <code>TIER=organizer</code> for the
+      lesser tier.
     </p>
 
     <ol>
-      <li>Open the deployed site and sign in with the account that should be the first admin.
-        You will be told you have no access; the screen shows your <strong>account id</strong>
-        with a button to copy it.</li>
-      <li>Firebase console → left sidebar <strong>Build</strong> →
-        <strong>Firestore Database</strong> → <strong>Start collection</strong>.</li>
-      <li>Collection ID: <code>admins</code>.</li>
-      <li>Document ID: <strong>paste the account id</strong>. Not auto-ID — it has to be
-        that exact string.</li>
-      <li>Add two fields:
+      <li>Firebase console &rarr; left sidebar <strong>Build</strong> &rarr;
+        <strong>Firestore Database</strong> &rarr; <strong>Start collection</strong>.</li>
+      <li>Collection ID: <code>invites</code>.</li>
+      <li>Document ID: <strong>paste the code it printed</strong>. Not auto-ID — the code
+        <em>is</em> the document id, and the link will not find it otherwise.</li>
+      <li>Add the two fields exactly as printed:
         <ul>
-          <li><code>email</code> — string — your address</li>
-          <li><code>addedAt</code> — number — <code>0</code></li>
+          <li><code>level</code> — <strong>string</strong> — <code>admin</code></li>
+          <li><code>invitedAt</code> — <strong>number</strong> — the long number it printed
+            (the time in milliseconds; it is what makes the link expire)</li>
         </ul>
       </li>
-      <li>Leave <code>level</code> out. An entry without one is a full admin; the only other
-        value that means anything is <code>organizer</code>.</li>
-      <li>Save. The app is watching that document, so the refused screen becomes the app
-        within a second — no reload, no signing in again.</li>
+      <li>Save.</li>
+      <li>Open the <code>/join/&hellip;</code> link it printed and sign in with whichever
+        Google account should be the first admin. Any account will do — it does not have to
+        match any particular address.</li>
     </ol>
 
     <p class="small muted">
-      Once per project, ever. Everybody after that is invited by email from the
-      <strong>Access</strong> screen, which is the only route the app itself offers.
-      <code>make admin</code> does the same job but only against the local emulator — it
-      cannot touch a deployed project.
+      The invitation is spent as you use it, so that document disappears on its own. Nothing
+      to go back and tidy up, and no link left working afterwards.
+    </p>
+
+    <div class="note">
+      <p style="margin:0"><strong>If it says the invitation cannot be used</strong></p>
+      <p class="small" style="margin:0.35rem 0 0">
+        Nearly always one of three things: the document id has a stray space or a changed
+        character, <code>invitedAt</code> was saved as a <em>string</em> rather than a number,
+        or the collection is named <code>invite</code>. The page reads the invitation before
+        asking you to sign in, so you find out before handing over an account.
+      </p>
+    </div>
+
+    <p class="small muted">
+      Everybody after that gets an invitation link from the <strong>Access</strong> screen,
+      which is the only route the app itself offers. <code>make admin</code> does a similar
+      job but only against the local emulator — it cannot touch a deployed project.
+    </p>
+
+    <h3>Getting back in later</h3>
+
+    <p>
+      The same step, and it is worth knowing before you need it. If every admin loses access
+      — an account closed, somebody removed by mistake, a person who has left — nobody can
+      make an invitation from inside the app any more. Run
+      <code>make bootstrap-admin</code> again, type the document again, and you are back in.
+      Anybody with console access to the project can do this, which is also why console access
+      is worth guarding: it is admin access, one step removed.
     </p>
 
     <h2>Sending email, if you want reminders</h2>

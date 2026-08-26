@@ -14,6 +14,7 @@
  * exists for the other way round — an empty database, to see what a new group sees.
  */
 
+import { randomInt } from 'node:crypto'
 import { readFileSync, existsSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -23,6 +24,7 @@ const PROJECT = process.env.GCLOUD_PROJECT ?? 'apple-day-local'
 const FIRESTORE = process.env.FIRESTORE_EMULATOR_HOST ?? '127.0.0.1:8080'
 const AUTH = process.env.FIREBASE_AUTH_EMULATOR_HOST ?? '127.0.0.1:9099'
 const EVENT_ID = process.env.EVENT_ID ?? '2026'
+const APP = process.env.APP_ORIGIN ?? 'http://localhost:5173'
 
 const base = `http://${FIRESTORE}/v1/projects/${PROJECT}/databases/(default)/documents`
 
@@ -124,10 +126,38 @@ async function listAccounts() {
 }
 
 /**
- * Grant organizer rights.
+ * Write an invitation and return the link that claims it.
  *
- * Locally there is no way to know a uid before someone signs in, so by default this
- * grants to every account in the Auth emulator. Pass an email (or uid) to narrow it.
+ * The way in from a cold start, and the only one there is. Granting rights needs an account
+ * id, and there is no way to get one: signing in without access deletes the account it just
+ * made, so "sign in, be refused, be granted" is not a sequence that can happen.
+ *
+ * An invitation runs the other way round. It exists before any account does, and whoever
+ * opens the link is who it lets in. Two fields, the same as the console route a real
+ * deployment uses, so what works here is what works there.
+ */
+async function createInvitation(level) {
+  // The same alphabet as a volunteer's pass link, with the look-alike characters left out.
+  const alphabet = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
+  const code = Array.from({ length: 22 }, () => alphabet[randomInt(alphabet.length)]).join('')
+
+  await put(`invites/${code}`, {
+    label: 'Local development',
+    level,
+    invitedAt: Date.now(),
+    invitedBy: 'make admin',
+    note: '',
+  })
+
+  return `${APP.replace(/\/+$/, '')}/join/${code}`
+}
+
+/**
+ * Grant organizer rights to an account that already exists.
+ *
+ * Only useful for changing the tier of somebody already in — an organizer who should be an
+ * admin. Nobody reaches this from a cold start, because an account with no access does not
+ * survive its own sign-in.
  */
 async function grantAdmins(only) {
   const accounts = await listAccounts()
@@ -145,12 +175,7 @@ async function grantAdmins(only) {
       only "accounts: none" reads as though something is broken, when the next step is
       simply to go and sign in.
     */
-    if (accounts.length === 0) {
-      throw new Error(
-        `Nobody has signed in to ${PROJECT} yet, so there is no account to grant.\n` +
-          `  Open the app, sign in as ${only}, and let it refuse you — then run this again.`,
-      )
-    }
+    if (accounts.length === 0) return []
     const known = accounts.map((u) => u.email || u.localId).join(', ')
     throw new Error(
       `No account matching "${only}" in ${PROJECT}. Signed in there: ${known}`,
@@ -196,19 +221,36 @@ async function main() {
   // `make admin` sets this: skip the data load and only touch the admin roster.
   const adminOnly = process.env.ADMIN_ONLY === '1'
   if (adminOnly) {
+    const level = process.env.ROLE === 'organizer' ? 'organizer' : 'admin'
+
+    /*
+      Promote whoever is already in, if anybody is. Otherwise hand out an invitation.
+
+      Both are wanted, and which one applies is not worth asking about: from an empty
+      emulator there is no account to promote, and once you are in there is no invitation to
+      claim. Checking is quicker than choosing.
+    */
     const granted = await grantAdmins(process.env.ADMIN_EMAIL || undefined)
-    if (granted.length === 0) {
-      console.log(
-        'Nobody has signed in yet, so there is no account to make an organizer.\n' +
-          'Open the app, click "Organizer sign in", then run this again.',
-      )
+    if (granted.length > 0) {
+      console.log('granted access to:')
+      for (const { label, uid, level: got } of granted) {
+        console.log(`  ${label}  (${uid})  ${got}`)
+      }
+      console.log('\nThe app picks this up on its own — no reload, no signing in again.')
       return
     }
-    console.log('granted access to:')
-    for (const { label, uid, level } of granted) {
-      console.log(`  ${label}  (${uid})  ${level}`)
-    }
-    console.log('\nThe app picks this up on its own — no reload, no signing in again.')
+
+    const link = await createInvitation(level)
+    console.log(
+      `Nobody has signed in yet, so here is an invitation instead.\n\n` +
+        `  ${link}\n\n` +
+        `Open it and sign in — any account will do — and you are ${
+          level === 'admin' ? 'an admin' : 'an organizer'
+        }.\n` +
+        `Signing in without one of these gets you nothing: the account it creates is\n` +
+        `deleted straight away, which is what stops a real project filling up with\n` +
+        `strangers. Same on a deployed site, where the link comes from the console.`,
+    )
     return
   }
 

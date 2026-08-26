@@ -22,7 +22,12 @@ vi.mock('firebase/auth', () => ({
     authCallback = cb
     return () => {}
   },
+  deleteUser: (user: unknown) => deleteUser(user),
+  signOut: (auth: unknown) => signOutFallback(auth),
 }))
+
+const deleteUser = vi.fn(async (_user: unknown) => undefined)
+const signOutFallback = vi.fn(async (_auth: unknown) => undefined)
 
 vi.mock('firebase/firestore', () => ({
   onSnapshot: (_ref: unknown, onNext: (s: Snap) => void, onError: (e: unknown) => void) => {
@@ -91,8 +96,13 @@ vi.mock('../src/lib/paths', () => ({
 const { SessionProvider, useSession } = await import('../src/lib/session')
 
 function Probe(): React.ReactElement {
-  const { role, loading } = useSession()
-  return <span data-testid="state">{loading ? 'loading' : role}</span>
+  const { role, loading, discarded } = useSession()
+  return (
+    <>
+      <span data-testid="state">{loading ? 'loading' : role}</span>
+      <span data-testid="discarded">{discarded ? 'discarded' : ''}</span>
+    </>
+  )
 }
 
 const state = (): string => screen.getByTestId('state').textContent ?? ''
@@ -126,6 +136,11 @@ beforeEach(() => {
 
   setDoc.mockReset()
   deleteDoc.mockReset()
+  deleteUser.mockReset()
+  deleteUser.mockResolvedValue(undefined)
+  signOutFallback.mockReset()
+  signOutFallback.mockResolvedValue(undefined)
+  sessionStorage.clear()
   batchWrites = []
   vi.useFakeTimers({ shouldAdvanceTime: true })
   render(
@@ -240,30 +255,19 @@ describe('signing in when already on the roster', () => {
     })
   }
 
-  it('clears an invitation left behind for that address', async () => {
-    getDoc.mockResolvedValue({ exists: () => true, data: () => ({ level: 'admin' }) })
-    signIn()
-    act(() => snapCallback?.(entry('admin')))
-    await settle()
-    expect(deleteDoc).toHaveBeenCalledWith({ email: 'a@example.org' })
-  })
-
-  it('records that it cleared it', async () => {
+  it('does not touch invitations at all', async () => {
     /*
-      "The invitation is gone and I never used it" is a thing somebody says, and until now
-      nothing in the log could answer it either way. Safe to batch here, unlike the claim
-      itself: this account is already on the roster, so it has permission to write the line
-      alongside the delete.
+      There is nothing to tidy. An invitation is a code somebody was handed, not a record
+      filed under their address, and claiming one deletes it — so nothing is ever left behind
+      to find and clear.
+
+      What this pins down is that being already on the roster is a quiet path: no reads, no
+      writes, nothing to go wrong for somebody who simply opened the app.
     */
-    getDoc.mockResolvedValue({ exists: () => true, data: () => ({ level: 'admin' }) })
     signIn()
     act(() => snapCallback?.(entry('admin')))
     await settle()
-
-    const logged = batchWrites.map((w) => w.data as { summary?: string; entity?: string })
-    expect(logged.some((d) => d.entity === 'access' && /invitation/i.test(d.summary ?? ''))).toBe(
-      true,
-    )
+    expect(deleteDoc).not.toHaveBeenCalled()
   })
 
   it('does not rewrite the roster from it', async () => {
@@ -285,5 +289,96 @@ describe('signing in when already on the roster', () => {
     act(() => snapCallback?.(entry('admin')))
     await settle()
     expect(deleteDoc).not.toHaveBeenCalled()
+  })
+})
+
+describe('an account nobody invited', () => {
+  /*
+    Signing in with Google creates a Firebase account whether or not the person is anybody
+    here, and a free project is allowed a hundred of them in total. Left alone, every
+    stranger who ever pressed the button holds one for good — so an account that turns out to
+    be nobody is unmade a second later.
+
+    Deleting is the only lever there is without a server: refusing the sign-up before it
+    happens needs Identity Platform and a Cloud Function, and the free plan has neither.
+  */
+  const settle = async (): Promise<void> => {
+    await act(async () => {
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+  }
+
+  it('is deleted when there is no entry and nothing in hand', async () => {
+    signIn()
+    act(() => snapCallback?.({ exists: () => false, data: () => ({}) }))
+    await settle()
+    expect(deleteUser).toHaveBeenCalled()
+  })
+
+  it('says so, so the page does not just flicker', async () => {
+    // What is left on screen once the account is gone: a sign-in page, again. Unexplained,
+    // that reads as sign-in being broken rather than as being turned away.
+    signIn()
+    act(() => snapCallback?.({ exists: () => false, data: () => ({}) }))
+    await settle()
+    expect(screen.getByTestId('discarded').textContent).toBe('discarded')
+  })
+
+  it('is left alone when the roster has them', async () => {
+    // The case that must never be got wrong: this would delete an organizer's account.
+    signIn()
+    act(() => snapCallback?.(entry('organizer')))
+    await settle()
+    expect(deleteUser).not.toHaveBeenCalled()
+  })
+
+  it('is left alone while the roster read is merely failing', async () => {
+    /*
+      An error is the read failing, not the answer being no. Treating it as "nobody" would
+      delete the account of an organizer whose token had not reached Firestore yet — from a
+      transient failure the code already retries.
+    */
+    signIn()
+    act(() => errorCallback?.({ code: 'permission-denied' }))
+    await settle()
+    expect(deleteUser).not.toHaveBeenCalled()
+  })
+
+  it('signs out instead when the delete is refused', async () => {
+    /*
+      `delete()` needs a recent login, and has just had one — but a refusal has to leave
+      somebody somewhere sensible rather than half signed in to an app they cannot use. The
+      account stays for an admin to clear.
+    */
+    deleteUser.mockRejectedValue(new Error('requires-recent-login'))
+    signIn()
+    act(() => snapCallback?.({ exists: () => false, data: () => ({}) }))
+    await settle()
+    expect(signOutFallback).toHaveBeenCalled()
+  })
+
+  it('is kept when they arrived holding an invitation that works', async () => {
+    sessionStorage.setItem('apple-day:invite', 'abcdefghijklmnopqrstuv')
+    getDoc.mockResolvedValue({ exists: () => true, data: () => ({ level: 'organizer' }) })
+
+    signIn()
+    act(() => snapCallback?.({ exists: () => false, data: () => ({}) }))
+    await settle()
+
+    expect(setDoc).toHaveBeenCalled()
+    expect(deleteUser).not.toHaveBeenCalled()
+  })
+
+  it('is discarded when the invitation they arrived with is gone', async () => {
+    // A link already used, or revoked. There is nothing to claim, so there is nothing to keep.
+    sessionStorage.setItem('apple-day:invite', 'abcdefghijklmnopqrstuv')
+    getDoc.mockResolvedValue({ exists: () => false, data: () => ({}) })
+
+    signIn()
+    act(() => snapCallback?.({ exists: () => false, data: () => ({}) }))
+    await settle()
+
+    expect(deleteUser).toHaveBeenCalled()
   })
 })

@@ -121,6 +121,31 @@ a { color: var(--accent); }
 .topbar .brand span { color: var(--accent); }
 .topbar .spacer { flex: 1; }
 
+/* ------------------------------------------------------- which account you are in */
+
+.account { position: relative; }
+
+/* An address is as long as somebody's address, and the topbar is one row on a phone. */
+.account-button {
+  max-width: 8rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.account-panel {
+  position: absolute;
+  z-index: 61;
+  top: calc(100% + 0.35rem);
+  right: 0;
+  width: min(20rem, calc(100vw - 2rem));
+  text-align: left;
+}
+
+/* Broken anywhere, because the whole point is being able to read it — an address that
+   overflows its panel is the one somebody needed to check. */
+.account-email { font-weight: 600; overflow-wrap: anywhere; }
+
 /* Three kinds of screen, not fourteen of the same kind: running the event, what it was
    worth, and the shape of the thing. Still one scrolling row on a phone. */
 .nav { display: flex; gap: 1rem; overflow-x: auto; padding: 0.3rem 1rem 0.4rem;

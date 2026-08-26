@@ -26,19 +26,22 @@ different versions from the same checkout.
 make up        # installs, starts the emulator, seeds it, serves the app
 ```
 
-Click **Organizer sign in**, then grant yourself access:
+Then let yourself in:
 
 ```bash
-make admin                          # every signed-in account
-make admin EMAIL=you@example.com    # or one of them
+make admin                       # prints an invitation link — open it and sign in
+make organizer                   # the same, one tier down
 ```
 
-Signing in is not enough on its own, and the grant cannot be done ahead of time: your
-account id does not exist until you have signed in once. The app picks it up live — no
-reload, no signing in again. Without it you get a screen saying so.
+Do this before signing in, not after. Signing in with no invitation gets you nothing: the
+account it creates is deleted straight away, which is what stops a real project filling up
+with strangers who pressed the button once. So the link comes first, and any Google account
+will do.
 
-`make down` stops everything. The grant is part of the emulator snapshot, so it survives a
-restart and you only do it once.
+Once you are in, `make admin` promotes instead — useful for moving an organizer up.
+
+`make down` stops everything. Access is part of the emulator snapshot, so it survives a
+restart and you only do this once.
 
 To see what a brand-new deployment looks like, `make firstrun` starts a second, empty
 emulator on its own ports and serves the app against it at `localhost:5174`. Your own data

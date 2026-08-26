@@ -110,22 +110,26 @@ describe('a volunteer opening their pass', () => {
 })
 
 describe('what is reachable without an account', () => {
-  it('is a pass, and nothing else', () => {
+  it('is a pass and an invitation, and nothing else', () => {
     /*
-      There was a redacted public schedule at /schedule — first name and last initial, no
-      contact details — and it is gone. So the only route into this data without signing in
-      is a volunteer's own pass, by a token nobody can guess, and it carries one person's
-      shifts.
+      Two, and both are the same idea: an unguessable string in a link, standing for one
+      thing and reaching nothing else.
 
-      Read off the routes rather than asserted about a screen, because the claim is about
-      what exists rather than what any one page renders.
+      A pass carries one person's own shifts. An invitation carries the offer of access and
+      the tier it is for — it has to be readable before signing in, or somebody following a
+      link would be asked for a Google account before being told what for, and told nothing
+      at all if the link had expired.
+
+      Read off the routes rather than asserted about a screen, because the claim is about what
+      exists rather than what any page renders — a third public route added anywhere in the
+      app fails this, which is the point of it.
     */
     const app = readFileSync('src/App.tsx', 'utf8')
     const publicRoutes = [...app.matchAll(/<Route path="(\/[^"]*)"/g)]
       .map((m) => m[1]!)
       .filter((path) => !path.startsWith('/e/') && path !== '/' && path !== '*')
 
-    expect(publicRoutes).toEqual(['/p/:token'])
+    expect(publicRoutes.sort()).toEqual(['/join/:code', '/p/:token'])
     expect(app).not.toContain('PublicSchedulePage')
   })
 })

@@ -47,22 +47,27 @@
 
     <pre><code>make up        # installs, starts the emulator, seeds it, serves the app</code></pre>
 
+    <p>Then let yourself in:</p>
+
+    <pre><code>make admin        # prints an invitation link &mdash; open it and sign in
+make organizer    # the same, one tier down</code></pre>
+
     <p>
-      Click <strong>Organizer sign in</strong>, then grant yourself access:
+      Do this <em>before</em> signing in, not after. Signing in with no invitation gets you
+      nothing: the account it creates is deleted straight away, which is what stops a real
+      project filling up with strangers who pressed the button once. So the link comes first,
+      and any Google account will do &mdash; it does not have to be an address anybody
+      recognises.
     </p>
 
-    <pre><code>make admin                          # every signed-in account
-make admin EMAIL=you@example.com    # or just one</code></pre>
-
     <p>
-      Signing in is not enough on its own, and the grant cannot be done ahead of time: your
-      account id does not exist until you have signed in once. The app picks the grant up
-      live &mdash; no reload, no signing in again.
+      Once you are in, <code>make admin</code> promotes instead of inviting, which is how you
+      move an organizer up a tier.
     </p>
 
     <p>
-      <code>make down</code> stops everything. The grant is part of the emulator snapshot,
-      so it survives a restart and you only do it once.
+      <code>make down</code> stops everything. Access is part of the emulator snapshot, so it
+      survives a restart and you only do this once.
     </p>
 
     <h2>Seeing the first-run experience</h2>
@@ -73,7 +78,7 @@ make admin EMAIL=you@example.com    # or just one</code></pre>
     </p>
 
     <pre><code>make firstrun        # empty emulator on its own ports, app at :5174
-make firstrun-admin EMAIL=you@example.com
+make firstrun-admin  # prints an invitation link for the sandbox
 make firstrun-down</code></pre>
 
     <div class="note">

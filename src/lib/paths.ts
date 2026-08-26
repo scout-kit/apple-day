@@ -13,14 +13,15 @@ export const paths = {
   admin: (uid: string) => doc(db, 'admins', uid),
 
   /**
-   * Invitations, keyed by lowercased email.
+   * Invitations, keyed by the code that claims them.
    *
-   * By address rather than uid because an address is the only thing known about somebody
-   * before they have ever signed in — a uid does not exist until then, which is what used
-   * to force a trip to the console.
+   * Passed through exactly as given, and it has to be. The alphabet has both cases in it, so
+   * normalising a code — lowercasing it, trimming it — turns a real one into one that matches
+   * no document, and the app cannot tell that apart from an invitation already used. Every
+   * link would read "this cannot be used", with nothing anywhere saying why.
    */
   invites: () => collection(db, 'invites'),
-  invite: (email: string) => doc(db, 'invites', email.trim().toLowerCase()),
+  invite: (code: string) => doc(db, 'invites', code),
 
   claim: (uid: string) => doc(db, 'claims', uid),
 
