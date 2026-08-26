@@ -5,6 +5,7 @@ import userEvent from '@testing-library/user-event'
 import { useMemo } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { buildAllSlots } from '../src/domain/slots'
+import { forgetRememberedDay } from '../src/lib/dayFilter'
 import type {
   Assignment,
   Jar,
@@ -161,6 +162,7 @@ const jar = (over: Partial<Jar> & { id: string; jarNumber: number }): Jar => ({
 })
 
 beforeEach(() => {
+  forgetRememberedDay()
   resetUrl()
   issueJar.mockReset()
   issueJar.mockResolvedValue('fri-jar-1')

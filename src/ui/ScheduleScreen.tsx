@@ -1,11 +1,11 @@
 import { useMemo, useState } from 'react'
-import { useUrlState } from '../lib/urlState'
+import { useDayFilter } from '../lib/dayFilter'
 import type { CSSProperties, ReactNode } from 'react'
 import { DAY_LABEL, isHoursRecorded, isOpenDuring } from '../domain/slots'
 import { todaysEventDay } from '../domain/today'
 import { DAYS } from '../domain/types'
 import { fullName } from '../domain/types'
-import type { Assignment, Day, Person, Slot } from '../domain/types'
+import type { Assignment, Person, Slot } from '../domain/types'
 import { validateSchedule } from '../domain/validation'
 import type { ScheduleIssue } from '../domain/validation'
 import { useEvent } from '../lib/eventContext'
@@ -43,10 +43,6 @@ export function ScheduleScreen(): ReactNode {
     year. A choice, once made, sticks: the organizer looking at Friday's numbers on the
     Saturday is not second-guessed.
   */
-  // In the address bar, so following a link and coming back keeps the day. See useUrlState.
-  const [dayParam, setDayParam] = useUrlState('day')
-  const selectedDay = (dayParam || null) as Day | null
-  const setSelectedDay = (d: Day | null): void => setDayParam(d ?? '')
   const [highlight, setHighlight] = useState<ScheduleIssue | null>(null)
   const [writeError, setWriteError] = useState<Error | null>(null)
   /**
@@ -87,10 +83,12 @@ export function ScheduleScreen(): ReactNode {
     () => (event ? todaysEventDay(event, new Date()) : null),
     [event],
   )
-  const day =
-    selectedDay && eventDays.includes(selectedDay)
-      ? selectedDay
-      : (defaultDay ?? eventDays[0] ?? 'sat')
+  /*
+    Shared with the other day-at-a-time screens, so building a Saturday does not mean
+    choosing Saturday again on each of them. Reset by a reload, and dropped if the event
+    stops running that day.
+  */
+  const [day, setSelectedDay] = useDayFilter(eventDays, defaultDay)
   const slots = useMemo(() => allSlots.filter((s) => s.day === day), [allSlots, day])
   const personById = useMemo(
     () => new Map(people.data.map((p) => [p.id, p])),

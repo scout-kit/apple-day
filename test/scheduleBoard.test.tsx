@@ -4,6 +4,7 @@ import { resetUrl } from './helpers/url'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { buildAllSlots } from '../src/domain/slots'
+import { forgetRememberedDay } from '../src/lib/dayFilter'
 import type { Assignment, Person, ScheduledLocation } from '../src/domain/types'
 
 /**
@@ -179,6 +180,7 @@ const addPerson = async (
 const OPEN_FRIDAY = { fri: { openMin: 17 * 60, closeMin: 21 * 60 }, sat: null }
 
 beforeEach(() => {
+  forgetRememberedDay()
   resetUrl()
   assign.mockReset()
   unassign.mockReset()

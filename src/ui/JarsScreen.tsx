@@ -1,11 +1,12 @@
 import { useMemo, useState } from 'react'
+import { useDayFilter } from '../lib/dayFilter'
 import { useUrlState } from '../lib/urlState'
 import type { ReactNode } from 'react'
 import { isCounted, isNumbered } from '../domain/types'
 import { DAY_LABEL } from '../domain/slots'
 import { todaysEventDay } from '../domain/today'
 import { DAYS, fullName } from '../domain/types'
-import type { Day, Jar, PaymentMethod } from '../domain/types'
+import type { Jar, PaymentMethod } from '../domain/types'
 import { sharesShiftWith } from '../domain/jars'
 import { useEvent } from '../lib/eventContext'
 import { jarNumberFromScan } from '../lib/qr'
@@ -58,9 +59,6 @@ export function JarsScreen(): ReactNode {
     year. A choice, once made, sticks: the organizer looking at Friday's numbers on the
     Saturday is not second-guessed.
   */
-  const [dayParam, setDayParam] = useUrlState('day')
-  const selectedDay = (dayParam || null) as Day | null
-  const setSelectedDay = (d: Day | null): void => setDayParam(d ?? '')
   const eventDays = useMemo(
     () => DAYS.filter((d) => slots.some((s) => s.day === d)),
     [slots],
@@ -70,10 +68,12 @@ export function JarsScreen(): ReactNode {
     () => (event ? todaysEventDay(event, new Date()) : null),
     [event],
   )
-  const day =
-    selectedDay && eventDays.includes(selectedDay)
-      ? selectedDay
-      : (defaultDay ?? eventDays[0] ?? 'sat')
+  /*
+    Shared with the other day-at-a-time screens, so building a Saturday does not mean
+    choosing Saturday again on each of them. Reset by a reload, and dropped if the event
+    stops running that day.
+  */
+  const [day, setSelectedDay] = useDayFilter(eventDays, defaultDay)
 
   const [counting, setCounting] = useState<Jar | null>(null)
   /*

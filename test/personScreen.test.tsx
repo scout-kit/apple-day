@@ -5,6 +5,7 @@ import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { MemoryRoute } from './helpers/router'
 import type { Assignment, Jar, Person, Signup, Slot } from '../src/domain/types'
+import { forgetRememberedDay } from '../src/lib/dayFilter'
 import type { VolunteerRequest } from '../src/domain/requests'
 
 /**
@@ -86,6 +87,7 @@ const renderFor = (personId = 'p-one'): void => {
 }
 
 beforeEach(() => {
+  forgetRememberedDay()
   passes = [{ token: 'tok-one', personId: 'p-one', displayName: 'Edsger Dijkstra', shiftCount: 1 }]
   savePersonWithPairing.mockReset()
   savePersonWithPairing.mockResolvedValue(undefined)

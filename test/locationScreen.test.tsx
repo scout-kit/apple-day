@@ -2,6 +2,7 @@
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { EventData } from '../src/domain/history'
+import { forgetRememberedDay } from '../src/lib/dayFilter'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { MemoryRoute } from './helpers/router'
 import { resetUrl } from './helpers/url'
@@ -152,6 +153,7 @@ const renderFor = (id = 'braemar'): void => {
 }
 
 beforeEach(() => {
+  forgetRememberedDay()
   resetUrl()
   library = [braemar]
   yearLocations = [{ ...braemar, active: true, priority: 2 }]

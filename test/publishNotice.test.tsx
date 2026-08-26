@@ -4,6 +4,7 @@ import { render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { MemoryRoute } from './helpers/router'
 import type { Assignment, Person, ScheduledLocation, Slot } from '../src/domain/types'
+import { forgetRememberedDay } from '../src/lib/dayFilter'
 
 /**
  * Saying that the published schedule no longer matches the board.
@@ -120,6 +121,7 @@ const BASE_PEOPLE = [...people]
 const BASE_ASSIGNMENTS = [...assignments]
 
 beforeEach(() => {
+  forgetRememberedDay()
   publishState = null
   loading = false
   reads.locations = 0

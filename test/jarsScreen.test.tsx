@@ -4,6 +4,7 @@ import { resetUrl } from './helpers/url'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { buildAllSlots } from '../src/domain/slots'
+import { forgetRememberedDay } from '../src/lib/dayFilter'
 import type { Jar, Person, ScheduledLocation } from '../src/domain/types'
 
 /**
@@ -110,6 +111,7 @@ const counted = (over: Partial<Jar> & { id: string }): Jar => ({
 })
 
 beforeEach(() => {
+  forgetRememberedDay()
   resetUrl()
   // Every mock, not a chosen few: a mock that survives a test makes the next one assert
   // against the previous one's call and pass or fail for the wrong reason.

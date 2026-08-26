@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useDayFilter } from '../lib/dayFilter'
 import { useUrlState } from '../lib/urlState'
 import type { ReactNode } from 'react'
 import { DAY_LABEL, formatTime } from '../domain/slots'
@@ -9,7 +10,6 @@ import type { ShiftRun } from '../domain/shiftRuns'
 import { DAYS, fullName, isNumbered } from '../domain/types'
 import type {
   Assignment,
-  Day,
   Jar,
   Person,
   ScheduledLocation,
@@ -105,13 +105,10 @@ export function DayOfScreen(): ReactNode {
     with the filters cleared — four button presses from where you were, on the morning you
     can least spare them.
   */
-  const [dayParam, setDayParam] = useUrlState('day')
   const [scopeParam, setScope] = useUrlState('scope', 'day')
   const [slotId, setSlotId] = useUrlState('slot')
   const [search, setSearch] = useUrlState('find')
 
-  const selectedDay = (dayParam || null) as Day | null
-  const setSelectedDay = (d: Day | null): void => setDayParam(d ?? '')
   const scope = scopeParam as Scope
   const [issuing, setIssuing] = useState<ShiftRun<RunShift> | null>(null)
   const [mapFor, setMapFor] = useState<ScheduledLocation | null>(null)
@@ -127,10 +124,12 @@ export function DayOfScreen(): ReactNode {
     () => (event ? todaysEventDay(event, new Date()) : null),
     [event],
   )
-  const day =
-    selectedDay && eventDays.includes(selectedDay)
-      ? selectedDay
-      : (defaultDay ?? eventDays[0] ?? 'sat')
+  /*
+    Shared with the other day-at-a-time screens, so building a Saturday does not mean
+    choosing Saturday again on each of them. Reset by a reload, and dropped if the event
+    stops running that day.
+  */
+  const [day, setSelectedDay] = useDayFilter(eventDays, defaultDay)
   const daySlots = useMemo(() => allSlots.filter((s) => s.day === day), [allSlots, day])
   /*
     The hour showing, when the screen is narrowed to one.
