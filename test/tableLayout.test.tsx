@@ -482,18 +482,28 @@ describe('the columns are wide enough for what actually goes in them', () => {
     expect(varOf('--slot-col')).toBeGreaterThanOrEqual(needed)
   })
 
-  it('keeps Friday inside the card without scrolling', () => {
+  it('keeps Friday inside the card on a laptop, without scrolling', () => {
     /*
-      The ceiling is not the screen — `main` is capped at 1200px however wide the monitor
-      is, and `main` and `.card` take a rem of padding each side apiece. Friday's four
-      hours should fit inside what is left; Saturday's eight cannot and never will.
+      Measured against a screen rather than against a cap in the stylesheet. `main` fills the
+      window now — an ultrawide should show more of a board, not the same board with wider
+      margins — so the question is what a modest laptop has, not what the CSS allows.
+
+      1280 CSS pixels is the common one, less a rem of padding each side from `main` and from
+      `.card`. Friday's four hours should fit in what is left; Saturday's eight cannot and
+      never will, which is why the table scrolls inside its own card.
     */
-    const cap = Number(css.match(/max-width: (\d+)px/)?.[1]) / 16
-    const usable = cap - 2 - 2
-    expect(usable).toBeCloseTo(71, 1)
+    const laptop = 1280 / 16
+    const usable = laptop - 2 - 2
 
     const friday = varOf('--loc-col') + varOf('--slot-col') * 4
     expect(friday).toBeLessThanOrEqual(usable)
+  })
+
+  it('lets a wide screen actually be wide', () => {
+    // The cap that used to sit here made zooming out pointless: the board got smaller and
+    // the margins got bigger.
+    const main = css.slice(css.indexOf('.shell main {'))
+    expect(main.slice(0, main.indexOf('}'))).not.toMatch(/max-width/)
   })
 })
 

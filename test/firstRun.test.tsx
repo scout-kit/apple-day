@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { readFileSync } from 'node:fs'
 import { cleanup, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -112,5 +113,50 @@ describe('when the account was taken away again', () => {
     render(<SignInPrompt />)
     expect(screen.queryByText(/doesn't have access/)).toBeNull()
     expect(screen.getByRole('button', { name: 'Sign in with Google' })).toBeTruthy()
+  })
+})
+
+describe('the page somebody lands on', () => {
+  beforeEach(() => {
+    session = { user: null, role: 'none', discarded: false }
+  })
+
+  it('says what this is, before asking for anything', () => {
+    render(<SignInPrompt />)
+    expect(screen.getByText(/shifts, the doors, the jars and the money/)).toBeTruthy()
+  })
+
+  it('offers one thing to press', () => {
+    const buttons = (): HTMLElement[] => screen.getAllByRole('button')
+    render(<SignInPrompt />)
+    expect(buttons()).toHaveLength(1)
+    expect(buttons()[0]!.textContent).toBe('Sign in with Google')
+  })
+
+  it('tells a volunteer they are in the wrong place, and what to open instead', () => {
+    /*
+      The other half of who arrives here: somebody who followed a link to the wrong place, or
+      typed what they saw on a poster. Without this they try to sign in, get an account
+      created and deleted, and ring somebody.
+    */
+    render(<SignInPrompt />)
+    expect(screen.getByText(/do not need an account/)).toBeTruthy()
+    expect(screen.getByText(/QR code you were sent/)).toBeTruthy()
+  })
+
+  it('says signing in needs an invitation the first time', () => {
+    // Said before the button rather than after the account has been made and unmade.
+    render(<SignInPrompt />)
+    expect(screen.getByText(/need an invitation the first time/)).toBeTruthy()
+  })
+
+  it('is bounded, unlike every other screen', () => {
+    // `main` fills the window so a board can use an ultrawide. A wordmark and one button
+    // stretched across it reads as a page that failed to load.
+    render(<SignInPrompt />)
+    expect(document.querySelector('.landing-card')).toBeTruthy()
+    const css = readFileSync('src/styles.css', 'utf8')
+    const rule = css.slice(css.indexOf('.landing-card {'))
+    expect(rule.slice(0, rule.indexOf('}'))).toMatch(/max-width/)
   })
 })

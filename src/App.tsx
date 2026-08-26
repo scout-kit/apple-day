@@ -445,37 +445,60 @@ export function SignInPrompt(): ReactNode {
     )
   }
 
+  /*
+    The one screen that does not fill the window.
+
+    Everywhere else wants the width — a board on an ultrawide should show more of the
+    afternoon. This is a wordmark, a sentence and a button, and stretched across three
+    thousand pixels it reads as a page that failed to load.
+  */
   return (
-    <div className="card">
-      <h1>Apple Day</h1>
-      <p>
-        Organizers sign in with Google. Volunteers use the link or QR
-        code they were sent — no account needed.
-      </p>
-
-      {/*
-        Said plainly, because the alternative is a flicker that reads as a broken sign-in.
-
-        An account with no invitation is created by signing in and deleted a second later, so
-        what somebody sees is: press the button, a flash, back to this page. Without a word
-        about it, the obvious conclusion is that sign-in is broken and the thing to do is
-        press it again.
-      */}
-      {discarded && (
-        <div className="note warning">
-          <p style={{ margin: 0 }}>
-            <strong>Your account doesn&apos;t have access.</strong>
-          </p>
-          <p className="small" style={{ margin: '0.35rem 0 0' }}>
-            To get in you need an invitation link from somebody who already has access.
-          </p>
+    <div className="landing">
+      <div className="card landing-card">
+        <div className="landing-brand">
+          Apple<span>Day</span>
         </div>
-      )}
+        <p className="landing-lead">
+          The shifts, the doors, the jars and the money for a Scouts Apple Day.
+        </p>
 
-      <div className="row">
-        <button className="primary" onClick={() => void signInWithGoogle()}>
+        {discarded && (
+          /*
+            Said plainly, because the alternative is a flicker that reads as a broken
+            sign-in: an account with no invitation is created by signing in and deleted a
+            second later, so what somebody sees is a press, a flash, and this page again.
+          */
+          <div className="note warning" style={{ textAlign: 'left' }}>
+            <p style={{ margin: 0 }}>
+              <strong>Your account doesn&apos;t have access.</strong>
+            </p>
+            <p className="small" style={{ margin: '0.35rem 0 0' }}>
+              To get in you need an invitation link from somebody who already has access.
+            </p>
+          </div>
+        )}
+
+        <button className="primary landing-in" onClick={() => void signInWithGoogle()}>
           Sign in with Google
         </button>
+        <p className="small muted landing-who">
+          For organizers and leaders. You need an invitation the first time.
+        </p>
+
+        {/*
+          The other half of who arrives here, and the half that should leave again.
+
+          Most people opening this are volunteers who followed a link to the wrong place, or
+          typed the address they saw on a poster. Telling them there is nothing here for them
+          to sign in to saves the phone call.
+        */}
+        <div className="landing-volunteers">
+          <strong className="small">Volunteering on the day?</strong>
+          <p className="small muted" style={{ margin: '0.2rem 0 0' }}>
+            You do not need an account. Open the link or scan the QR code you were sent — it
+            has your shifts, where to go, and who to ring if something goes wrong.
+          </p>
+        </div>
       </div>
     </div>
   )

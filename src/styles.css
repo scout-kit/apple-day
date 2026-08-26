@@ -177,12 +177,35 @@ a { color: var(--accent); }
 
 .shell main:has(> .fill) { overflow: hidden; }
 
+/*
+   The screen is as wide as the window.
+
+   A capped column wastes an ultrawide monitor and, worse, makes zooming out pointless: a
+   board zoomed out to see the whole afternoon just gets smaller inside the same 1200px.
+   Somebody standing at base ops with the Saturday board on a big screen wants the columns,
+   not the margins.
+
+   What that costs is line length, so prose is capped instead — see `.card > p` below. Wide
+   things get the width; sentences do not need it.
+*/
 .shell main {
   flex: 1; min-height: 0;
-  padding: 1rem; max-width: 1200px; width: 100%; margin: 0 auto;
+  padding: 1rem; width: 100%;
   display: flex; flex-direction: column;
   /* Screens that do not opt into filling scroll here, as a normal page. */
   overflow-y: auto;
+}
+
+/*
+   Sentences stop where they stop being readable.
+
+   Only direct children of a card, so the explanatory paragraph under a heading is bounded
+   while the tables, grids and rows beside it still take the whole window. A line of text
+   three thousand pixels long is not a feature of a big monitor.
+*/
+.card > p,
+.card > .stack > p {
+  max-width: 80ch;
 }
 
 /* ------------------------------------------------------------------- pieces */
@@ -444,6 +467,67 @@ tbody tr:hover { background: var(--surface-2); }
 .chip.noShow { border-color: var(--bad); background: var(--bad-soft);
   text-decoration: line-through; }
 .cell-add { width: 100%; font-size: 0.8rem; padding: 0.15rem; }
+
+/* ------------------------------------------------------------------ landing */
+
+/*
+   Where somebody who is not signed in arrives.
+
+   Centred and bounded, against a `main` that otherwise fills the window: this is a wordmark,
+   a sentence and a button, and stretched across an ultrawide it reads as a page that failed
+   to load. Held a little above centre, which is where the eye goes.
+*/
+.landing {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: clamp(1rem, 8vh, 5rem) 1rem;
+}
+
+.landing-card {
+  width: 100%;
+  max-width: 30rem;
+  text-align: center;
+  padding: 1.75rem 1.5rem;
+}
+
+/* The same wordmark as the bar, at the size of a front door. */
+.landing-brand {
+  font-size: clamp(2rem, 7vw, 2.75rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+.landing-brand span { color: var(--accent); }
+
+.landing-lead {
+  margin: 0.4rem auto 1.25rem;
+  color: var(--muted);
+  max-width: 26rem;
+}
+
+/* One thing to press, sized like it. */
+.landing-in {
+  font-size: 1rem;
+  padding: 0.6rem 1.4rem;
+}
+
+.landing-who { margin: 0.6rem 0 0; }
+
+/*
+   For the other half of who arrives here.
+
+   Most people opening this address are volunteers who followed a link to the wrong place or
+   typed what they saw on a poster. Set apart rather than in the run of text, because it is
+   addressed to somebody else — and it ends with them leaving, which is the right outcome.
+*/
+.landing-volunteers {
+  margin-top: 1.5rem;
+  padding-top: 1.1rem;
+  border-top: 1px solid var(--border);
+  text-align: left;
+}
 
 /* ----------------------------------------------------------------- pass page */
 
