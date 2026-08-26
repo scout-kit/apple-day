@@ -70,6 +70,31 @@ make organizer    # the same, one tier down</code></pre>
       survives a restart and you only do this once.
     </p>
 
+    <h2>Sending email while working locally</h2>
+
+    <p>
+      Reminders and invitations both send from here, which is worth having: the consent
+      screen, the scope and how the message reads on a phone are all easier to get right
+      before a real Apple Day depends on them.
+    </p>
+
+    <p>Two things to set up, both one-offs:</p>
+
+    <ol>
+      <li>Put <code>VITE_GOOGLE_CLIENT_ID</code> in <code>.env.local</code>, which is yours
+        alone and loaded whatever mode you run in.</li>
+      <li>Add <code>http://localhost:5173</code> to <strong>Authorized JavaScript
+        origins</strong> on that same OAuth client, in the Google Cloud console. Without it
+        Google refuses the popup and says nothing useful about why.</li>
+    </ol>
+
+    <p>
+      Both screens will warn that the links they carry point at <code>localhost</code>, which
+      nobody outside your machine can open. That is the honest state of things &mdash; fine
+      for trying the sending out, not for anything real. Set
+      <code>VITE_PUBLIC_ORIGIN</code> when you want links that work.
+    </p>
+
     <h2>Seeing the first-run experience</h2>
 
     <p>

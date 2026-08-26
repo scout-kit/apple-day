@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
-import { useParams } from 'react-router-dom'
+import { Navigate, useParams } from 'react-router-dom'
 import { getDoc } from 'firebase/firestore'
 import { paths } from '../lib/paths'
 import { signInWithGoogle } from '../lib/firebase'
@@ -68,18 +68,20 @@ export function JoinPage(): ReactNode {
     }
   }, [code])
 
-  // Already in, whether they arrived here by accident or came back to a spent link.
-  if (!loading && role !== 'none') {
-    return (
-      <div className="card">
-        <h1>You already have access</h1>
-        <p>
-          Nothing to accept. Open the app from the link you were given, or from wherever you
-          keep it.
-        </p>
-      </div>
-    )
-  }
+  /*
+    Signed in with access already: go to the app.
+
+    This is the end of the ordinary path, not an edge case. The claim writes the roster entry,
+    the session picks it up, and the tier arrives here — so somebody who has just accepted an
+    invitation correctly lands on this branch a moment later. Anything other than sending them
+    onward strands them on a page about getting in, at the exact moment they got in.
+
+    It is also where an admin lands after opening a link to check it, and where anybody signed
+    in as the wrong account lands. Both want the app, and the account menu in the topbar is
+    what answers "which account am I". The invitation is untouched by any of this: claiming
+    only ever runs for an account with no roster entry.
+  */
+  if (!loading && role !== 'none') return <Navigate to="/" replace />
 
   if (state === 'reading') return <Loading what="Checking the invitation" />
 
