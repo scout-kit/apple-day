@@ -415,6 +415,45 @@ describe('an account nobody invited', () => {
     ).toBe(true)
   })
 
+  it('records that it happened, in a line an admin can find', async () => {
+    /*
+      Somebody granting themselves access. It is legitimate — they held an invitation — and
+      it is still the one write worth being able to look up afterwards, because the question
+      "who let them in" has no other answer for an account that let itself in.
+
+      Its own commit, on purpose: writing to the log needs to be on the roster, and until the
+      commit above lands this account is nobody. So this cannot be batched with the grant,
+      and losing it is a gap in the record rather than a way in.
+    */
+    holdInvite('abcdefghijklmnopqrstuv')
+    getDoc.mockResolvedValue({ exists: () => true, data: () => ({ level: 'organizer' }) })
+
+    signIn()
+    act(() => snapCallback?.({ exists: () => false, data: () => ({}) }))
+    await settle()
+
+    const logged = batchWrites.map((w) => w.data as { summary?: string; entity?: string })
+    const line = logged.find((d) => d.entity === 'access' && /invitation/i.test(d.summary ?? ''))
+    expect(line, 'the claim was written to the audit log').toBeTruthy()
+    expect(line!.summary).toMatch(/organizer/)
+  })
+
+  it('never puts the code in the audit line', async () => {
+    // Read by admins and kept for years. A live code sitting in one is a way in.
+    holdInvite('abcdefghijklmnopqrstuv')
+    getDoc.mockResolvedValue({ exists: () => true, data: () => ({ level: 'organizer' }) })
+
+    signIn()
+    act(() => snapCallback?.({ exists: () => false, data: () => ({}) }))
+    await settle()
+
+    const audit = batchWrites
+      .map((w) => w.data as Record<string, unknown>)
+      .filter((d) => d.entity === 'access')
+    expect(audit.length).toBeGreaterThan(0)
+    expect(JSON.stringify(audit)).not.toContain('abcdefghijklmnopqrstuv')
+  })
+
   it('forgets the code once it has been used', async () => {
     // Left there it is a grant waiting for whoever signs in next on this browser.
     holdInvite('abcdefghijklmnopqrstuv')

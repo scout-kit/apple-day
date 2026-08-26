@@ -7,6 +7,7 @@ import { recordInBatch } from './audit'
 import { auth, db } from './firebase'
 import { isFatalClientFailure } from '../domain/clientFailure'
 import { recoverFromFatalFailure } from './recover'
+import { claimedEntry } from '../domain/access'
 import { toPass } from '../domain/passes'
 import type { PassData } from '../domain/passes'
 export type { PassData }
@@ -150,13 +151,10 @@ async function claimInvite(user: User, code: string): Promise<boolean> {
       works, and the next person to sign in on that browser gets the tier too.
     */
     const batch = writeBatch(db)
-    batch.set(paths.admin(user.uid), {
-      email: user.email ?? '',
-      level: tier,
-      addedAt: Date.now(),
-      addedBy: 'invitation',
-      via: code,
-    })
+    // The shape is defined once, beside the rules that enforce it. Building it here as well
+    // is how a client ends up writing something the rules refuse, for no reason a person
+    // looking at the screen could work out.
+    batch.set(paths.admin(user.uid), claimedEntry(code, tier, user.email ?? '', Date.now()))
     batch.delete(paths.invite(code))
     await batch.commit()
 

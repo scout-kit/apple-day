@@ -79,8 +79,9 @@ export function looksLikeEmail(email: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
 }
 
+/** The other way round, for lists that read "expired" rather than "live". */
 export function inviteExpired(invite: Pick<Invitation, 'invitedAt'>, now: number): boolean {
-  return now - invite.invitedAt > INVITE_DAYS * 86_400_000
+  return !inviteIsLive(invite, now)
 }
 
 /**
@@ -141,21 +142,6 @@ export function sortRoster(entries: RosterEntry[]): RosterEntry[] {
 }
 
 
-
-/**
- * A new invitation code.
- *
- * Twenty-two characters from an alphabet of sixty-four, which is the same shape as a
- * volunteer's pass token and for the same reason: holding it is the whole of the
- * permission, so guessing it must be out of the question.
- *
- * The generator is passed in rather than imported so this stays testable without a
- * randomness stub — and so the one place that decides what "unguessable" means is the
- * caller that already does it for passes.
- */
-export function inviteCode(random: () => string): string {
-  return random()
-}
 
 /** Where an invitation is claimed. One route, so nothing has to guess the shape. */
 export function inviteLink(origin: string, code: string): string {
