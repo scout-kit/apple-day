@@ -53,9 +53,21 @@ beforeEach(() => {
 afterEach(cleanup)
 
 describe('being told how to get in', () => {
-  it('says how to get access, and nothing about how it is granted', () => {
+  it('says the fact, and the one thing that changes it', () => {
     render(<SignInPrompt />)
-    expect(screen.getByText(/Ask an organizer for an invitation link/)).toBeTruthy()
+    expect(screen.getByText(/Your account doesn't have access/)).toBeTruthy()
+    expect(screen.getByText(/need an invitation link/)).toBeTruthy()
+  })
+
+  it('does not offer anything to work on, because there is nothing', () => {
+    /*
+      Mostly seen by people who should not be here at all, and for the rest there is no
+      setting to check, no id to quote and no retry that helps. Anything beyond the fact and
+      the fix reads as a problem to be solved from this screen.
+    */
+    render(<SignInPrompt />)
+    const shown = document.body.textContent ?? ''
+    expect(shown.length, 'two short sentences, not a troubleshooting guide').toBeLessThan(200)
   })
 
   it('does not describe the internals to whoever happens to sign in', () => {
@@ -88,24 +100,17 @@ describe('when the account was taken away again', () => {
     a word about it the obvious reading is that signing in is broken, and the obvious
     response is to press it again — which does the same thing.
   */
-  it('says the account was not kept, and that nothing went wrong', () => {
+  it('says so plainly, and what would get them in', () => {
     session = { user: null, role: 'none', discarded: true }
     render(<SignInPrompt />)
-    expect(screen.getByText(/was not kept/)).toBeTruthy()
-    expect(screen.getByText(/Nothing went wrong and nothing was saved/)).toBeTruthy()
-  })
-
-  it('says pressing sign in again will not help, and what would', () => {
-    session = { user: null, role: 'none', discarded: true }
-    render(<SignInPrompt />)
-    expect(screen.getByText(/invitation link/)).toBeTruthy()
-    expect(screen.getByText(/signing in again will do the same thing/)).toBeTruthy()
+    expect(screen.getByText(/Your account doesn't have access/)).toBeTruthy()
+    expect(screen.getByText(/need an invitation link/)).toBeTruthy()
   })
 
   it('says nothing of the sort to somebody who has simply not signed in', () => {
     session = { user: null, role: 'none', discarded: false }
     render(<SignInPrompt />)
-    expect(screen.queryByText(/was not kept/)).toBeNull()
+    expect(screen.queryByText(/doesn't have access/)).toBeNull()
     expect(screen.getByRole('button', { name: 'Sign in with Google' })).toBeTruthy()
   })
 })

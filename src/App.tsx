@@ -424,25 +424,18 @@ export function SignInPrompt(): ReactNode {
   if (user) {
     return (
       <div className="card">
-        <h1>Not an organizer yet</h1>
-        <p>
-          You are signed in{user.email ? ` as ${user.email}` : ''}, but this account does not
-          have access. Ask an organizer for an invitation link — anybody who can already get
-          in can make you one.
-        </p>
         {/*
-          Nothing here about how access is granted.
+          Two sentences, and nothing to work on.
 
-          This screen is shown to whoever signs in, which in a deployed app is mostly people
-          who should not be here at all. It used to spell out the collection and the fields
-          an admin document needs — no use to a volunteer, and a description of the internals
-          handed to a stranger.
+          This is shown to whoever signs in, which in a deployed app is mostly people who
+          should not be here at all — so it says the fact and the one thing that changes it.
+          Anything more reads as a problem to be solved from this screen, and there is
+          nothing here to solve: no setting to check, no id to quote, no retry that helps.
 
-          No account id either. An account that reaches this screen with no invitation is
-          deleted a moment later, so its id is not a thing anybody can be given or asked to
-          quote. Setting up the first admin starts from a link instead, which needs no
-          account to exist at all.
+          Not the address either. The topbar says which account this is, on every screen.
         */}
+        <h1>Your account doesn&apos;t have access</h1>
+        <p>To get in you need an invitation link from somebody who already has access.</p>
         <div className="row">
           <button className="ghost" onClick={() => void signOutEverywhere()}>
             Sign out
@@ -471,11 +464,10 @@ export function SignInPrompt(): ReactNode {
       {discarded && (
         <div className="note warning">
           <p style={{ margin: 0 }}>
-            <strong>That account has no access here, so it was not kept.</strong>
+            <strong>Your account doesn&apos;t have access.</strong>
           </p>
           <p className="small" style={{ margin: '0.35rem 0 0' }}>
-            Nothing went wrong and nothing was saved. To get in you need an invitation link
-            from somebody who already can — signing in again will do the same thing.
+            To get in you need an invitation link from somebody who already has access.
           </p>
         </div>
       )}
