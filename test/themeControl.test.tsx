@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+// @vitest-environment-options { "url": "http://localhost/" }
 import { readFileSync } from 'node:fs'
 import { act, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
@@ -179,13 +180,25 @@ describe('the test environment is the same on every machine', () => {
   */
   const CONFIG = readFileSync('vite.config.ts', 'utf8')
 
-  it('pins a real origin for jsdom', () => {
-    expect(CONFIG).toMatch(/environmentOptions/)
+  it('pins a real origin in the shared config', () => {
     expect(CONFIG).toMatch(/jsdom:\s*\{\s*url:\s*'https?:\/\//)
+    expect(CONFIG).not.toMatch(/url:\s*'about:blank'/)
   })
 
-  it('does not leave it at about:blank, which is the opaque one', () => {
-    expect(CONFIG).not.toMatch(/url:\s*'about:blank'/)
+  it('pins it again in every file that needs storage', () => {
+    /*
+      The config option alone was not enough — it did not reach a second machine's run, and
+      the two files went on failing. A docblock cannot be missed by config resolution, and
+      it survives a hostile global default.
+    */
+    for (const file of [
+      'test/themeControl.test.tsx',
+      'test/eventProvider.test.tsx',
+    ]) {
+      const head = readFileSync(file, 'utf8').split('\n').slice(0, 4).join('\n')
+      expect(head, file).toMatch(/@vitest-environment jsdom/)
+      expect(head, file).toMatch(/@vitest-environment-options .*"url": *"https?:\/\//)
+    }
   })
 
   it('is what lets a test call localStorage without guarding it', () => {

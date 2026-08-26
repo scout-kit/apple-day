@@ -55,7 +55,11 @@ doctor: ## Check that the local prerequisites are present
 
 # A stamp file, so this only reruns when the lockfile actually changes.
 node_modules: package-lock.json
-	@$(NPM) install --no-audit --no-fund
+	# `ci`, not `install`. `npm install` is free to resolve something newer than the
+	# lockfile and rewrite it, which is how two machines end up on different versions of
+	# the same dependency from the same checkout — and how a test suite starts passing in
+	# one place and failing in another for reasons nothing in git can explain.
+	@$(NPM) ci --no-audit --no-fund
 	@touch node_modules
 
 install: node_modules ## Install dependencies (only if the lockfile changed)

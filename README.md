@@ -14,6 +14,11 @@ publish them by pointing GitHub Pages at the `docs/` folder on the default branc
 
 Node 20+ and a JDK 11+ — the Firestore emulator needs Java. `make doctor` checks both.
 
+`.nvmrc` names the version this is built and tested against, so `nvm use` picks it up.
+Dependencies install with `npm ci` rather than `npm install`: the second is free to resolve
+something newer than the lockfile and rewrite it, which is how two machines end up running
+different versions from the same checkout.
+
 ```bash
 make up        # installs, starts the emulator, seeds it, serves the app
 ```

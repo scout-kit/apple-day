@@ -2,6 +2,10 @@
   "name": "apple-day",
   "private": true,
   "license": "Apache-2.0",
+  "engines": {
+    "node": ">=20",
+    "npm": ">=10"
+  },
   "version": "0.1.0",
   "type": "module",
   "description": "Apple Day — scheduling, day-of operations and fundraising totals for a Scout group fundraiser",
