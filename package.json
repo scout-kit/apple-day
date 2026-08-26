@@ -1,6 +1,7 @@
 {
   "name": "apple-day",
   "private": true,
+  "license": "Apache-2.0",
   "version": "0.1.0",
   "type": "module",
   "description": "1st Waterloo Scouts Apple Day — scheduling, day-of operations and fundraising totals",

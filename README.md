@@ -254,3 +254,10 @@ removed 2025" is exactly what a log is for.
 - Hosting transfer on Spark is 360 MB/day, which is the quota worth watching. Keep the
   bundle small and avoid large images and font files.
 - App Check is not enabled.
+
+## Licence
+
+Apache 2.0 — see [LICENSE](LICENSE). Copyright Scout Kit.
+
+Use it, change it, run it for your own group. The one thing it asks is that you keep the
+notice and say what you changed.
