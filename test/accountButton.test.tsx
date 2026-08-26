@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -45,15 +45,39 @@ afterEach(cleanup)
 
 const open = async (): Promise<void> => {
   render(<AccountButton />)
-  await userEvent.click(screen.getByRole('button', { name: 'devin.personal' }))
+  await userEvent.click(screen.getByRole('button', { name: 'devin.personal@example.org' }))
 }
 
+/** The panel, or null when it is closed. Scoped, because the button says the same thing. */
+const panel = (): HTMLElement | null => document.querySelector('.account-panel')
+
 describe('the button in the topbar', () => {
-  it('shows enough of the address to tell two accounts apart', () => {
-    // The part before the @ is the half that differs between somebody's own accounts, and
-    // the whole address does not fit a row that already holds a year picker and a bell.
+  it('shows the name Google gave, which is what somebody recognises', () => {
+    session = {
+      user: { uid: 'u1', email: 'devin.personal@example.org', displayName: 'A Leader' },
+      role: 'admin',
+    }
     render(<AccountButton />)
-    expect(screen.getByRole('button', { name: 'devin.personal' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'A Leader' })).toBeTruthy()
+  })
+
+  it('shows the whole address when there is no name', () => {
+    /*
+      All of it, not the part before the @. Two accounts differing only after it — a work and
+      a personal address at the same name — are exactly the pair people mix up, and cutting
+      there hides the half that tells them apart.
+    */
+    render(<AccountButton />)
+    expect(screen.getByRole('button', { name: 'devin.personal@example.org' })).toBeTruthy()
+  })
+
+  it('carries the address as a tooltip, for when the row trims it', () => {
+    // Trimmed by the stylesheet against the space actually there, so the full text has to be
+    // reachable some other way.
+    render(<AccountButton />)
+    expect(
+      screen.getByRole('button', { name: 'devin.personal@example.org' }).getAttribute('title'),
+    ).toBe('devin.personal@example.org')
   })
 
   it('offers sign-in instead when nobody is signed in', () => {
@@ -62,17 +86,17 @@ describe('the button in the topbar', () => {
     expect(screen.getByRole('button', { name: 'Organizer sign in' })).toBeTruthy()
   })
 
-  it('falls back to a name when the account has no address', () => {
-    session = { user: { uid: 'u1', displayName: 'A Leader' }, role: 'organizer' }
+  it('says Account when there is neither a name nor an address', () => {
+    session = { user: { uid: 'u1' }, role: 'organizer' }
     render(<AccountButton />)
-    expect(screen.getByRole('button', { name: 'A Leader' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Account' })).toBeTruthy()
   })
 })
 
 describe('what the panel answers', () => {
   it('gives the whole address, which is the question being asked', async () => {
     await open()
-    expect(screen.getByText('devin.personal@example.org')).toBeTruthy()
+    expect(within(panel()!).getByText('devin.personal@example.org')).toBeTruthy()
   })
 
   it('says what the account can do, not just its tier', async () => {
@@ -85,7 +109,7 @@ describe('what the panel answers', () => {
   it('says so plainly when the account has no access', async () => {
     session = { user: { uid: 'u1', email: 'stranger@example.org' }, role: 'none' }
     render(<AccountButton />)
-    await userEvent.click(screen.getByRole('button', { name: 'stranger' }))
+    await userEvent.click(screen.getByRole('button', { name: 'stranger@example.org' }))
     expect(screen.getByText(/no access yet/)).toBeTruthy()
   })
 
@@ -110,11 +134,11 @@ describe('what the panel answers', () => {
   it('closes on Escape, and on a click outside it', async () => {
     await open()
     await userEvent.keyboard('{Escape}')
-    expect(screen.queryByText('devin.personal@example.org')).toBeNull()
+    expect(panel()).toBeNull()
 
-    await userEvent.click(screen.getByRole('button', { name: 'devin.personal' }))
-    expect(screen.getByText('devin.personal@example.org')).toBeTruthy()
+    await userEvent.click(screen.getByRole('button', { name: 'devin.personal@example.org' }))
+    expect(panel()).toBeTruthy()
     await userEvent.click(document.body)
-    expect(screen.queryByText('devin.personal@example.org')).toBeNull()
+    expect(panel()).toBeNull()
   })
 })

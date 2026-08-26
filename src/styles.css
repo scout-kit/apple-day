@@ -125,9 +125,16 @@ a { color: var(--accent); }
 
 .account { position: relative; }
 
-/* An address is as long as somebody's address, and the topbar is one row on a phone. */
+/*
+   Wide enough for a name or a short address, and never wide enough to push the row.
+
+   An address is as long as somebody's address, and the topbar is one row on a phone that
+   also holds a year picker, a bell and the theme button. So it takes what it can up to a
+   limit and gives up the rest to an ellipsis — the viewport share is what keeps a long
+   address from crowding out everything beside it on a narrow screen.
+*/
 .account-button {
-  max-width: 8rem;
+  max-width: min(15rem, 38vw);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

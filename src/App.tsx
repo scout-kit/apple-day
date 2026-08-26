@@ -252,18 +252,29 @@ export function AccountButton(): ReactNode {
     )
   }
 
-  // The part before the @ is what tells two of somebody's own accounts apart, and it fits
-  // in a topbar that already has to hold a year picker and a bell on a phone.
-  const short = user.email ? user.email.split('@')[0] : (user.displayName ?? 'Account')
+  /*
+    The name if Google gave one, otherwise the whole address.
+
+    A name is what somebody recognises themselves by, and it is short. Falling back to the
+    full address rather than the part before the @ matters when two accounts differ only
+    after it — a work and a personal address at the same name are exactly the pair people
+    mix up, and cutting at the @ hides the half that tells them apart.
+
+    Long ones are trimmed with an ellipsis by the stylesheet rather than here, so the
+    trimming follows the space actually available. The full text is on the button as a
+    tooltip and spelled out in the panel.
+  */
+  const label = user.displayName || user.email || 'Account'
 
   return (
     <div className="account" ref={box}>
       <button
         className="ghost tiny account-button"
         aria-expanded={open}
+        title={user.email || undefined}
         onClick={() => setOpen(!open)}
       >
-        {short}
+        {label}
       </button>
 
       {open && (
