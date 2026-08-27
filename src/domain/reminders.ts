@@ -162,7 +162,23 @@ export function buildAudience(
   const live = input.assignments.filter((a) => a.status !== 'swapped')
 
   const mine = new Map<string, Assignment[]>()
+  /*
+    And everything they are on, qualifying or not.
+
+    A stretch of work is one turn, and a reminder about it has to name the whole turn: an
+    hour's selection picks out the 9 o'clock of somebody working 9 to 11, and telling them
+    "9:00 AM – 10:00 AM" when their own pass says "9:00 AM – 11:00 AM" is the app
+    contradicting itself about the same afternoon.
+
+    Runs never cross a day, so widening an hour to its run cannot drag the Friday into a
+    reminder about the Saturday.
+  */
+  const all = new Map<string, Assignment[]>()
   for (const a of live) {
+    const everything = all.get(a.personId)
+    if (everything) everything.push(a)
+    else all.set(a.personId, [a])
+
     if (!covers(selection, a, slotById)) continue
     const held = mine.get(a.personId)
     if (held) held.push(a)
@@ -185,37 +201,57 @@ export function buildAudience(
       continue
     }
 
+    /*
+      The runs they are on, and then only the ones the selection reaches.
+
+      Grouped over everything they have first, filtered after: grouping the qualifying hours
+      alone would join what happens to be adjacent inside the selection and leave the rest of
+      the stretch off the end of it.
+    */
+    const qualifying = new Set(theirs.map((a) => a.id))
+    const runs = groupIntoRuns(
+      [...(all.get(personId) ?? [])]
+        .sort((a, b) => (slotOrder.get(a.slotId) ?? 0) - (slotOrder.get(b.slotId) ?? 0))
+        .flatMap((a) => {
+          const slot = slotById.get(a.slotId)
+          return slot
+            ? [{
+                assignmentId: a.id,
+                slotId: slot.id,
+                day: DAY_LABEL[slot.day],
+                label: slot.label,
+                /*
+                  Keyed on the day as well as the shop, because the times are minutes from
+                  midnight: without it, five o'clock on the Friday and five o'clock on the
+                  Saturday look adjacent.
+                */
+                locationId: `${slot.day}|${a.locationId}`,
+                startMin: slot.startMin,
+                endMin: slot.endMin,
+              }]
+            : []
+        }),
+    ).filter((run) => run.items.some((i) => qualifying.has(i.assignmentId)))
+
     const token = input.tokenByPerson.get(personId) ?? ''
     const youth: RecipientYouth = {
       person,
-      // Their qualifying shifts only, in the order they happen — a reminder about the
-      // Saturday should not list the Friday.
-      shifts: groupIntoRuns(
-        [...theirs]
-          .sort((a, b) => (slotOrder.get(a.slotId) ?? 0) - (slotOrder.get(b.slotId) ?? 0))
-          .flatMap((a) => {
-            const slot = slotById.get(a.slotId)
-            return slot
-              ? [{
-                  slotId: slot.id,
-                  day: DAY_LABEL[slot.day],
-                  label: slot.label,
-                  /*
-                    Keyed on the day as well as the shop, because the times are minutes from
-                    midnight: without it, five o'clock on the Friday and five o'clock on the
-                    Saturday look adjacent.
-                  */
-                  locationId: `${slot.day}|${a.locationId}`,
-                  startMin: slot.startMin,
-                  endMin: slot.endMin,
-                }]
-              : []
-          }),
-      ).map((run) => {
+      // In the order they happen — a reminder about the Saturday should not list the Friday.
+      shifts: runs.map((run) => {
         const first = run.items[0]!
         return { slotId: first.slotId, day: first.day, slotLabel: runSpan(run, first.label) }
       }),
-      assignmentIds: theirs.map((a) => a.id).sort(),
+      /*
+        Every shift the message ends up naming, which is the run rather than the hour that
+        selected it. Union, so a shift whose slot has been edited away — and which therefore
+        appears in no run — is still recorded as having been written about.
+      */
+      assignmentIds: [
+        ...new Set([
+          ...qualifying,
+          ...runs.flatMap((run) => run.items.map((i) => i.assignmentId)),
+        ]),
+      ].sort(),
       passUrl: token ? `${input.origin.replace(/\/+$/, '')}/p/${token}` : '',
     }
 

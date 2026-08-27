@@ -368,7 +368,10 @@ describe('what a reminder must never say', () => {
       occasion: 'Saturday',
       supportLine: '',
       // The base, which is not one of the shops and is the one place a reminder may name.
-      meetingPoint: 'The Scout Hall, 5 King St',
+      meetingPoint: 'The Scout Hall',
+      directions: 'https://maps.example/?q=5+King+St',
+      arrivalNote: 'Come to the side door.',
+      supportNote: 'Bring a warm coat.',
     }
     for (const t of DEFAULT_TEMPLATES) {
       const text = `${fillTemplate(t.subject, only, ctx)} ${fillTemplate(t.body, only, ctx)}`
@@ -515,5 +518,52 @@ describe('shifts that run into each other', () => {
       EVENT, 'all', input(people, [shift('a1', 'p1', 'sat-0900'), shift('a2', 'p1', 'sat-1000')]),
     )
     expect(recipients[0]!.youths[0]!.assignmentIds).toEqual(['a1', 'a2'])
+  })
+
+  /*
+    And when the selection is an hour rather than a day.
+
+    The hour decides who is written to; it does not decide what they are told. Somebody down
+    for nine till eleven, nudged about the nine o'clock, was sent "9:00 AM – 10:00 AM" while
+    their own pass said "9:00 AM – 11:00 AM" — the app contradicting itself about the same
+    morning, on the two screens a parent has in front of them.
+  */
+  describe('when only one of the hours was selected', () => {
+    const spanning = [shift('a1', 'p1', 'sat-0900'), shift('a2', 'p1', 'sat-1000')]
+    const forNine = (): ReturnType<typeof buildAudience> =>
+      buildAudience(NINE, 'all', input(people, spanning))
+
+    it('names the whole stretch, not the hour that selected it', () => {
+      expect(forNine().recipients[0]!.youths[0]!.shifts.map((sh) => sh.slotLabel)).toEqual([
+        '9:00 AM – 11:00 AM',
+      ])
+    })
+
+    it('records every shift the message named', () => {
+      expect(forNine().recipients[0]!.youths[0]!.assignmentIds).toEqual(['a1', 'a2'])
+    })
+
+    it('still leaves out a stretch the selection does not reach', () => {
+      // Widening runs a stretch outwards; it does not reach across to another one.
+      const { recipients } = buildAudience(
+        NINE,
+        'all',
+        input(people, [...spanning, shift('a3', 'p1', 'fri-1700')]),
+      )
+      expect(recipients[0]!.youths[0]!.shifts).toHaveLength(1)
+    })
+
+    it('does not drag another day in, even at the same hour', () => {
+      /*
+        A run cannot cross a day — the times are minutes from midnight, so five o'clock on
+        the Friday and five o'clock on the Saturday would otherwise look adjacent.
+      */
+      const { recipients } = buildAudience(
+        { kind: 'slot', slotId: 'fri-1800' },
+        'all',
+        input(people, [shift('a1', 'p1', 'fri-1800'), shift('a2', 'p1', 'sat-0900')]),
+      )
+      expect(recipients[0]!.youths[0]!.shifts.map((sh) => sh.day)).toEqual(['Friday'])
+    })
   })
 })

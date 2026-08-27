@@ -24,6 +24,14 @@ import type { Audience, Recipient, RecipientYouth, SelectionKind } from './remin
  * base is the one place a reminder can name. Without it the email says when and never says
  * where, and a parent reads it as an oversight.
  *
+ * Base is named and then linked, never spelled out: a map link carries the address and can be
+ * pressed, and an address printed beside it is the same information twice — once in the form
+ * that is no use in a car.
+ *
+ * The two notes the organizers write — what to do on arrival, and anything else for the day —
+ * are here for the same reason the times are. They are on every pass already; a reminder that
+ * leaves them out sends a parent to a page to find out what the email could have said.
+ *
  * Plain text. This is read on a phone in a shop doorway.
  */
 
@@ -37,12 +45,23 @@ export interface TemplateContext {
   /** Who to ring on the day. */
   supportLine: string
   /**
-   * Where to report before a shift — the event's base, named and addressed.
+   * Where to report before a shift — the event's base, by name.
    *
    * Empty when no base is set, which drops the line that mentions it rather than sending
    * "report to  first". An event with no base has a warning of its own on publishing.
    */
   meetingPoint: string
+  /**
+   * A map link to it, which is the address in the form that is any use on the way there.
+   *
+   * Derived from the address when no link was saved, so a base with an address always has
+   * one, and the address itself is never printed as well.
+   */
+  directions: string
+  /** What to do on arrival, in the organizers' words. Empty means they wrote none. */
+  arrivalNote: string
+  /** Anything else for the day, in the organizers' words. */
+  supportNote: string
 }
 
 /** The wording of one reminder — the half an organizer may change. */
@@ -90,6 +109,9 @@ export const PLACEHOLDERS: { token: string; describes: string }[] = [
   { token: 'shifts', describes: 'Their shift times, and a link to each child’s own page' },
   { token: 'support', describes: 'Who to ring on the day' },
   { token: 'meet', describes: 'Where to report before a shift — the event’s base' },
+  { token: 'directions', describes: 'A map link to base — the address, in a form you can press' },
+  { token: 'arrival', describes: 'What to do on arrival, as written on the event' },
+  { token: 'notes', describes: 'Anything else for the day, as written on the event' },
 ]
 
 /** "Elliot and Nadia" — a parent may have more than one child here. */
@@ -143,6 +165,9 @@ export function fillTemplate(text: string, r: Recipient, ctx: TemplateContext): 
     shifts: shiftDetail(r),
     support: ctx.supportLine,
     meet: ctx.meetingPoint,
+    directions: ctx.directions,
+    arrival: ctx.arrivalNote.trim(),
+    notes: ctx.supportNote.trim(),
   }
   const TOKEN = /\{\{\s*(\w+)\s*\}\}/g
 
@@ -194,8 +219,13 @@ export const DEFAULT_TEMPLATES: ReminderTemplate[] = [
       '{{shifts}}',
       '',
       'Report to {{meet}} first — where you are going is given out at check-in.',
+      'Directions: {{directions}}',
+      '',
+      '{{arrival}}',
       '',
       'On the day, ring {{support}}.',
+      '',
+      '{{notes}}',
     ].join('\n'),
   },
   {
@@ -215,8 +245,13 @@ export const DEFAULT_TEMPLATES: ReminderTemplate[] = [
       '{{shifts}}',
       '',
       'Report to {{meet}} first — where you are going is given out at check-in.',
+      'Directions: {{directions}}',
+      '',
+      '{{arrival}}',
       '',
       'On the day, ring {{support}}.',
+      '',
+      '{{notes}}',
     ].join('\n'),
   },
   {
@@ -234,10 +269,15 @@ export const DEFAULT_TEMPLATES: ReminderTemplate[] = [
       '{{shifts}}',
       '',
       'Report to {{meet}} — where you are going is given out at check-in.',
+      'Directions: {{directions}}',
+      '',
+      '{{arrival}}',
       '',
       'If something has come up, please let us know so we can cover the shift.',
       '',
       'On the day, ring {{support}}.',
+      '',
+      '{{notes}}',
     ].join('\n'),
   },
 ]

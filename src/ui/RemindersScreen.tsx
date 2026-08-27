@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
+import { mapLink } from '../domain/maps'
 import { moreLabel, nextShown, paged, PAGE } from '../domain/paging'
 import {
   buildAudience,
@@ -182,16 +183,20 @@ export function RemindersScreen(): ReactNode {
       occasion: occasionOf(selection, slots),
       supportLine: (event?.support ?? []).map(contactLabel).filter(Boolean).join(', '),
       /*
-        Where to report. Named and addressed, because this is read at home the night before
-        by somebody working out how long the drive is — the pass can afford to say only the
-        name, since whoever is reading it is being handed a map on the same screen.
+        Where to report, and everything the pass says about being there.
 
         Resolved through the shared hook: the base is deliberately not one of the year's
         selected locations, so looking it up among those finds nothing and empties the line.
       */
-      meetingPoint: base.data
-        ? [base.data.name, base.data.address].filter(Boolean).join(', ')
-        : '',
+      meetingPoint: base.data?.name ?? '',
+      /*
+        The address as a link rather than as text. Derived the way publishing derives it, so
+        a base with an address and no saved link still gets one — which is also why the
+        address is never printed: it is already in here, in the form that can be pressed.
+      */
+      directions: base.data ? mapLink(base.data) : '',
+      arrivalNote: event?.arrivalNote ?? '',
+      supportNote: event?.supportNote ?? '',
     }),
     [event, selection, slots, base.data],
   )

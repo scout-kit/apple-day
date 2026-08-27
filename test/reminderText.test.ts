@@ -48,7 +48,10 @@ const CTX: TemplateContext = {
   eventName: 'Apple Day 2026',
   occasion: 'Saturday, 9:00 AM',
   supportLine: 'base on 519-555-0100',
-  meetingPoint: 'The Scout Hall, 5 King St',
+  meetingPoint: 'The Scout Hall',
+  directions: 'https://maps.example/?q=5+King+St',
+  arrivalNote: 'Come to the side door. Apples are handed out in the kitchen.',
+  supportNote: 'Bring a warm coat — the forecast is four degrees.',
 }
 
 const render = (id: string, r: Recipient) => {
@@ -115,7 +118,10 @@ describe('every template', () => {
   it('says who to ring, and drops the line when there is nobody', () => {
     for (const t of DEFAULT_TEMPLATES) {
       expect(fillTemplate(t.body, one, CTX), t.id).toContain('519-555-0100')
-      expect(fillTemplate(t.body, one, { ...CTX, supportLine: '' }), t.id).not.toContain('ring')
+      // The sentence, not the word: an organizer's own note may well say "bring a coat".
+      expect(fillTemplate(t.body, one, { ...CTX, supportLine: '' }), t.id).not.toContain(
+        'On the day, ring',
+      )
     }
   })
 
@@ -320,7 +326,7 @@ describe('a placeholder with nothing to fill it', () => {
       one,
       { ...CTX, supportLine: '' },
     )
-    expect(body).not.toContain('ring')
+    expect(body).not.toContain('On the day, ring')
     expect(body).not.toMatch(/\s\.$/)
     expect(body).toContain('Saturday')
   })
@@ -374,7 +380,10 @@ describe('where the not-checked-in filter starts', () => {
 })
 
 describe('a gap left by an empty placeholder', () => {
-  const ctx = { eventName: 'Apple Day 2026', occasion: '', supportLine: '', meetingPoint: '' }
+  const ctx = {
+    eventName: 'Apple Day 2026', occasion: '', supportLine: '',
+    meetingPoint: '', directions: '', arrivalNote: '', supportNote: '',
+  }
 
   it('is closed up rather than left as a double space', () => {
     // The line stays — it still says something — but "Your {{occasion}} shift" should not
@@ -408,7 +417,7 @@ describe('a gap left by an empty placeholder', () => {
 describe('the meeting point', () => {
   it('is in every wording, so no reminder goes out without it', () => {
     for (const t of DEFAULT_TEMPLATES) {
-      expect(fillTemplate(t.body, one, CTX), t.id).toContain('The Scout Hall, 5 King St')
+      expect(fillTemplate(t.body, one, CTX), t.id).toContain('The Scout Hall')
     }
   })
 
@@ -421,9 +430,76 @@ describe('the meeting point', () => {
     }
   })
 
+  it('is a link rather than an address, and never both', () => {
+    /*
+      The address is in the link. Printed beside it, it is the same thing twice — once in the
+      form that is no use to somebody in a car, and it lengthens an email read on a phone.
+    */
+    for (const t of DEFAULT_TEMPLATES) {
+      const body = fillTemplate(t.body, one, CTX)
+      expect(body, t.id).toContain('https://maps.example/?q=5+King+St')
+      expect(body, t.id).not.toContain('5 King St,')
+    }
+  })
+
+  it('drops the directions line when there is no link', () => {
+    for (const t of DEFAULT_TEMPLATES) {
+      const body = fillTemplate(t.body, one, { ...CTX, directions: '' })
+      expect(body, t.id).not.toContain('Directions:')
+      // The name still stands on its own — knowing where to go beats knowing how.
+      expect(body, t.id).toContain('The Scout Hall')
+    }
+  })
+
   it('is still only the base — a wording cannot name the shop instead', () => {
     // The guard above holds: there is nothing to put a shop's name into.
     expect(PLACEHOLDERS.map((p) => p.token)).toContain('meet')
     expect(templateProblem({ subject: 's', body: '{{shifts}} {{meet}}' })).toBeNull()
+  })
+})
+
+/**
+ * The two notes the organizers write.
+ *
+ * Both are on every pass: what to do when you get to base, and anything else for the day.
+ * A reminder that leaves them out sends a parent to a page to find out what the email could
+ * have told them — and the arrival note is the one thing that is needed *before* arriving.
+ */
+describe('the organizers’ own notes', () => {
+  it('are in every wording', () => {
+    for (const t of DEFAULT_TEMPLATES) {
+      const body = fillTemplate(t.body, one, CTX)
+      expect(body, t.id).toContain('Come to the side door.')
+      expect(body, t.id).toContain('Bring a warm coat')
+    }
+  })
+
+  it('take their lines with them when nothing was written', () => {
+    // Most events write neither, and an email should not carry the gaps where they would be.
+    for (const t of DEFAULT_TEMPLATES) {
+      const body = fillTemplate(t.body, one, { ...CTX, arrivalNote: '', supportNote: '' })
+      expect(body, t.id).not.toMatch(/\n{3}/)
+      expect(body, t.id).toContain('Report to The Scout Hall')
+    }
+  })
+
+  it('keep the line breaks they were typed with', () => {
+    // They are shown that way on the pass, and a list typed as a list is one for a reason.
+    const body = fillTemplate(
+      defaultTemplateById('event_schedule')!.body,
+      one,
+      { ...CTX, arrivalNote: 'Side door.\nSign in at the table.' },
+    )
+    expect(body).toContain('Side door.\nSign in at the table.')
+  })
+
+  it('are not trusted to be tidy', () => {
+    // Typed into a text box on a phone; a trailing newline should not become a blank line.
+    const body = fillTemplate(
+      defaultTemplateById('event_schedule')!.body,
+      one,
+      { ...CTX, supportNote: '  Bring a coat.\n\n' },
+    )
+    expect(body.endsWith('Bring a coat.')).toBe(true)
   })
 })

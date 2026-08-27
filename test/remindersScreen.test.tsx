@@ -48,7 +48,7 @@ vi.mock('../src/lib/repo', () => ({
   useAssignments: () => ({ data: assignments, loading: false, error: null }),
   // Where to report, which every wording names.
   useBaseLocation: () => ({
-    data: { id: 'hall', name: 'The Scout Hall', address: '5 King St' },
+    data: { id: 'hall', name: 'The Scout Hall', address: '5 King St', mapsUrl: '' },
     loading: false,
     error: null,
   }),
@@ -661,7 +661,8 @@ describe('rewording a reminder', () => {
     expect(shown).toContain('Alex and Sam')
     expect(shown).toContain('Alex:')
     expect(shown).toContain('Sam:')
-    expect(shown.match(/https:\/\//g)).toHaveLength(2)
+    // Their own pages: one each. The directions link to base is not one of these.
+    expect(shown.match(/\/p\//g)).toHaveLength(2)
   })
 
   it('shows a broken wording as it would actually read', async () => {
