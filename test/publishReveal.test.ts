@@ -144,3 +144,17 @@ describe('publishing again once the day has started', () => {
     expect(passFor('p1').revealShifts).toBe(true)
   })
 })
+
+/**
+ * The log entry publishing writes.
+ *
+ * Recorded as `updated` with no field changes, which `worthRecording` drops — so the one
+ * action that changes what every volunteer is looking at, all at once, left no trace at all.
+ */
+describe('what publishing writes in the log', () => {
+  it('records the publish, and says how many it reached', async () => {
+    await run([shift({ personId: 'p1' }), shift({ id: 'a2', personId: 'p2' })])
+    const entry = writes.find((w) => w.path.startsWith('audit/'))
+    expect(entry?.data.summary).toBe('Published the schedule to 2 volunteers')
+  })
+})

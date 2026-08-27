@@ -1,4 +1,4 @@
-import { writeBatch } from 'firebase/firestore'
+import { deleteField, writeBatch } from 'firebase/firestore'
 import {
   buildPassShifts,
   generateToken,
@@ -126,8 +126,14 @@ export async function publish(
     Publishing is a decision, unlike the fingerprint recording that happens as the board is
     used: it changes what is in front of every volunteer, all at once.
   */
+  /*
+    `created`, and not `updated`, because that is what it is: a publish writes a pass per
+    volunteer. It also has to be — an `updated` entry carrying no field changes is dropped by
+    `worthRecording`, which is right for a save that moved nothing and wrong here, and meant
+    the log said nothing at all about the one action that reaches every volunteer at once.
+  */
   recordInBatch(batch, {
-    action: 'updated',
+    action: 'created',
     entity: 'event',
     entityId: 'publish',
     eventId,
@@ -146,3 +152,66 @@ export async function publish(
 }
 
 
+
+/**
+ * Take a published schedule back.
+ *
+ * Deletes every pass for the event and returns the publish record to "never published", so
+ * the board stops claiming a schedule is out and the notice stops offering a stale link.
+ *
+ * The links die with the documents — that is the whole of it, since a pass is reached by its
+ * token and by nothing else. `src/domain/unpublish.ts` has what that costs and why the screen
+ * says it first.
+ *
+ * The board's own hash is left alone. It describes the schedule as it stands, which
+ * unpublishing does not touch, and clearing it would make the next publish look stale the
+ * moment it landed.
+ */
+export async function unpublish(eventId: string, tokens: string[]): Promise<number> {
+  let batch = writeBatch(db)
+  let pending = 0
+
+  const flush = async (): Promise<void> => {
+    if (pending > 0) {
+      await batch.commit()
+      batch = writeBatch(db)
+      pending = 0
+    }
+  }
+
+  for (const token of tokens) {
+    batch.delete(paths.pass(token))
+    pending += 1
+    if (pending >= 450) await flush()
+  }
+
+  recordInBatch(batch, {
+    action: 'deleted',
+    entity: 'event',
+    entityId: 'publish',
+    eventId,
+    summary: `Unpublished the schedule, withdrawing ${tokens.length} ${
+      tokens.length === 1 ? 'pass' : 'passes'
+    }`,
+  })
+
+  /*
+    Back to never-published rather than deleted.
+
+    `publishStatus` reads a zero `publishedAt` as "never", and the document also carries the
+    board's current hash, which is nothing to do with publishing. Removing the record would
+    throw that away and cost a re-read of every person, location and assignment to rebuild.
+
+    The old fingerprint goes, though: leaving it would let a later comparison call an
+    unpublished event current.
+  */
+  batch.set(
+    paths.publishState(eventId),
+    { publishedAt: 0, fingerprint: deleteField() },
+    { merge: true },
+  )
+  pending += 1
+  await flush()
+
+  return tokens.length
+}

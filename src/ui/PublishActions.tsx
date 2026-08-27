@@ -1,9 +1,12 @@
 import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
+import { unpublishCaution, unpublishCost } from '../domain/unpublish'
 import { useEvent } from '../lib/eventContext'
-import { publish } from '../lib/publish'
-import { usePasses } from '../lib/repo'
+import { publish, unpublish } from '../lib/publish'
+import { useAssignments, usePasses } from '../lib/repo'
+import { useSession } from '../lib/session'
 import { ErrorNote } from './Bits'
+import { Modal } from './Modal'
 import { RepublishNotice, usePublishInput } from './PublishNotice'
 
 /**
@@ -24,11 +27,16 @@ import { RepublishNotice, usePublishInput } from './PublishNotice'
  */
 export function PublishActions(): ReactNode {
   const { event } = useEvent()
+  const { role } = useSession()
   const passes = usePasses()
+  const assignments = useAssignments()
   const input = usePublishInput()
 
   const [publishing, setPublishing] = useState(false)
   const [justPublished, setJustPublished] = useState(false)
+  const [withdrawing, setWithdrawing] = useState(false)
+  const [confirmingWithdraw, setConfirmingWithdraw] = useState(false)
+  const [withdrawn, setWithdrawn] = useState(0)
   const [error, setError] = useState<Error | null>(null)
 
   /*
@@ -47,6 +55,31 @@ export function PublishActions(): ReactNode {
   }, [justPublished])
 
   const existingTokens = new Map(passes.data.map((p) => [p.personId, p.token]))
+
+  /*
+    Withdrawing is an admin's call, and only ever offered when there is something to
+    withdraw. Publishing is an organizer's — the difference is that this one reaches back out
+    and breaks links that have already been handed out, which cannot be undone by doing it
+    again: the new passes have new tokens.
+  */
+  const cost = unpublishCost(passes.data, assignments.data)
+  const caution = unpublishCaution(cost)
+  const canWithdraw = role === 'admin' && cost.passes > 0
+
+  const doUnpublish = async (): Promise<void> => {
+    if (!event) return
+    setConfirmingWithdraw(false)
+    setWithdrawing(true)
+    setError(null)
+    try {
+      const gone = await unpublish(event.id, passes.data.map((p) => p.token))
+      setWithdrawn(gone)
+    } catch (e) {
+      setError(e as Error)
+    } finally {
+      setWithdrawing(false)
+    }
+  }
 
   const doPublish = async (): Promise<void> => {
     if (!event) return
@@ -75,9 +108,58 @@ export function PublishActions(): ReactNode {
         <button className="primary" disabled={publishing} onClick={() => void doPublish()}>
           {publishing ? 'Publishing…' : 'Publish schedule'}
         </button>
+        {canWithdraw && (
+          <button disabled={withdrawing} onClick={() => setConfirmingWithdraw(true)}>
+            {withdrawing ? 'Unpublishing…' : 'Unpublish'}
+          </button>
+        )}
       </div>
 
       {justPublished && <div className="note good">Schedule published.</div>}
+      {withdrawn > 0 && (
+        <div className="note">
+          Schedule unpublished. {withdrawn} {withdrawn === 1 ? 'link' : 'links'} no longer
+          work.
+        </div>
+      )}
+
+      {confirmingWithdraw && (
+        <Modal
+          title="Unpublish the schedule?"
+          onClose={() => setConfirmingWithdraw(false)}
+          footer={
+            <>
+              <button onClick={() => setConfirmingWithdraw(false)}>Cancel</button>
+              <button className="danger" onClick={() => void doUnpublish()}>
+                Unpublish
+              </button>
+            </>
+          }
+        >
+          <div className="stack">
+            <p>
+              Every volunteer's page is deleted. The{' '}
+              <strong>
+                {cost.passes} {cost.passes === 1 ? 'link' : 'links'}
+              </strong>{' '}
+              already sent out will stop working.
+            </p>
+            {/*
+              The one thing publishing again does not fix. Tokens are reused by reading the
+              passes that are there, and after this there are none — so everybody is issued
+              a new link and the old ones stay dead.
+            */}
+            <p>
+              Publishing again hands out new links rather than the old ones, so anybody who
+              has already been sent theirs has to be sent it again.
+            </p>
+            {caution && <div className="note warning">{caution}</div>}
+            <p className="small muted">
+              The schedule itself is untouched — this only withdraws what was handed out.
+            </p>
+          </div>
+        </Modal>
+      )}
 
       {!event?.baseLocationId && (
         <div className="note warning">
