@@ -559,6 +559,15 @@ export function LocationScreen(): ReactNode {
                       ) : (
                         `Jar ${jar.jarNumber}`
                       )}
+                      {/*
+                        The note belongs with the row, not only on the Jars screen.
+
+                        For money that never went through a jar it is the only thing saying
+                        what it was — bushel sales, a donation at the door — so without it
+                        this table has rows reading "no jar · $40" and no way to tell one
+                        from another.
+                      */}
+                      {jar.note && <div className="muted">{jar.note}</div>}
                     </td>
                     <td className="right">
                       {isCounted(jar) ? (

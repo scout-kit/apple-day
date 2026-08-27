@@ -242,6 +242,30 @@ describe('what the page says about a location', () => {
     expect(within(card as HTMLElement).getByText('$100.00')).toBeTruthy()
   })
 
+  it('carries the note on each, the way the jars screen does', () => {
+    // A jar counted at the wrong shop, a float, a miscount — written down when it happened
+    // and worth reading where the jar is.
+    jars = [jar({ note: 'Counted twice — second count stands.' })]
+    renderFor()
+
+    const card = screen.getByRole('heading', { name: 'Jars counted here' }).closest('.card')!
+    expect(within(card as HTMLElement).getByText(/second count stands/)).toBeTruthy()
+  })
+
+  it('shows what money with no jar was, since nothing else says', () => {
+    /*
+      The row that needs it most. Without the note this reads "no jar · $40" and there is
+      nothing to tell one such row from another — which is the whole record of takings that
+      never went through a jar.
+    */
+    jars = [jar({ id: 'j2', jarNumber: null, amount: 40, note: 'Bushel sales at the door.' })]
+    renderFor()
+
+    const card = screen.getByRole('heading', { name: 'Jars counted here' }).closest('.card')!
+    expect(within(card as HTMLElement).getByText('no jar')).toBeTruthy()
+    expect(within(card as HTMLElement).getByText(/Bushel sales at the door/)).toBeTruthy()
+  })
+
   it('says so when there is no location with that id', () => {
     // Past years reference locations by id, so a deleted one leaves rows pointing at nothing.
     renderFor('gone')

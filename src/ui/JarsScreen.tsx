@@ -384,11 +384,22 @@ export function JarsScreen(): ReactNode {
             />
           </div>
         </div>
-        <div className="row" style={{ marginTop: '0.6rem' }}>
+        {/*
+          One action and an alternative, not a pair of settings.
+
+          A primary button beside a plain one in a row is how this app shows a *choice* —
+          which day, which measure, day or hour — so two actions laid out that way read as a
+          toggle with the left one selected, and pressing the right one appears to do nothing
+          until a dialog opens. The word between them and the lighter weight say which this
+          is.
+        */}
+        <div className="row" style={{ marginTop: '0.6rem', alignItems: 'baseline' }}>
           <button className="primary" onClick={() => setScanning(true)}>
             Scan a jar
           </button>
+          <span className="small muted">or</span>
           <button
+            className="ghost"
             onClick={() =>
               setManual({
                 locationId: '',
@@ -400,7 +411,7 @@ export function JarsScreen(): ReactNode {
               })
             }
           >
-            Record by hand
+            Record one by hand
           </button>
           <span className="small muted">
             Jars are issued on the Day of screen — scanning one here counts it in.
