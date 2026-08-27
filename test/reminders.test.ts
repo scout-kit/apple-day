@@ -372,6 +372,7 @@ describe('what a reminder must never say', () => {
       directions: 'https://maps.example/?q=5+King+St',
       arrivalNote: 'Come to the side door.',
       supportNote: 'Bring a warm coat.',
+      dueAt: '',
     }
     for (const t of DEFAULT_TEMPLATES) {
       const text = `${fillTemplate(t.subject, only, ctx)} ${fillTemplate(t.body, only, ctx)}`

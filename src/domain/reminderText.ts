@@ -62,6 +62,14 @@ export interface TemplateContext {
   arrivalNote: string
   /** Anything else for the day, in the organizers' words. */
   supportNote: string
+  /**
+   * The hour a send was chosen by, when one was — "9:00 AM". Empty for a day or the event.
+   *
+   * A reason, not a fact about the shift. Everybody an hour reaches is on that hour, so it
+   * is true of all of them; what none of them may work is that hour *only*, which is why it
+   * is never the times. Those are per person, in their own block.
+   */
+  dueAt: string
 }
 
 /** The wording of one reminder — the half an organizer may change. */
@@ -112,6 +120,7 @@ export const PLACEHOLDERS: { token: string; describes: string }[] = [
   { token: 'directions', describes: 'A map link to base — the address, in a form you can press' },
   { token: 'arrival', describes: 'What to do on arrival, as written on the event' },
   { token: 'notes', describes: 'Anything else for the day, as written on the event' },
+  { token: 'due', describes: 'The hour a send was chosen by — nothing, unless one was' },
 ]
 
 /** "Elliot and Nadia" — a parent may have more than one child here. */
@@ -168,6 +177,7 @@ export function fillTemplate(text: string, r: Recipient, ctx: TemplateContext): 
     directions: ctx.directions,
     arrival: ctx.arrivalNote.trim(),
     notes: ctx.supportNote.trim(),
+    due: ctx.dueAt,
   }
   const TOKEN = /\{\{\s*(\w+)\s*\}\}/g
 
@@ -217,6 +227,17 @@ export const DEFAULT_TEMPLATES: ReminderTemplate[] = [
       'The shifts for {{youth}} at {{event}}:',
       '',
       '{{shifts}}',
+      /*
+        Why this one landed, when an hour is what chose them.
+
+        Its own line because it drops whole on a day or a whole-event send, where there is no
+        hour to name — and after the block rather than before it, so the sentence introducing
+        the times still runs straight into them.
+
+        The stretch leads and the hour follows, because the stretch is what somebody has to
+        be somewhere for. The hour only explains why this landed today.
+      */
+      'The times above are the whole stretch — this went out for the {{due}} shift.',
       '',
       'Report to {{meet}} first — where you are going is given out at check-in.',
       'Directions: {{directions}}',
@@ -248,6 +269,17 @@ export const DEFAULT_TEMPLATES: ReminderTemplate[] = [
       'A reminder of what is coming up for {{youth}}:',
       '',
       '{{shifts}}',
+      /*
+        Why this one landed, when an hour is what chose them.
+
+        Its own line because it drops whole on a day or a whole-event send, where there is no
+        hour to name — and after the block rather than before it, so the sentence introducing
+        the times still runs straight into them.
+
+        The stretch leads and the hour follows, because the stretch is what somebody has to
+        be somewhere for. The hour only explains why this landed today.
+      */
+      'The times above are the whole stretch — this went out for the {{due}} shift.',
       '',
       'Report to {{meet}} first — where you are going is given out at check-in.',
       'Directions: {{directions}}',
@@ -272,6 +304,7 @@ export const DEFAULT_TEMPLATES: ReminderTemplate[] = [
       'We have not checked {{youth}} in yet for {{occasion}}, and we are still expecting them.',
       '',
       '{{shifts}}',
+      'The times above are the whole stretch — this went out for the {{due}} shift.',
       '',
       'Report to {{meet}} — where you are going is given out at check-in.',
       'Directions: {{directions}}',

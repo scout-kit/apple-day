@@ -53,6 +53,7 @@ const CTX: TemplateContext = {
   directions: 'https://maps.example/?q=5+King+St',
   arrivalNote: 'Come to the side door. Apples are handed out in the kitchen.',
   supportNote: 'Bring a warm coat — the forecast is four degrees.',
+  dueAt: '9:00 AM',
 }
 
 const render = (id: string, r: Recipient) => {
@@ -383,7 +384,7 @@ describe('where the not-checked-in filter starts', () => {
 describe('a gap left by an empty placeholder', () => {
   const ctx = {
     eventName: 'Apple Day 2026', occasion: '', supportLine: '',
-    meetingPoint: '', directions: '', arrivalNote: '', supportNote: '',
+    meetingPoint: '', directions: '', arrivalNote: '', supportNote: '', dueAt: '',
   }
 
   it('is closed up rather than left as a double space', () => {
@@ -502,5 +503,51 @@ describe('the organizers’ own notes', () => {
       { ...CTX, supportNote: '  Bring a coat.\n\n' },
     )
     expect(body.endsWith('Bring a coat.')).toBe(true)
+  })
+})
+
+/**
+ * The hour, as the reason an email landed rather than as what it is about.
+ *
+ * A send chosen by one hour reaches only people on it, so naming it is true of all of them.
+ * What none of them may work is that hour and no more — so it goes after the block, and the
+ * stretch above it is what the sentence points at.
+ */
+describe('the hour a send was chosen by', () => {
+  /** Somebody down for two hours at one shop, picked out by the first of them. */
+  const spanning: Recipient = {
+    ...one,
+    youths: [
+      {
+        ...youth('p1', 'Elliot'),
+        shifts: [{ slotId: 'sat-0900', day: 'Saturday', slotLabel: '9:00 AM – 11:00 AM' }],
+      },
+    ],
+  }
+
+  it('is named in every wording, under the times', () => {
+    for (const t of DEFAULT_TEMPLATES) {
+      const body = fillTemplate(t.body, spanning, CTX)
+      expect(body, t.id).toContain('the whole stretch — this went out for the 9:00 AM shift')
+      // After the times, not before them: the stretch is what has to be read.
+      expect(body.indexOf('9:00 AM – 11:00 AM'), t.id).toBeGreaterThan(-1)
+      expect(body.indexOf('9:00 AM – 11:00 AM'), t.id).toBeLessThan(
+        body.indexOf('this went out for'),
+      )
+    }
+  })
+
+  it('takes its line with it when a day or the whole event was chosen', () => {
+    for (const t of DEFAULT_TEMPLATES) {
+      const body = fillTemplate(t.body, spanning, { ...CTX, dueAt: '' })
+      expect(body, t.id).not.toContain('this went out for')
+      expect(body, t.id).not.toContain('whole stretch')
+    }
+  })
+
+  it('never stands in for the times', () => {
+    // The block is per person; the hour is per send. One of them is what to be somewhere for.
+    const body = fillTemplate(defaultTemplateById('shift_upcoming')!.body, spanning, CTX)
+    expect(body).toContain('Saturday 9:00 AM – 11:00 AM')
   })
 })

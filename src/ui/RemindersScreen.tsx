@@ -197,6 +197,7 @@ export function RemindersScreen(): ReactNode {
       directions: base.data ? mapLink(base.data) : '',
       arrivalNote: event?.arrivalNote ?? '',
       supportNote: event?.supportNote ?? '',
+      dueAt: dueAtOf(selection, slots),
     }),
     [event, selection, slots, base.data],
   )
@@ -857,6 +858,21 @@ function when(at: number): string {
  * It cannot be their span either: one message goes to everybody the selection reaches, and
  * they do not all work the same stretch. Their own times are in the block, per person.
  */
+/**
+ * The hour a send was chosen by, when one was.
+ *
+ * Everybody an hour reaches is on that hour, so naming it is true of all of them — as a
+ * reason for the email arriving, which is all it is. What none of them may work is that hour
+ * and no more, which is why it is never allowed to stand in for the times.
+ */
+function dueAtOf(
+  selection: Selection,
+  slots: { id: string; label: string }[],
+): string {
+  if (selection.kind !== 'slot') return ''
+  return slots.find((s) => s.id === selection.slotId)?.label ?? ''
+}
+
 function occasionOf(
   selection: Selection,
   slots: { id: string; day: Day }[],

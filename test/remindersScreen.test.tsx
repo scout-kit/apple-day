@@ -327,12 +327,24 @@ describe('the preview', () => {
       expect(within(dialog).getByText(/Subject: Your Saturday shift at Apple Day 2026/)).toBeTruthy()
     })
 
-    it('says the times once, as the stretch they are', async () => {
+    it('leads with the stretch, and names the hour only as the reason it landed', async () => {
       await openHour()
       const shown = document.querySelector('pre')!.textContent ?? ''
       expect(shown).toContain('Saturday 9:00 AM – 11:00 AM')
-      // And nowhere else: the sentence above the block used to name the hour as well.
-      expect(shown.match(/9:00 AM/g)).toHaveLength(1)
+      expect(shown).toContain('the whole stretch — this went out for the 9:00 AM shift')
+      // Nowhere else. The sentence above the block used to name the hour a third time.
+      expect(shown.match(/9:00 AM/g)).toHaveLength(2)
+    })
+
+    it('says nothing about an hour when a whole day was chosen', async () => {
+      // There is no hour to explain, and every stretch they work that day is listed.
+      render(<RemindersScreen />)
+      await userEvent.selectOptions(screen.getByLabelText('Covering'), 'day')
+      await openReview()
+
+      const shown = document.querySelector('pre')!.textContent ?? ''
+      expect(shown).not.toContain('this went out for')
+      expect(shown).toContain('Saturday 9:00 AM – 11:00 AM')
     })
   })
 
