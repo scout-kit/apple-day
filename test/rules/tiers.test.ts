@@ -775,6 +775,48 @@ describe('removing an event', () => {
   })
 })
 
+/**
+ * A subcollection nothing writes to any more.
+ *
+ * The hand-typed totals `reconciliation` held are gone from the app, but a project that ran
+ * an event before that still holds the documents — and both the export and the removal tally
+ * walk every subcollection an event can have. With no rule they hit the catch-all deny, so
+ * exporting a year failed for an admin with a permissions error and nothing to act on.
+ */
+describe('records left behind by an older version', () => {
+  beforeEach(async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), 'events', EVENT, 'reconciliation', 'totals'), {
+        bushels: 40,
+      })
+    })
+  })
+
+  it('can be read, so an export and a removal tally can walk them', async () => {
+    await assertSucceeds(getDocs(collection(asAdmin(), 'events', EVENT, 'reconciliation')))
+    await assertSucceeds(getDocs(collection(asOrganizer(), 'events', EVENT, 'reconciliation')))
+  })
+
+  it('can be removed with the year they belong to', async () => {
+    await assertSucceeds(
+      deleteDoc(doc(asAdmin(), 'events', EVENT, 'reconciliation', 'totals')),
+    )
+  })
+
+  it('cannot be written to, since nothing should be putting anything there', async () => {
+    // Retired, not revived. A rule allowing writes here would be an invitation to.
+    await assertFails(
+      setDoc(doc(asAdmin(), 'events', EVENT, 'reconciliation', 'new'), { bushels: 1 }),
+    )
+  })
+
+  it('is not open to somebody with no account', async () => {
+    await assertFails(
+      getDocs(collection(testEnv.unauthenticatedContext().firestore(), 'events', EVENT, 'reconciliation')),
+    )
+  })
+})
+
 describe('a read-only account', () => {
   /*
     Somebody asked how the day went rather than running it — a treasurer, a committee member.

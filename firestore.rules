@@ -538,6 +538,23 @@ service cloud.firestore {
       */
 
       /*
+        The hand-typed totals an older version of this app kept.
+
+        Nothing reads or writes them now — the screen that did is gone, and the figures are
+        derived from the jars. A project that ran an event before that is still holding the
+        documents, though, and both the export and the removal walk every subcollection an
+        event can have. With no rule here they were walked into the catch-all deny, so
+        exporting a year or working out what deleting one would take failed outright, for an
+        admin, with a permissions error and nothing to act on.
+
+        Readable and removable, and nothing else: there is no code left that should be
+        putting anything here, and a rule allowing writes would be an invitation to.
+      */
+      match /reconciliation/{docId} {
+        allow read, delete: if isOrganizer();
+      }
+
+      /*
         What reminders have already gone out, and to whom.
 
         Append-only for the same reason the audit log is: a send either happened or it did

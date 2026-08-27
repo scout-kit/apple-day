@@ -42,6 +42,26 @@ describe('what a removal has to walk', () => {
     expect(EVENT_SUBCOLLECTIONS).toContain('reconciliation')
   })
 
+  it('has a rule for every one of them', () => {
+    /*
+      The walk and the rules have to agree, and nothing made them.
+
+      `reconciliation` was on this list with no `match` block behind it, so it fell to the
+      catch-all deny — and both the things that walk the list, the export and the removal
+      tally, failed outright for an admin with a permissions error. A name here is a promise
+      that the collection can be read; this is what keeps it one.
+    */
+    const rules = readFileSync('firestore.rules', 'utf8')
+    const ruled = new Set(
+      [...rules.matchAll(/match \/([a-zA-Z]+)\/\{/g)].map((m) => m[1]!),
+    )
+
+    const unruled = [...EVENT_SUBCOLLECTIONS, ...EVENT_SCOPED_ELSEWHERE].filter(
+      (name) => !ruled.has(name),
+    )
+    expect(unruled, 'walked but denied by the catch-all').toEqual([])
+  })
+
   it('remembers the things stored outside the event', () => {
     // A pass is top-level because the token is the credential and a parent does not know an
     // event id. One outliving its event is a working link into nothing.
