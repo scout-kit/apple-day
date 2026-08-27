@@ -239,8 +239,13 @@ export const DEFAULT_TEMPLATES: ReminderTemplate[] = [
     subject: 'Your {{occasion}} shift at {{event}}',
     body: [
       'Hi {{parent}},',
+      /*
+        No day here, and no hour: every line of the block below opens with its own day, and
+        naming one in the sentence above it says the same thing twice — and said it wrongly,
+        when the hour that selected somebody was one of two they are working.
+      */
       '',
-      'A reminder about {{occasion}} for {{youth}}:',
+      'A reminder of what is coming up for {{youth}}:',
       '',
       '{{shifts}}',
       '',

@@ -297,6 +297,45 @@ describe('the preview', () => {
     expect(within(dialog).getByText(/appleday\.example\.org\/p\/tok-p2/)).toBeTruthy()
   })
 
+  /**
+   * What a reminder about one hour says it is about.
+   *
+   * The hour decides who is written to. It is not a fact about any of them: somebody down
+   * for nine till eleven, nudged about the nine o'clock, got "Your Saturday 9:00 AM shift"
+   * over a message whose own lines said nine till eleven — and the subject is the half a
+   * parent reads.
+   */
+  describe('for one hour of a stretch somebody works twice', () => {
+    beforeEach(() => {
+      people = [person('p1', 'Elliot')]
+      assignments = [
+        shift('a1', 'p1', { slotId: 'sat-0900' }),
+        shift('a2', 'p1', { slotId: 'sat-1000' }),
+      ]
+    })
+
+    const openHour = async (): Promise<void> => {
+      render(<RemindersScreen />)
+      await userEvent.selectOptions(screen.getByLabelText('Covering'), 'slot')
+      await userEvent.selectOptions(screen.getByLabelText('Shift'), 'sat-0900')
+      await openReview()
+    }
+
+    it('names the day in the subject, and not an hour it does not work', async () => {
+      await openHour()
+      const dialog = screen.getByRole('dialog')
+      expect(within(dialog).getByText(/Subject: Your Saturday shift at Apple Day 2026/)).toBeTruthy()
+    })
+
+    it('says the times once, as the stretch they are', async () => {
+      await openHour()
+      const shown = document.querySelector('pre')!.textContent ?? ''
+      expect(shown).toContain('Saturday 9:00 AM – 11:00 AM')
+      // And nowhere else: the sentence above the block used to name the hour as well.
+      expect(shown.match(/9:00 AM/g)).toHaveLength(1)
+    })
+  })
+
   it('says the rest get the same, personalised', async () => {
     render(<RemindersScreen />)
     await openReview()

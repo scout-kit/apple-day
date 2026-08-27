@@ -46,7 +46,8 @@ const family: Recipient = {
 
 const CTX: TemplateContext = {
   eventName: 'Apple Day 2026',
-  occasion: 'Saturday, 9:00 AM',
+  // The day. An hour is how a send is chosen, not something true of everybody it reaches.
+  occasion: 'Saturday',
   supportLine: 'base on 519-555-0100',
   meetingPoint: 'The Scout Hall',
   directions: 'https://maps.example/?q=5+King+St',

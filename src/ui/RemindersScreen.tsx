@@ -846,15 +846,25 @@ function when(at: number): string {
     : date.toLocaleDateString('en-CA', { month: 'short', day: 'numeric' })
 }
 
-/** "Saturday", or "Saturday 9:00 AM", or nothing at all for the whole event. */
+/**
+ * "Saturday", or nothing at all for the whole event.
+ *
+ * The day, even when an hour is what was selected. The hour decides who is written to; it is
+ * not a fact about any of them. Somebody down for nine till eleven, nudged about the nine
+ * o'clock, got a subject line reading "Your Saturday 9:00 AM shift" over a message whose
+ * own lines said nine till eleven — and the subject is the half a parent reads.
+ *
+ * It cannot be their span either: one message goes to everybody the selection reaches, and
+ * they do not all work the same stretch. Their own times are in the block, per person.
+ */
 function occasionOf(
   selection: Selection,
-  slots: { id: string; day: Day; label: string }[],
+  slots: { id: string; day: Day }[],
 ): string {
   if (selection.kind === 'day') return DAY_LABEL[selection.day]
   if (selection.kind === 'slot') {
     const slot = slots.find((s) => s.id === selection.slotId)
-    return slot ? `${DAY_LABEL[slot.day]} ${slot.label}` : ''
+    return slot ? DAY_LABEL[slot.day] : ''
   }
   return ''
 }
