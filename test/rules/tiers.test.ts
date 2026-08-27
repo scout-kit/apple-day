@@ -110,8 +110,43 @@ describe('an organizer runs the event', () => {
         amount: 100, method: 'cash',
       }),
     )
+    // And writes down what a figure cannot say. There is nothing else to type here: the
+    // totals are the jars, so there is no second set of numbers to reconcile against.
     await assertSucceeds(
-      setDoc(doc(asOrganizer(), 'events', EVENT, 'reconciliation', 'summary'), { deposit: 100 }),
+      setDoc(doc(asOrganizer(), 'events', EVENT, 'notes', 'n1'), {
+        text: 'Found jar 14 behind the till.', at: Date.now(), by: 'o@example.org',
+      }),
+    )
+  })
+
+  it('cannot write a note that would not load, or one with passengers', async () => {
+    /*
+      Free text typed from a phone at the end of a long day. An accident with a paste should
+      not become a document every organizer's screen then has to render.
+    */
+    await assertFails(
+      setDoc(doc(asOrganizer(), 'events', EVENT, 'notes', 'n2'), {
+        text: 'x'.repeat(2001), at: Date.now(), by: 'o@example.org',
+      }),
+    )
+    await assertFails(
+      setDoc(doc(asOrganizer(), 'events', EVENT, 'notes', 'n3'), {
+        text: '', at: Date.now(), by: 'o@example.org',
+      }),
+    )
+    await assertFails(
+      setDoc(doc(asOrganizer(), 'events', EVENT, 'notes', 'n4'), {
+        text: 'fine', at: Date.now(), by: 'o@example.org', level: 'admin',
+      }),
+    )
+  })
+
+  it('cannot date a note to the top of the list', async () => {
+    // The list is read in order, so a note dated next year pins itself above everything.
+    await assertFails(
+      setDoc(doc(asOrganizer(), 'events', EVENT, 'notes', 'n5'), {
+        text: 'fine', at: Date.now() + 40 * 24 * 60 * 60 * 1000, by: 'o@example.org',
+      }),
     )
   })
 

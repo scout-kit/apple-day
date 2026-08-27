@@ -15,7 +15,6 @@ import {
   jars2025,
   locations2025,
   people2025,
-  reconciliation2025,
   saturdayAssignments2025,
   saturdayJars2025,
   slots2025,
@@ -24,7 +23,6 @@ import {
 const find = <T extends { locationId: string }>(rows: T[], id: string): T | undefined =>
   rows.find((r) => r.locationId === id)
 
-const round2 = (n: number): number => Math.round(n * 100) / 100
 
 describe('2025 totals reproduce the workbook where the workbook was right', () => {
   it('matches the recorded jar totals to the cent', () => {
@@ -136,7 +134,7 @@ describe('defect 5 — revenue with no hours is an anomaly, not a ranking', () =
 
 describe('defect 8 — one set of totals, derived from the jars', () => {
   it('adds the jars up per day, split by how they were counted', () => {
-    const summary = summariseMoney(jars2025, reconciliation2025)
+    const summary = summariseMoney(jars2025)
 
     const friday = summary.days.find((d) => d.day === 'fri')!
     const saturday = summary.days.find((d) => d.day === 'sat')!
@@ -147,11 +145,13 @@ describe('defect 8 — one set of totals, derived from the jars', () => {
   })
 
   it('counts money raised once, never adding card takings twice', () => {
-    const summary = summariseMoney(jars2025, reconciliation2025)
+    /*
+      One total, and every penny of it out of a jar. The workbook summed both days, a card
+      total and bushel sales into one $6,089.06 figure that counted the card takings a second
+      time — which is what happens when a total is assembled from several places by hand.
+    */
+    const summary = summariseMoney(jars2025)
     expect(summary.jarTotal).toBe(KNOWN.grandJarTotal)
-    // Jars plus bushel sales. The workbook summed both days, a card total and bushel sales
-    // into one $6,089.06 figure that counted the card takings a second time.
-    expect(summary.grandTotal).toBe(6014.61)
     expect(summary.cash + summary.card).toBe(summary.jarTotal)
   })
 
@@ -170,15 +170,20 @@ describe('defect 8 — one set of totals, derived from the jars', () => {
   })
 
   it('reports nothing outstanding for a finished event', () => {
-    expect(summariseMoney(jars2025, reconciliation2025).stillOut).toBe(0)
+    expect(summariseMoney(jars2025).stillOut).toBe(0)
   })
 
-  it('compares against the bank only when a deposit is entered', () => {
-    const withoutDeposit = summariseMoney(jars2025, reconciliation2025)
-    expect(withoutDeposit.depositVariance).toBe(0)
-
-    const short = summariseMoney(jars2025, { ...reconciliation2025, deposit: 6000 })
-    expect(short.depositVariance).toBe(round2(6000 - short.grandTotal))
+  it('has nothing typed in to disagree with', () => {
+    /*
+      There is no second figure here at all — no bushel total, no bank deposit to reconcile
+      against. Money that never went through a jar is recorded as a jar without a number, so
+      it arrives with its day and its location like everything else rather than as a lump sum
+      with neither.
+    */
+    const summary = summariseMoney(jars2025)
+    expect(Object.keys(summary).sort()).toEqual(
+      ['card', 'cash', 'days', 'jarTotal', 'stillOut'].sort(),
+    )
   })
 })
 

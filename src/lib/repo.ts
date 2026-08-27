@@ -29,7 +29,7 @@ import type {
   OpenRange,
   PaymentMethod,
   Person,
-  Reconciliation,
+  EventNote,
   ScheduledLocation,
   Section,
   Signup,
@@ -180,12 +180,8 @@ function toSignup(id: string, d: Record<string, unknown>): Signup {
 }
 
 
-function toReconciliation(_id: string, d: Record<string, unknown>): Reconciliation {
-  return {
-    bushelSales: num(d.bushelSales),
-    deposit: num(d.deposit),
-    notes: str(d.notes),
-  }
+function toEventNote(id: string, d: Record<string, unknown>): EventNote {
+  return { id, text: str(d.text), at: num(d.at), by: str(d.by) }
 }
 
 // ------------------------------------------------------------------------ reads
@@ -288,13 +284,9 @@ export function useJars(): Loadable<Jar[]> {
   return useCollectionData(paths.jars(eventId ?? '_none'), readJar, [eventId])
 }
 
-export function useReconciliation(): Loadable<Reconciliation | null> {
+export function useEventNotes(): Loadable<EventNote[]> {
   const { eventId } = useEvent()
-  return useDocumentData(
-    eventId ? paths.reconciliation(eventId) : null,
-    toReconciliation,
-    [eventId],
-  )
+  return useCollectionData(paths.notes(eventId ?? '_none'), toEventNote, [eventId])
 }
 
 /** What the last publish put in front of volunteers, and when. */
@@ -1382,27 +1374,43 @@ export async function deleteJar(eventId: string, jar: Jar): Promise<void> {
   })
 }
 
-export async function saveReconciliation(
+/**
+ * Write a note, or change one already written.
+ *
+ * Audited like everything else that touches the money. A note is often the only record of
+ * why a total moved — "found jar 14 behind the till on Monday" — so it being edited is
+ * itself worth a line.
+ */
+export async function saveEventNote(
   eventId: string,
-  value: Reconciliation,
-  before: Reconciliation | null = null,
+  note: Pick<EventNote, 'id' | 'text'>,
+  by: string,
 ): Promise<void> {
-  // These figures are typed by hand and the deposit is reconciled against them, so "the
-  // cash counted said 6,089 last week and says 6,003 now" needs an answer.
-  const batch = auditedBatch({
-    action: 'updated',
+  const id = note.id || `n-${generateToken()}`
+  const text = note.text.trim().slice(0, 2000)
+  if (!text) return
+
+  await auditedSet(
+    paths.note(eventId, id),
+    { text, at: Date.now(), by },
+    {
+      entity: 'reconciliation',
+      entityId: id,
+      eventId,
+      summary: note.id ? 'Changed a note about the money' : 'Wrote a note about the money',
+      fields: ['text'],
+    },
+  )
+}
+
+export async function deleteEventNote(eventId: string, note: EventNote): Promise<void> {
+  await auditedDelete(paths.note(eventId, note.id), {
     entity: 'reconciliation',
-    entityId: 'summary',
+    entityId: note.id,
     eventId,
-    summary: 'Changed the reconciliation figures',
-    changes: diffFields(
-      before as unknown as Record<string, unknown> | null,
-      value as unknown as Record<string, unknown>,
-      ['squareTotal', 'bushelSales', 'cashCounted', 'deposit', 'notes'],
-    ),
+    // The text, because a deleted note is exactly the thing somebody later asks about.
+    summary: `Deleted a note about the money: ${note.text.slice(0, 80)}`,
   })
-  batch.set(paths.reconciliation(eventId), value, { merge: true })
-  await batch.commit()
 }
 
 /**

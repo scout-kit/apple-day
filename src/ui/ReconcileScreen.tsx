@@ -1,61 +1,97 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { summariseMoney } from '../domain/metrics'
 import { DAY_LABEL } from '../domain/slots'
-import type { Reconciliation } from '../domain/types'
+import type { EventNote } from '../domain/types'
+import { toCsv, downloadFile } from '../lib/csv'
 import { useEvent } from '../lib/eventContext'
-import { saveReconciliation, useJars, useReconciliation } from '../lib/repo'
+import { deleteEventNote, saveEventNote, useEventNotes, useJars } from '../lib/repo'
+import { useSession } from '../lib/session'
 import { ErrorNote, Loading, Money, Stat } from './Bits'
-
-const EMPTY: Reconciliation = { bushelSales: 0, deposit: 0, notes: '' }
 
 /**
  * What the event raised.
  *
  * Every figure here comes from the jars, each counted once with its location and youth
  * already attached from when it was issued. There is nothing to type in and nothing to
- * reconcile against — which is the point: the workbook kept a second, hand-assembled set
- * of totals, and the two being $86.55 apart went unnoticed because neither was obviously
- * the truth.
+ * reconcile against — which is the point: the workbook kept a second, hand-assembled set of
+ * totals, and the two being $86.55 apart went unnoticed because neither was obviously the
+ * truth.
  *
- * Two things the jars cannot know stay editable: apples sold by the bushel, and what
- * actually reached the bank.
+ * Money that never went through a jar goes in as a jar without a number, on the Jars screen,
+ * so it arrives here with its day and its location like everything else. Typing it in as a
+ * lump sum here would put it back where it came from: a figure with nothing attached, and
+ * nothing to check it against.
+ *
+ * What is left to write down is the things a figure cannot say — a jar found on the Monday,
+ * a float that went out and came back, a count nobody trusts.
  */
 export function ReconcileScreen(): ReactNode {
   const { event } = useEvent()
+  const { user } = useSession()
   const jars = useJars()
-  const stored = useReconciliation()
-  const [draft, setDraft] = useState<Reconciliation>(EMPTY)
-  const [dirty, setDirty] = useState(false)
-  const [saving, setSaving] = useState(false)
+  const notes = useEventNotes()
 
-  useEffect(() => {
-    if (!dirty && stored.data) setDraft(stored.data)
-  }, [stored.data, dirty])
+  const [draft, setDraft] = useState('')
+  const [editing, setEditing] = useState<EventNote | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [writeError, setWriteError] = useState<Error | null>(null)
 
-  const summary = useMemo(() => summariseMoney(jars.data, draft), [jars.data, draft])
+  const summary = useMemo(() => summariseMoney(jars.data), [jars.data])
 
-  const update = (patch: Partial<Reconciliation>): void => {
-    setDirty(true)
-    setDraft((current) => ({ ...current, ...patch }))
-  }
+  /** Newest first: on the day, the thing that just happened is what you came to read. */
+  const ordered = useMemo(
+    () => [...notes.data].sort((a, b) => b.at - a.at || a.id.localeCompare(b.id)),
+    [notes.data],
+  )
 
-  const save = async (): Promise<void> => {
-    if (!event) return
-    setSaving(true)
+  const write = async (): Promise<void> => {
+    if (!event || !draft.trim()) return
+    setBusy(true)
+    setWriteError(null)
     try {
-      await saveReconciliation(event.id, draft)
-      setDirty(false)
+      await saveEventNote(
+        event.id,
+        { id: editing?.id ?? '', text: draft },
+        user?.email ?? user?.uid ?? '',
+      )
+      setDraft('')
+      setEditing(null)
+    } catch (error) {
+      setWriteError(error as Error)
     } finally {
-      setSaving(false)
+      setBusy(false)
     }
   }
 
-  if (jars.loading || stored.loading) return <Loading what="Adding up the jars" />
+  const remove = (note: EventNote): void => {
+    if (!event) return
+    setWriteError(null)
+    if (editing?.id === note.id) {
+      setEditing(null)
+      setDraft('')
+    }
+    void deleteEventNote(event.id, note).catch((error: Error) => setWriteError(error))
+  }
+
+  const exportNotes = (): void => {
+    downloadFile(
+      `apple-day-notes-${event?.id ?? 'event'}.csv`,
+      toCsv(
+        ordered.map((n) => ({
+          When: n.at ? new Date(n.at).toLocaleString('en-CA') : '',
+          Who: n.by,
+          Note: n.text,
+        })),
+      ),
+    )
+  }
+
+  if (jars.loading || notes.loading) return <Loading what="Adding up the jars" />
 
   return (
     <>
-      <ErrorNote error={jars.error ?? stored.error} />
+      <ErrorNote error={jars.error ?? notes.error ?? writeError} />
 
       {summary.stillOut > 0 && (
         <div className="note warning">
@@ -71,11 +107,10 @@ export function ReconcileScreen(): ReactNode {
 
       <div className="card">
         <div className="stats">
-          <Stat label="raised in total" value={<Money value={summary.grandTotal} />} />
-          <Stat label="from jars" value={<Money value={summary.jarTotal} />} />
+          <Stat label="raised in total" value={<Money value={summary.jarTotal} />} />
           <Stat label="cash" value={<Money value={summary.cash} />} />
           <Stat label="card" value={<Money value={summary.card} />} />
-          <Stat label="bushel sales" value={<Money value={summary.bushelSales} />} />
+          <Stat label="jars counted" value={summary.days.reduce((n, d) => n + d.jarCount, 0)} />
         </div>
         <p className="small muted" style={{ marginTop: '0.5rem' }}>
           Cash and card come from how each jar was counted, so they always add up to the jar
@@ -135,58 +170,83 @@ export function ReconcileScreen(): ReactNode {
       </div>
 
       <div className="card">
-        <h2>What the jars cannot tell us</h2>
-        <div className="row">
-          <label style={{ flex: '1 1 10rem' }}>
-            Bushel sales
-            <input
-              type="number"
-              step="0.01"
-              min="0"
-              value={draft.bushelSales}
-              onChange={(e) => update({ bushelSales: Number(e.target.value) || 0 })}
-            />
-          </label>
-          <label style={{ flex: '1 1 10rem' }}>
-            Deposited at the bank <span className="muted">(optional)</span>
-            <input
-              type="number"
-              step="0.01"
-              min="0"
-              value={draft.deposit}
-              onChange={(e) => update({ deposit: Number(e.target.value) || 0 })}
-            />
-          </label>
+        <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
+          <h2 style={{ margin: 0 }}>Notes</h2>
+          {ordered.length > 0 && (
+            <button className="tiny" onClick={exportNotes}>
+              Export CSV
+            </button>
+          )}
         </div>
+        <p className="small muted">
+          The things a figure cannot say. A jar found on the Monday, a float that went out and
+          came back, a count nobody trusts.
+        </p>
 
-        {draft.deposit > 0 && summary.depositVariance !== 0 && (
-          <div className="note warning">
-            The deposit is <Money value={Math.abs(summary.depositVariance)} />{' '}
-            {summary.depositVariance > 0 ? 'more' : 'less'} than the{' '}
-            <Money value={summary.grandTotal} /> raised.
-            {summary.stillOut > 0 && ' Some jars are still out, which would explain it.'}
-          </div>
-        )}
-        {draft.deposit > 0 && summary.depositVariance === 0 && (
-          <div className="note good">The deposit matches what was raised.</div>
-        )}
-
-        <label style={{ marginTop: '0.5rem' }}>
-          Notes
+        <div className="row" style={{ alignItems: 'flex-start' }}>
           <textarea
-            rows={3}
-            style={{ width: '100%' }}
-            value={draft.notes}
-            placeholder="Anything worth remembering — a jar found later, a float, a bad count."
-            onChange={(e) => update({ notes: e.target.value })}
+            rows={2}
+            aria-label={editing ? 'Change this note' : 'Write a note'}
+            style={{ flex: '1 1 20rem' }}
+            value={draft}
+            placeholder="Found jar 14 behind the till — counted it in on the Monday."
+            onChange={(e) => setDraft(e.target.value)}
           />
-        </label>
-
-        <div className="row" style={{ marginTop: '0.5rem' }}>
-          <button className="primary" disabled={saving || !dirty} onClick={() => void save()}>
-            {saving ? 'Saving…' : dirty ? 'Save' : 'Saved'}
+          <button className="primary" disabled={busy || !draft.trim()} onClick={() => void write()}>
+            {busy ? 'Saving…' : editing ? 'Save' : 'Add note'}
           </button>
+          {editing && (
+            <button
+              onClick={() => {
+                setEditing(null)
+                setDraft('')
+              }}
+            >
+              Cancel
+            </button>
+          )}
         </div>
+
+        {ordered.length === 0 ? (
+          <p className="small muted" style={{ marginTop: '0.75rem' }}>
+            Nothing written down yet.
+          </p>
+        ) : (
+          <ul className="issue-list" style={{ marginTop: '0.75rem' }}>
+            {ordered.map((note) => (
+              <li key={note.id}>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>
+                    {note.text}
+                  </div>
+                  <div className="small muted">
+                    {note.at
+                      ? new Date(note.at).toLocaleString('en-CA', {
+                          dateStyle: 'medium',
+                          timeStyle: 'short',
+                        })
+                      : 'undated'}
+                    {note.by && ` · ${note.by}`}
+                  </div>
+                </div>
+                <div className="row" style={{ gap: '0.3rem' }}>
+                  <button
+                    className="tiny"
+                    onClick={() => {
+                      setEditing(note)
+                      setDraft(note.text)
+                    }}
+                  >
+                    Edit
+                  </button>
+                  <button className="tiny danger" onClick={() => remove(note)}>
+                    Delete
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
     </>
   )

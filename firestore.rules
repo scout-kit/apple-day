@@ -467,8 +467,29 @@ service cloud.firestore {
         allow write: if isOrganizer();
       }
 
-      match /reconciliation/{docId} {
-        allow read, write: if isOrganizer();
+      /*
+        Notes about the money, one document each.
+
+        Separate documents so two people at base ops can each write one without overwriting
+        the other's, and so a note can be corrected or removed on its own. Bounded, because
+        this is a free-text field written from a phone: an accident with a paste should not
+        become a document nobody can load the screen past.
+      */
+      match /notes/{noteId} {
+        allow read: if isOrganizer();
+        allow delete: if isOrganizer();
+        allow create, update: if isOrganizer()
+          && request.resource.data.keys().hasOnly(['text', 'at', 'by'])
+          && request.resource.data.keys().hasAll(['text', 'at', 'by'])
+          && request.resource.data.text is string
+          && request.resource.data.text.size() > 0
+          && request.resource.data.text.size() <= 2000
+          && request.resource.data.by is string
+          // Stamped when it was written, within a day either way — the clock is the
+          // client's, and the list is read in order.
+          && request.resource.data.at is int
+          && request.resource.data.at > request.time.toMillis() - 24 * 60 * 60 * 1000
+          && request.resource.data.at < request.time.toMillis() + 24 * 60 * 60 * 1000;
       }
 
       // ---------------------------------------------------------- swapRequests

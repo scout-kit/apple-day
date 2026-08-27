@@ -15,6 +15,12 @@ export const EVENT_SUBCOLLECTIONS = [
   'swapRequests',
   'eventLocations',
   'meta',
+  'notes',
+  /*
+    Kept although nothing writes here now: the hand-typed totals it held are gone, and a
+    project that ran an event before they were is still holding the document. A name here
+    costs one query that finds nothing; leaving it out means the data silently stays.
+  */
   'reconciliation',
   'reminders',
 ] as const

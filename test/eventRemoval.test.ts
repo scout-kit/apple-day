@@ -24,10 +24,22 @@ describe('what a removal has to walk', () => {
       the year, and the records simply remain.
     */
     const paths = readFileSync('src/lib/paths.ts', 'utf8')
-    const inPaths = new Set(
-      [...paths.matchAll(/'events', eventId, '([a-zA-Z]+)'/g)].map((m) => m[1]!),
-    )
-    expect([...inPaths].sort()).toEqual([...EVENT_SUBCOLLECTIONS].sort())
+    const inPaths = [
+      ...new Set([...paths.matchAll(/'events', eventId, '([a-zA-Z]+)'/g)].map((m) => m[1]!)),
+    ]
+
+    const missing = inPaths.filter((name) => !EVENT_SUBCOLLECTIONS.includes(name as never))
+    expect(missing, 'reachable in paths.ts but never walked').toEqual([])
+  })
+
+  it('keeps walking one nothing writes to any more', () => {
+    /*
+      Retired rather than removed. The hand-typed totals `reconciliation` held are gone from
+      the app, and a project that ran an event before they were is still holding the
+      document — dropping the name here would orphan it, which is the same silent leftover
+      this list exists to prevent. A name that finds nothing costs one query.
+    */
+    expect(EVENT_SUBCOLLECTIONS).toContain('reconciliation')
   })
 
   it('remembers the things stored outside the event', () => {

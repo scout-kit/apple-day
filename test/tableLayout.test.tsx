@@ -324,15 +324,22 @@ describe('form controls fill their label', () => {
     expect(css).toMatch(/label > textarea \{[^}]*resize: vertical/)
   })
 
-  it('covers every textarea the app has, because they all sit in a label', () => {
+  it('covers every textarea the app has, one way or the other', () => {
+    /*
+      Either wrapped in a label or carrying its own `aria-label`. Both give it a name a
+      screen reader can read; what is not allowed is a box with neither, which is announced
+      as "edit text" and nothing else.
+
+      One carries its own because its name changes with what it is doing — writing a note or
+      changing one — and a heading above it could only say one of those.
+    */
     for (const name of ['PassPage', 'EventsScreen', 'ReconcileScreen']) {
       const source = readFileSync(`src/ui/${name}.tsx`, 'utf8')
       for (const match of source.matchAll(/<textarea/g)) {
-        // The nearest opening tag before it should be a label, not a bare div.
         const before = source.slice(0, match.index)
-        expect(before.lastIndexOf('<label'), `${name} textarea outside a label`).toBeGreaterThan(
-          before.lastIndexOf('</label>'),
-        )
+        const inLabel = before.lastIndexOf('<label') > before.lastIndexOf('</label>')
+        const tag = source.slice(match.index, source.indexOf('/>', match.index))
+        expect(inLabel || tag.includes('aria-label'), `${name} textarea with no name`).toBe(true)
       }
     }
   })

@@ -79,8 +79,14 @@ export const paths = {
   jars: (eventId: string) => collection(db, 'events', eventId, 'jars'),
   jar: (eventId: string, id: string) => doc(db, 'events', eventId, 'jars', id),
 
-  reconciliation: (eventId: string) =>
-    doc(db, 'events', eventId, 'reconciliation', 'summary'),
+  /**
+   * Notes about the money, one document each.
+   *
+   * Under the event, because that is what they are about, and separate documents so two
+   * people at base ops can each write one without overwriting the other's.
+   */
+  notes: (eventId: string) => collection(db, 'events', eventId, 'notes'),
+  note: (eventId: string, id: string) => doc(db, 'events', eventId, 'notes', id),
 
   /**
    * Passes are top-level, not nested under the event.

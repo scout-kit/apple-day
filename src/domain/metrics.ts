@@ -7,7 +7,6 @@ import type {
   Day,
   Jar,
   Person,
-  Reconciliation,
   ScheduledLocation,
   Section,
   Slot,
@@ -754,17 +753,12 @@ export interface DayMoney {
 
 export interface MoneySummary {
   days: DayMoney[]
+  /** Everything raised. Every penny of it came out of a jar. */
   jarTotal: number
   cash: number
   card: number
-  bushelSales: number
-  /** Everything raised: counted jars plus bushel sales. */
-  grandTotal: number
   /** Jars handed out and not yet counted, across every day. */
   stillOut: number
-  /** What reached the bank, when recorded, and how far off it is. 0 means not recorded. */
-  deposit: number
-  depositVariance: number
 }
 
 /**
@@ -777,12 +771,13 @@ export interface MoneySummary {
  *
  * `stillOut` is the figure that decides whether any of this is final: while jars are on
  * the street the totals are a running count, not a result.
+ *
+ * Nothing is added to it by hand. Money that never went through a jar — apples by the
+ * bushel, a donation at the door, a card tap away from the table — is recorded as a jar
+ * without a number on the Jars screen, so it lands here with its day, its location and the
+ * rest, instead of as a lump sum with none of them.
  */
-export function summariseMoney(
-  jars: Jar[],
-  declared: Reconciliation,
-  onlyDays?: Day[],
-): MoneySummary {
+export function summariseMoney(jars: Jar[], onlyDays?: Day[]): MoneySummary {
   const countedJars = jars.filter(isCounted)
   const relevant =
     onlyDays ??
@@ -806,20 +801,12 @@ export function summariseMoney(
     }
   })
 
-  const jarTotal = round2(days.reduce((s, d) => s + d.jarTotal, 0))
-  const grandTotal = round2(jarTotal + declared.bushelSales)
-
   return {
     days,
-    jarTotal,
+    jarTotal: round2(days.reduce((s, d) => s + d.jarTotal, 0)),
     cash: round2(days.reduce((s, d) => s + d.cash, 0)),
     card: round2(days.reduce((s, d) => s + d.card, 0)),
-    bushelSales: declared.bushelSales,
-    grandTotal,
     stillOut: days.reduce((s, d) => s + d.stillOut, 0),
-    deposit: declared.deposit,
-    // Only meaningful once a deposit has been entered.
-    depositVariance: declared.deposit === 0 ? 0 : round2(declared.deposit - grandTotal),
   }
 }
 

@@ -22,7 +22,6 @@ import {
   fridayJars2025,
   jars2025,
   locations2025,
-  reconciliation2025,
   slots2025,
 } from './fixtures/appleDay2025'
 
@@ -151,30 +150,22 @@ describe('an outstanding jar is not zero', () => {
 
 describe('totals while jars are still out', () => {
   it('says how many have not come back', () => {
-    const summary = summariseMoney(
-      [...jars2025, outJar({ id: 'extra', jarNumber: 99 })],
-      reconciliation2025,
-    )
+    const summary = summariseMoney([...jars2025, outJar({ id: 'extra', jarNumber: 99 })])
     expect(summary.stillOut).toBe(1)
     expect(summary.days.find((d) => d.day === 'fri')!.stillOut).toBe(1)
   })
 
   it('does not let an outstanding jar move the totals', () => {
-    const before = summariseMoney(jars2025, reconciliation2025)
-    const after = summariseMoney(
-      [...jars2025, outJar({ id: 'extra', jarNumber: 99 })],
-      reconciliation2025,
-    )
+    const before = summariseMoney(jars2025)
+    const after = summariseMoney([...jars2025, outJar({ id: 'extra', jarNumber: 99 })])
     expect(after.jarTotal).toBe(before.jarTotal)
-    expect(after.grandTotal).toBe(before.grandTotal)
     expect(before.stillOut).toBe(0)
     expect(after.stillOut).toBe(1)
   })
 
   it('reproduces the 2025 totals from the jars alone', () => {
-    const summary = summariseMoney(jars2025, reconciliation2025)
+    const summary = summariseMoney(jars2025)
     expect(summary.jarTotal).toBe(5834.61)
-    expect(summary.grandTotal).toBe(6014.61)
     expect(summary.stillOut).toBe(0)
   })
 })
@@ -243,10 +234,10 @@ describe('money recorded by hand', () => {
   })
 
   it('appears in the day totals and the cash split', () => {
-    const summary = summariseMoney(
-      [manual({ id: 'm1', amount: 25 }), manual({ id: 'm2', amount: 15, method: 'square' })],
-      { bushelSales: 0, deposit: 0, notes: '' },
-    )
+    const summary = summariseMoney([
+      manual({ id: 'm1', amount: 25 }),
+      manual({ id: 'm2', amount: 15, method: 'square' }),
+    ])
     const friday = summary.days.find((d) => d.day === 'fri')!
     expect(friday.jarTotal).toBe(40)
     expect(friday.cash).toBe(25)
@@ -257,9 +248,7 @@ describe('money recorded by hand', () => {
 
   it('is never treated as outstanding', () => {
     // It is recorded because the money is in hand; there is nothing to wait for.
-    const summary = summariseMoney([manual({ id: 'm1' })], {
-      bushelSales: 0, deposit: 0, notes: '',
-    })
+    const summary = summariseMoney([manual({ id: 'm1' })])
     expect(summary.stillOut).toBe(0)
   })
 

@@ -267,12 +267,20 @@ export function isNumbered(jar: Jar): jar is NumberedJar {
  * counted; a second source for the same figure is how books end up quietly disagreeing.
  * What is left is what no jar can tell you: bushel sales, and what reached the bank.
  */
-export interface Reconciliation {
-  /** Leftover apples sold by the bushel. Revenue, but never in a jar. */
-  bushelSales: number
-  /** What actually reached the bank. Optional — 0 means not recorded. */
-  deposit: number
-  notes: string
+/**
+ * Something worth remembering about the money, written down as it happens.
+ *
+ * One record each rather than one field holding all of them. A single box collects a year of
+ * unsigned, undated text that nobody edits for fear of losing the rest of it — and the things
+ * worth writing down here arrive one at a time, from different people, over two days.
+ */
+export interface EventNote {
+  id: string
+  text: string
+  /** When it was written. What makes the list read as a record rather than a pile. */
+  at: number
+  /** Who wrote it, by address. A note nobody can be asked about is half a note. */
+  by: string
 }
 
 /** The hours a given event actually staffs, per day. Half-open: [startMin, endMin). */

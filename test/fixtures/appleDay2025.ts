@@ -25,7 +25,6 @@ import type {
   Day,
   Jar,
   Person,
-  Reconciliation,
   ScheduledLocation,
   Section,
   Signup,
@@ -302,11 +301,6 @@ export const signups2025: Signup[] = people2025.map((p, i) => ({
  * not the detection. The Ravenhill Hardware jar that caused the gap is still caught, as revenue
  * at a location with no staffed hours.
  */
-export const reconciliation2025: Reconciliation = {
-  bushelSales: 180,
-  deposit: 0,
-  notes: '',
-}
 
 export const KNOWN = {
   fridayJarTotal: 2042.30,
