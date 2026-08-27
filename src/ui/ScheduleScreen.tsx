@@ -8,6 +8,7 @@ import { fullName } from '../domain/types'
 import type { Assignment, Person, Slot } from '../domain/types'
 import { validateSchedule } from '../domain/validation'
 import type { ScheduleIssue } from '../domain/validation'
+import { areaOf, areaTone } from '../domain/areas'
 import { useEvent } from '../lib/eventContext'
 import { runsTheEvent, useSession } from '../lib/session'
 import {
@@ -396,9 +397,25 @@ export function ScheduleScreen(): ReactNode {
                 >
                   <td>
                     <div className="locname">
+                      {/*
+                        A stripe rather than a re-ordering.
+
+                        Shops in one plaza are one place to stand — a pair split between them
+                        is not split at all — but they need not be next to each other in the
+                        running order, which is the organizers' own and set by dragging. The
+                        colour links them where they are; sorting by area would take that
+                        ordering away to say the same thing.
+                      */}
+                      {areaOf(location) && (
+                        <span
+                          className={`area-mark tone-${areaTone(areaOf(location)!)}`}
+                          title={`In ${areaOf(location)} — anybody paired here can stand at any shop in it`}
+                        />
+                      )}
                       <LocationLink name={location.name} locationId={location.id} />
                     </div>
                     <div className="small muted">
+                      {areaOf(location) && <>{areaOf(location)} · </>}
                       priority {location.priority}
                       {location.comments ? ` · ${location.comments}` : ''}
                     </div>

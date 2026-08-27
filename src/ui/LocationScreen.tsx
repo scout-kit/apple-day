@@ -283,7 +283,10 @@ export function LocationScreen(): ReactNode {
             <span className="small muted">Not used in {event ? eventLabel(event) : 'this year'}.</span>
           )}
           {location.groupCode && (
-            <span className="small muted">Group code {location.groupCode}</span>
+            <span className="small muted">
+              Area {location.groupCode.trim().toUpperCase()} — shared with any other shop
+              carrying it, so a pair can take a door each
+            </span>
           )}
         </div>
       </div>

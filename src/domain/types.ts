@@ -117,6 +117,14 @@ export interface Location {
   name: string
   address: string
   mapsUrl: string
+  /**
+   * Which area this shop is in, as a short code shared by everything in it.
+   *
+   * Two shops at either end of one plaza are one place to stand: siblings asked to stay
+   * together can take a door each and cover twice the footfall, and the board should not warn
+   * that they are split. Locations sharing a code are that place; a location with none is its
+   * own, because an empty code is the absence of an answer rather than a group called "".
+   */
   groupCode: string
   siteContact: SiteContact | null
   insurance: string

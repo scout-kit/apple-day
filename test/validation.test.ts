@@ -192,6 +192,92 @@ describe('pairing', () => {
     expect(run({ people }).filter((i) => i.code === 'splitPair')).toEqual([])
   })
 
+  it('stays quiet when the pair is in one plaza, at different doors', () => {
+    /*
+      The point of the whole thing. Two siblings asked to stay together do not have to be at
+      the same door: a plaza with a grocer at one end and a chemist at the other is one place
+      to the parent dropping them off, and a door each covers twice the footfall.
+    */
+    const [first, second] = [...new Set(fridayAssignments2025.map((a) => a.locationId))]
+    const locations = locations2025.map((l) =>
+      l.id === first || l.id === second ? { ...l, groupCode: 'LINDEN' } : l,
+    )
+
+    const pairedAcross = fridayAssignments2025.filter(
+      (a) => a.locationId === first || a.locationId === second,
+    )
+    const [here, there] = [
+      pairedAcross.find((a) => a.locationId === first)!,
+      pairedAcross.find((a) => a.locationId === second && a.slotId === pairedAcross[0]!.slotId),
+    ]
+    // Asserted rather than skipped: a test that quietly does nothing when the fixture
+    // changes shape is a test that passes for the wrong reason.
+    if (!there) throw new Error('the fixture no longer staffs both doors in one hour')
+
+    const people = people2025.map((p) => {
+      if (p.id === here.personId) return { ...p, pairWithPersonId: there.personId }
+      if (p.id === there.personId) return { ...p, pairWithPersonId: here.personId }
+      return p
+    })
+
+    const split = run({ people, locations }).filter((i) => i.code === 'splitPair')
+    expect(split.map((i) => i.personIds)).not.toContainEqual(
+      expect.arrayContaining([here.personId, there.personId]),
+    )
+  })
+
+  it('still warns when the two areas are different', () => {
+    const byLocation = new Map(fridayAssignments2025.map((a) => [a.locationId, a]))
+    const [first, second] = [...byLocation.keys()]
+    const locations = locations2025.map((l) =>
+      l.id === first ? { ...l, groupCode: 'LINDEN' }
+      : l.id === second ? { ...l, groupCode: 'FARMERS' }
+      : l,
+    )
+    const here = byLocation.get(first!)!
+    const there = byLocation.get(second!)!
+
+    const people = people2025.map((p) =>
+      p.id === here.personId ? { ...p, pairWithPersonId: there.personId } : p,
+    )
+    expect(codes(run({ people, locations }))).toContain('splitPair')
+  })
+
+  it('does not treat two shops with no area as one', () => {
+    /*
+      Everything in the library starts with a blank code. Reading that as a group called ""
+      would put every ungrouped shop in one enormous area, and a pair split across two ends
+      of town would report nothing at all — the exact warning this is meant to keep.
+    */
+    const blank = locations2025.map((l) => ({ ...l, groupCode: '' }))
+    const byLocation = new Map(fridayAssignments2025.map((a) => [a.locationId, a]))
+    const [first, second] = [...byLocation.keys()]
+    const here = byLocation.get(first!)!
+    const there = byLocation.get(second!)!
+
+    const people = people2025.map((p) =>
+      p.id === here.personId ? { ...p, pairWithPersonId: there.personId } : p,
+    )
+    expect(codes(run({ people, locations: blank }))).toContain('splitPair')
+  })
+
+  it('names the area to fix rather than the one shop', () => {
+    // "not at Linden Plaza" says any door in it will do; naming one shop reads as an order.
+    const byLocation = new Map(fridayAssignments2025.map((a) => [a.locationId, a]))
+    const [first, second] = [...byLocation.keys()]
+    const locations = locations2025.map((l) =>
+      l.id === first ? { ...l, groupCode: 'LINDEN' } : l,
+    )
+    const here = byLocation.get(first!)!
+    const there = byLocation.get(second!)!
+
+    const people = people2025.map((p) =>
+      p.id === here.personId ? { ...p, pairWithPersonId: there.personId } : p,
+    )
+    const split = run({ people, locations }).filter((i) => i.code === 'splitPair')
+    expect(split[0]!.message).toContain('LINDEN')
+  })
+
   it('stays quiet when the pair is together', () => {
     const people = people2025.map((p) => {
       if (p.id === 'y02') return { ...p, pairWithPersonId: 'y03' }

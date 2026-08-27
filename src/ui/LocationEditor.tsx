@@ -138,13 +138,20 @@ export function LocationEditor({
                 placeholder="Braemar — 640 Linden Drive"
               />
             </label>
-            <label style={{ flex: '0 1 7rem' }}>
-              Group code
-              <input
-                value={draft.groupCode}
-                onChange={(e) => setDraft({ ...draft, groupCode: e.target.value })}
-              />
-            </label>
+            <div style={{ flex: '0 1 9rem' }}>
+              <label>
+                Area
+                <input
+                  value={draft.groupCode}
+                  placeholder="LINDEN"
+                  onChange={(e) => setDraft({ ...draft, groupCode: e.target.value })}
+                />
+              </label>
+              <div className="small muted">
+                Shops sharing this are one place to stand, so a pair split between them is
+                not split. Leave it blank for a shop on its own.
+              </div>
+            </div>
           </div>
 
           <div className="row">

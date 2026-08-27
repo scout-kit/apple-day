@@ -724,3 +724,42 @@ describe('publishing, now that it has no page of its own', () => {
     expect(screen.getByText(/No day-of contacts set/)).toBeTruthy()
   })
 })
+
+describe('showing which shops are one place to stand', () => {
+  /*
+    A stripe beside the name rather than a re-ordering. Shops in one plaza need not be next
+    to each other in the running order — that order is the organizers' own, set by dragging
+    the Locations list — so the colour links them where they are.
+  */
+  it('marks the locations that share an area', () => {
+    locations = locations.map((l, i) => (i < 2 ? { ...l, groupCode: 'LINDEN' } : l))
+    render(<ScheduleScreen />)
+
+    const marks = document.querySelectorAll('.area-mark')
+    expect(marks.length).toBe(2)
+  })
+
+  it('gives them the same colour, so two rows read as one place', () => {
+    locations = locations.map((l, i) => (i < 2 ? { ...l, groupCode: 'LINDEN' } : l))
+    render(<ScheduleScreen />)
+
+    const tones = [...document.querySelectorAll('.area-mark')].map((el) =>
+      [...el.classList].find((c) => c.startsWith('tone-')),
+    )
+    expect(new Set(tones).size).toBe(1)
+  })
+
+  it('names the area under the shop, so the code is readable rather than guessed', () => {
+    locations = locations.map((l, i) => (i < 2 ? { ...l, groupCode: 'linden' } : l))
+    render(<ScheduleScreen />)
+    expect(screen.getAllByText(/LINDEN/).length).toBeGreaterThan(0)
+  })
+
+  it('marks nothing on a shop that is on its own', () => {
+    // Every shop in a fresh library has a blank code, and a stripe on all of them would say
+    // they were all one place.
+    locations = locations.map((l) => ({ ...l, groupCode: '' }))
+    render(<ScheduleScreen />)
+    expect(document.querySelectorAll('.area-mark').length).toBe(0)
+  })
+})

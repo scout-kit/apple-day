@@ -1,3 +1,4 @@
+import { areaOf, sameArea } from './areas'
 import { DAY_LABEL } from './slots'
 import { DAYS, fullName } from './types'
 import type { Assignment, Person, ScheduledLocation, Signup, Slot } from './types'
@@ -154,14 +155,31 @@ export function validateSchedule(input: ValidateInput): ScheduleIssue[] {
 
     for (const a of live.filter((x) => x.personId === person.id)) {
       const slot = slotById.get(a.slotId)
+      /*
+        Together, not identical.
+
+        Two siblings asked to stay together do not have to be at the same door. A plaza with
+        a grocer at one end and a chemist at the other is one place to the parent dropping
+        them off, and putting them at both ends covers twice the footfall — which is the
+        point of sending two. So a shared area counts, and the warning is for a pair actually
+        split across the town.
+      */
       const partnerHere = live.some(
-        (x) => x.personId === partnerId && x.slotId === a.slotId && x.locationId === a.locationId,
+        (x) =>
+          x.personId === partnerId &&
+          x.slotId === a.slotId &&
+          sameArea(x.locationId, a.locationId, locationById),
       )
       if (!partnerHere) {
+        const area = areaOf(locationById.get(a.locationId))
         issues.push({
           code: 'splitPair',
           severity: 'warning',
-          message: `${nameOf(person.id)} is paired with ${nameOf(partnerId)}, who is not at ${placeOf(a.locationId)} during ${slot?.label ?? a.slotId}`,
+          // Named by the area when there is one: "not at Linden Plaza" is the thing to fix,
+          // and it says that any shop in it will do.
+          message: `${nameOf(person.id)} is paired with ${nameOf(partnerId)}, who is not ${
+            area ? `at ${area}` : `at ${placeOf(a.locationId)}`
+          } during ${slot?.label ?? a.slotId}`,
           assignmentIds: [a.id],
           personIds: [person.id, partnerId],
           locationIds: [a.locationId],
