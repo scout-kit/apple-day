@@ -6,6 +6,8 @@ interface Place {
   name: string
   address: string
   mapsUrl: string
+  /** The location's standing instructions, when the caller has them. */
+  comments?: string
 }
 
 /**
@@ -57,6 +59,15 @@ export function MapModal({
     >
       <div className="stack">
         {place.address && <p className="small muted">{place.address}</p>}
+        {/*
+          The standing instructions, on the screen they are needed on.
+
+          This modal is what an organizer opens while sending somebody out on the day, and
+          "outside on the sidewalk, do not block the doors" is exactly what has to be said
+          then. It was on the location's own page and on the volunteer's pass, neither of
+          which is open at the table. Not muted, because it is an instruction.
+        */}
+        {place.comments && <p className="small">{place.comments}</p>}
         {base ? (
           <p className="small muted">
             Directions from <strong>{base.name}</strong>.

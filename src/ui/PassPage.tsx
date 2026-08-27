@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { useParams } from 'react-router-dom'
+import { groupIntoRuns, runSpan } from '../domain/shiftRuns'
 import { needsShift, REQUEST_CHOICES } from '../domain/requests'
 import type { RequestKind } from '../domain/requests'
 import { requestSwap } from '../lib/repo'
@@ -35,6 +36,29 @@ export function PassPage(): ReactNode {
   const [aboutSlot, setAboutSlot] = useState('')
   const [sending, setSending] = useState(false)
   const [outcome, setOutcome] = useState<{ ok: boolean; text: string } | null>(null)
+
+  /*
+    Consecutive shifts at one shop, read as the stretch they are.
+
+    Two hours at the same door is one turn, not two jobs, and listing them separately made a
+    five-till-seven look like being sent out twice. The day-of table has always grouped them;
+    a pass was still reading them out one by one.
+
+    Keyed on the day as well as the place, because the times are minutes from midnight —
+    without it, five o'clock on the Friday and five o'clock on the Saturday look adjacent.
+  */
+  const runs = useMemo(
+    () =>
+      groupIntoRuns(
+        pass?.shifts.map((shift) => ({
+          shift,
+          locationId: `${shift.day}|${shift.locationName}|${shift.address}`,
+          startMin: shift.startMin ?? null,
+          endMin: shift.endMin ?? null,
+        })) ?? [],
+      ),
+    [pass?.shifts],
+  )
 
   useEffect(() => {
     if (!token) {
@@ -146,10 +170,15 @@ export function PassPage(): ReactNode {
           organizer.
         </div>
       ) : (
-        pass.shifts.map((shift, i) => (
+        runs.map((run, i) => {
+          // Everything shown comes off the run's first shift: they are all the same shop, and
+          // the time is the whole stretch.
+          const shift = run.items[0]!.shift
+          const when = runSpan(run, shift.slotLabel)
+          return (
           <div className="shift" key={i}>
             <div className="when">
-              {shift.day} · {shift.slotLabel}
+              {shift.day} · {when}
             </div>
             {/* Where they are going appears once an organizer has checked them in. Everyone
                 reports to base first — that is where the jars and apples are — so naming a
@@ -174,7 +203,8 @@ export function PassPage(): ReactNode {
               </div>
             )}
           </div>
-        ))
+          )
+        })
       )}
 
       <SupportCard contacts={pass.support} note={pass.supportNote} />
@@ -214,16 +244,28 @@ export function PassPage(): ReactNode {
               more than one to choose between. "Need a hand" and "something else" are not
               about a shift, and asking anyway invites an answer that is not true.
             */}
-            {needsShift(kind) && pass.shifts.length > 1 && (
+            {needsShift(kind) && runs.length > 1 && (
               <label>
                 Which shift?
                 <select value={aboutSlot} onChange={(e) => setAboutSlot(e.target.value)}>
                   <option value="">All of my shifts</option>
-                  {pass.shifts.map((shift) => (
-                    <option key={shift.slotId} value={shift.slotId}>
-                      {shift.day} · {shift.slotLabel}
-                    </option>
-                  ))}
+                  {/*
+                    One entry per run, matching the list above. Offering the hours separately
+                    when the pass shows them as one stretch asks about something the volunteer
+                    cannot see.
+
+                    The value is the run's first slot. An organizer acting on it works on the
+                    whole person anyway — the requests screen offers "no-show for all of
+                    them" — so this is which turn they mean, not a contract about one hour.
+                  */}
+                  {runs.map((run) => {
+                    const first = run.items[0]!.shift
+                    return (
+                      <option key={first.slotId} value={first.slotId}>
+                        {first.day} · {runSpan(run, first.slotLabel)}
+                      </option>
+                    )
+                  })}
                 </select>
               </label>
             )}

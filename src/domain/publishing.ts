@@ -24,6 +24,17 @@ export interface PassShift {
   slotId: string
   day: string
   slotLabel: string
+  /**
+   * The hours themselves, so consecutive shifts at one shop can be read as the stretch they
+   * are rather than listed one by one.
+   *
+   * Needed as numbers rather than worked out from the label: shifts are configured to
+   * overlap, so "does the next one continue this one" is a question about times. Absent on a
+   * pass published before this, where each shift is then simply its own run — which is what
+   * those passes already showed.
+   */
+  startMin?: number
+  endMin?: number
   locationName: string
   address: string
   mapsUrl: string
@@ -92,6 +103,8 @@ export function buildPassShifts(
         slotId: slot.id,
         day: DAY_LABEL[slot.day],
         slotLabel: slot.label,
+        startMin: slot.startMin,
+        endMin: slot.endMin,
         locationName: location.name,
         address: location.address,
         mapsUrl: mapLink(location),

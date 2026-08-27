@@ -1,4 +1,4 @@
-import { groupIntoRuns, runState } from './shiftRuns'
+import { groupIntoRuns, runSpan, runState } from './shiftRuns'
 import { DAY_LABEL } from './slots'
 import { fullName } from './types'
 import type { Assignment, Day, Person, Slot } from './types'
@@ -59,7 +59,15 @@ export interface ReminderShift {
   slotId: string
   /** "Saturday". */
   day: string
-  /** "9:00 AM". */
+  /**
+   * The time, already the whole stretch where consecutive shifts share a shop: "9:00 AM –
+   * 11:00 AM" rather than two lines an hour apart.
+   *
+   * Grouped here rather than where the message is written, and that is the point: working out
+   * whether two shifts continue each other needs to know they are at the same shop, and the
+   * one rule about a reminder is that it carries no location. So the shop is used to decide,
+   * here, where it is legitimately known — and never reaches the thing that renders text.
+   */
   slotLabel: string
 }
 
@@ -182,14 +190,31 @@ export function buildAudience(
       person,
       // Their qualifying shifts only, in the order they happen — a reminder about the
       // Saturday should not list the Friday.
-      shifts: [...theirs]
-        .sort((a, b) => (slotOrder.get(a.slotId) ?? 0) - (slotOrder.get(b.slotId) ?? 0))
-        .flatMap((a) => {
-          const slot = slotById.get(a.slotId)
-          return slot
-            ? [{ slotId: slot.id, day: DAY_LABEL[slot.day], slotLabel: slot.label }]
-            : []
-        }),
+      shifts: groupIntoRuns(
+        [...theirs]
+          .sort((a, b) => (slotOrder.get(a.slotId) ?? 0) - (slotOrder.get(b.slotId) ?? 0))
+          .flatMap((a) => {
+            const slot = slotById.get(a.slotId)
+            return slot
+              ? [{
+                  slotId: slot.id,
+                  day: DAY_LABEL[slot.day],
+                  label: slot.label,
+                  /*
+                    Keyed on the day as well as the shop, because the times are minutes from
+                    midnight: without it, five o'clock on the Friday and five o'clock on the
+                    Saturday look adjacent.
+                  */
+                  locationId: `${slot.day}|${a.locationId}`,
+                  startMin: slot.startMin,
+                  endMin: slot.endMin,
+                }]
+              : []
+          }),
+      ).map((run) => {
+        const first = run.items[0]!
+        return { slotId: first.slotId, day: first.day, slotLabel: runSpan(run, first.label) }
+      }),
       assignmentIds: theirs.map((a) => a.id).sort(),
       passUrl: token ? `${input.origin.replace(/\/+$/, '')}/p/${token}` : '',
     }
@@ -386,9 +411,9 @@ export function exampleRecipient(): Recipient {
     email: 'a.parent@example.org',
     parentName: 'A Parent',
     youths: [
+      // A stretch and a single hour, so the preview shows both shapes a parent might read.
       child('alex', 'Alex', [
-        { slotId: 'e1', day: 'Saturday', slotLabel: '9:00 AM' },
-        { slotId: 'e2', day: 'Saturday', slotLabel: '10:00 AM' },
+        { slotId: 'e1', day: 'Saturday', slotLabel: '9:00 AM – 11:00 AM' },
       ]),
       child('sam', 'Sam', [{ slotId: 'e3', day: 'Saturday', slotLabel: '2:00 PM' }]),
     ],

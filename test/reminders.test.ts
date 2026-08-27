@@ -350,9 +350,17 @@ describe('what a reminder must never say', () => {
     )
     const only = recipients[0]!
 
-    // The shift knows when, and has nowhere to put where.
+    /*
+      The shift knows when, and has nowhere to put where. Asserted as the whole object rather
+      than field by field, because the guarantee is about what the shape cannot hold: a
+      location creeping back into it would surface here rather than in a mailbox.
+
+      The shop is used to decide where one stretch of work ends and the next begins — two
+      hours at one door is a single line — but that happens in the builder, and what comes out
+      of it carries only a time.
+    */
     expect(only.youths[0]!.shifts).toEqual([
-      { slotId: 'sat-0900', day: 'Saturday', slotLabel: '9:00 AM' },
+      { slotId: 'sat-0900', day: 'Saturday', slotLabel: '9:00 AM – 10:00 AM' },
     ])
 
     const ctx = { eventName: 'Apple Day 2026', occasion: 'Saturday', supportLine: '' }
@@ -369,14 +377,15 @@ describe('what a reminder must never say', () => {
     /*
       `buildPassShifts` drops a shift it cannot resolve a location for, which would let a shop
       deleted from the library quietly take its shifts out of somebody's reminder. No location
-      is named here, so the time is all
-      that was ever needed.
+      is named here, so the time is all that was ever needed.
     */
     const people = [person('p1', 'Elliot')]
     const orphaned = [shift('a1', 'p1', 'sat-0900', { locationId: 'deleted-shop' })]
     const { recipients } = buildAudience(EVENT, 'all', input(people, orphaned))
 
-    expect(recipients[0]!.youths[0]!.shifts.map((s) => s.slotLabel)).toEqual(['9:00 AM'])
+    expect(recipients[0]!.youths[0]!.shifts.map((s) => s.slotLabel)).toEqual([
+      '9:00 AM – 10:00 AM',
+    ])
   })
 })
 
@@ -439,5 +448,66 @@ describe('reading back what has been sent', () => {
 
   it('has nothing to say before anything has been sent', () => {
     expect(sendHistory([])).toEqual([])
+  })
+})
+
+describe('shifts that run into each other', () => {
+  /*
+    Two hours at one door is one turn, not two jobs. A parent reading
+
+        Saturday 9:00 AM
+        Saturday 10:00 AM
+
+    counts two things to be somewhere for; what is being asked is nine till eleven, once.
+
+    Joined where the audience is built, because deciding whether two shifts continue each
+    other needs to know they are at the same shop — and the one rule about a reminder is that
+    it never carries a location. So the shop decides, there, and never reaches the text.
+  */
+  const people = [person('p1', 'Elliot')]
+  const labels = (assignments: Assignment[]): string[] => {
+    const { recipients } = buildAudience(EVENT, 'all', input(people, assignments))
+    return recipients[0]!.youths[0]!.shifts.map((sh) => sh.slotLabel)
+  }
+
+  it('reads two hours at one shop as one stretch', () => {
+    expect(labels([shift('a1', 'p1', 'sat-0900'), shift('a2', 'p1', 'sat-1000')])).toEqual([
+      '9:00 AM – 11:00 AM',
+    ])
+  })
+
+  it('keeps two shops apart, even hour after hour', () => {
+    /*
+      The message cannot say why they are two lines — it names no shop — but merging them
+      would tell a parent their child is in one place for two hours when they are expected at
+      two.
+    */
+    expect(
+      labels([
+        shift('a1', 'p1', 'sat-0900'),
+        shift('a2', 'p1', 'sat-1000', { locationId: 'kelmont' }),
+      ]),
+    ).toHaveLength(2)
+  })
+
+  it('does not care what order they were read in', () => {
+    expect(labels([shift('a2', 'p1', 'sat-1000'), shift('a1', 'p1', 'sat-0900')])).toEqual([
+      '9:00 AM – 11:00 AM',
+    ])
+  })
+
+  it('names the run by its first slot, so a request can point at it', () => {
+    const { recipients } = buildAudience(
+      EVENT, 'all', input(people, [shift('a1', 'p1', 'sat-0900'), shift('a2', 'p1', 'sat-1000')]),
+    )
+    expect(recipients[0]!.youths[0]!.shifts[0]!.slotId).toBe('sat-0900')
+  })
+
+  it('still records both assignments, whatever the lines say', () => {
+    // The ledger is what stops a second click sending a second copy, and it is per shift.
+    const { recipients } = buildAudience(
+      EVENT, 'all', input(people, [shift('a1', 'p1', 'sat-0900'), shift('a2', 'p1', 'sat-1000')]),
+    )
+    expect(recipients[0]!.youths[0]!.assignmentIds).toEqual(['a1', 'a2'])
   })
 })

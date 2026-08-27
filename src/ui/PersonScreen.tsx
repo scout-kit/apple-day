@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { useParams } from 'react-router-dom'
 import { requestSummary } from '../domain/requests'
+import { groupIntoRuns, runSpan, runState } from '../domain/shiftRuns'
 import { DAY_LABEL } from '../domain/slots'
 import { DAYS, fullName, isCounted, isNumbered } from '../domain/types'
 import type { Day } from '../domain/types'
@@ -17,6 +18,7 @@ import {
   useVolunteerRequests,
 } from '../lib/repo'
 import { ErrorNote, Loading, Money, SectionPill, Stat } from './Bits'
+import { LocationLink } from './LocationLink'
 import { PersonLink } from './PersonLink'
 import { PassCard } from './PassCard'
 import { PersonEditor } from './PersonEditor'
@@ -93,6 +95,29 @@ export function PersonScreen(): ReactNode {
           (x.slot?.startMin ?? 0) - (y.slot?.startMin ?? 0),
       )
   }, [assignments.data, jars.data, locations.data, slots, personId])
+
+  /**
+   * Their shifts as the turns they are, rather than one row an hour.
+   *
+   * Two hours at one shop is one stretch of standing there — the person doing it goes out
+   * once — and the day-of table has always read it that way. Here it was four rows for an
+   * afternoon, each with its own state, which made a single check-in look like a partial one.
+   *
+   * Keyed on the day as well as the shop, because the times are minutes from midnight:
+   * without it, five o'clock on the Friday and five o'clock on the Saturday look adjacent.
+   */
+  const runs = useMemo(
+    () =>
+      groupIntoRuns(
+        shifts.map((row) => ({
+          row,
+          locationId: `${row.slot?.day ?? '?'}|${row.assignment.locationId}`,
+          startMin: row.slot?.startMin ?? null,
+          endMin: row.slot?.endMin ?? null,
+        })),
+      ),
+    [shifts],
+  )
 
   /** Money against their name this event — jars they carried, counted. */
   const raised = useMemo(
@@ -227,30 +252,45 @@ export function PersonScreen(): ReactNode {
                 </tr>
               </thead>
               <tbody>
-                {shifts.map(({ assignment, slot, locationName, jars: held }) => (
+                {runs.map((run) => {
+                  const { assignment, slot, locationName } = run.items[0]!.row
+                  /*
+                    One state for the stretch, from the same reader the day-of table uses, so
+                    the two screens cannot disagree about whether somebody has arrived.
+                  */
+                  const state = runState(run.items.map((i) => i.row.assignment))
+                  const held = [
+                    ...new Map(
+                      run.items.flatMap((i) => i.row.jars).map((jar) => [jar.id, jar]),
+                    ).values(),
+                  ]
+                  return (
                   <tr key={assignment.id}>
                     <td className="small nowrap">
-                      {slot ? `${DAY_LABEL[slot.day]} ${slot.label}` : assignment.slotId}
+                      {slot
+                        ? `${DAY_LABEL[slot.day]} ${runSpan(run, slot.label)}`
+                        : assignment.slotId}
                     </td>
-                    <td className="small">{locationName}</td>
+                    {/* Linked, like every other place this app names a shop: this is the
+                        screen somebody is on when a parent rings, and "where is that" is the
+                        next question. */}
+                    <td className="small">
+                      <LocationLink name={locationName} locationId={assignment.locationId} />
+                    </td>
                     <td className="small nowrap">
-                      {assignment.status === 'checkedIn' && (
+                      {state.attendance === 'arrived' && (
                         <span className="pill tone-amber">checked in</span>
                       )}
-                      {assignment.status === 'noShow' && (
+                      {state.attendance === 'absent' && (
                         <span className="pill tone-red">no-show</span>
                       )}
-                      {assignment.whereabouts === 'out' && (
+                      {state.place === 'out' && (
                         <span className="pill tone-green">out collecting</span>
                       )}
-                      {assignment.whereabouts === 'back' && (
-                        <span className="pill tone-blue">back</span>
+                      {state.place === 'back' && <span className="pill tone-blue">back</span>}
+                      {state.attendance === 'expected' && state.place === 'atTable' && (
+                        <span className="muted">expected</span>
                       )}
-                      {assignment.status !== 'checkedIn' &&
-                        assignment.status !== 'noShow' &&
-                        assignment.whereabouts === 'here' && (
-                          <span className="muted">expected</span>
-                        )}
                     </td>
                     <td className="small">
                       {held.length === 0 ? (
@@ -272,7 +312,8 @@ export function PersonScreen(): ReactNode {
                       )}
                     </td>
                   </tr>
-                ))}
+                  )
+                })}
               </tbody>
             </table>
           </div>

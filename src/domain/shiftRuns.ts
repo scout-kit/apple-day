@@ -9,6 +9,7 @@
  * one starts before the last ends and comparing ids would never see them as adjacent.
  */
 
+import { formatSlotLabel } from './slots'
 import type { AssignmentStatus, Whereabouts } from './types'
 
 export interface RunnableShift {
@@ -77,6 +78,24 @@ export function groupIntoRuns<T extends RunnableShift>(shifts: T[]): ShiftRun<T>
 }
 
 /** Whether a run covers any part of a given window — used to decide what one hour shows. */
+/**
+ * A run as one line of time: "5:00 PM – 7:00 PM".
+ *
+ * Two shifts at one shop are one stretch of standing there, and reading them out as separate
+ * lines makes a two-hour turn look like two jobs. The day-of table has always shown it this
+ * way; a pass, a reminder and a location's page were still listing the hours one by one.
+ *
+ * Falls back to whatever the caller has when the times are not known — a shift whose slot
+ * has been edited away still has to say something.
+ */
+export function runSpan(
+  run: Pick<ShiftRun<RunnableShift>, 'startMin' | 'endMin'>,
+  fallback: string,
+): string {
+  if (run.startMin === null || run.endMin === null) return fallback
+  return formatSlotLabel(run.startMin, run.endMin)
+}
+
 export function runTouches(
   run: ShiftRun<unknown>,
   window: { startMin: number; endMin: number },

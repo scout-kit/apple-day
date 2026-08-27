@@ -130,3 +130,36 @@ describe('runTouches', () => {
     expect(runTouches(orphan, { startMin: H(17), endMin: H(18) })).toBe(false)
   })
 })
+
+/**
+ * What callers have to do before they call this.
+ *
+ * A run continues only against the run before it, so two stretches that overlap in time
+ * cannot both be built in one pass. That is fine for one person's own shifts — they cannot
+ * be in two places at once — but a location's page lists everybody who stood there, and
+ * those do overlap. It has to group one person at a time, and this says why.
+ */
+describe('two stretches running at the same time', () => {
+  const interleaved = [
+    { locationId: 'alex|braemar', startMin: H(9), endMin: H(10) },
+    { locationId: 'sam|braemar', startMin: H(9), endMin: H(10) },
+    { locationId: 'alex|braemar', startMin: H(10), endMin: H(11) },
+    { locationId: 'sam|braemar', startMin: H(10), endMin: H(11) },
+  ]
+
+  it('does not join up when the two are passed together', () => {
+    expect(groupIntoRuns(interleaved)).toHaveLength(4)
+  })
+
+  it('joins up when each is passed on its own', () => {
+    const perPerson = ['alex|braemar', 'sam|braemar'].flatMap((who) =>
+      groupIntoRuns(interleaved.filter((s) => s.locationId === who)),
+    )
+
+    expect(perPerson).toHaveLength(2)
+    expect(perPerson.map((r) => [r.startMin, r.endMin])).toEqual([
+      [H(9), H(11)],
+      [H(9), H(11)],
+    ])
+  })
+})

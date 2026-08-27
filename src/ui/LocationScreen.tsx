@@ -13,6 +13,7 @@ import {
 import { eventLabel } from '../domain/events'
 import { mapLink } from '../domain/maps'
 import { locationMetrics } from '../domain/metrics'
+import { groupIntoRuns, runSpan, runState } from '../domain/shiftRuns'
 import {
   DAY_LABEL,
   DAY_SHORT,
@@ -99,6 +100,45 @@ export function LocationScreen(): ReactNode {
   }, [assignments.data, slots, people.data, locationId])
 
   /**
+   * Those shifts as the turns people actually took here.
+   *
+   * Somebody down for three hours at this shop was three rows, which reads as three
+   * different volunteers to anybody scanning the column, and made the count above wrong
+   * in the way that matters — it counted hours and called them shifts.
+   *
+   * Grouped one person at a time rather than in a single pass, because runs continue only
+   * against the previous run: at a shop where two people overlap, one list interleaves
+   * them and neither stretch joins up.
+   */
+  const runs = useMemo(() => {
+    const byPerson = new Map<string, typeof shifts>()
+    for (const row of shifts) {
+      const key = `${row.assignment.personId}|${row.slot?.day ?? '?'}`
+      byPerson.set(key, [...(byPerson.get(key) ?? []), row])
+    }
+
+    return [...byPerson.values()]
+      .flatMap((theirs) =>
+        groupIntoRuns(
+          theirs.map((row) => ({
+            row,
+            // Constant across this list — every shift here is here. The run boundary that
+            // matters is the person and the day, which is what the buckets above are.
+            locationId: locationId ?? '',
+            startMin: row.slot?.startMin ?? null,
+            endMin: row.slot?.endMin ?? null,
+          })),
+        ),
+      )
+      .sort(
+        (a, b) =>
+          DAYS.indexOf(a.items[0]!.row.slot?.day ?? 'sun') -
+            DAYS.indexOf(b.items[0]!.row.slot?.day ?? 'sun') ||
+          (a.startMin ?? 0) - (b.startMin ?? 0),
+      )
+  }, [shifts, locationId])
+
+  /**
    * The jars counted here, each with the shift it was out for.
    *
    * A row saying "jar 4 · $100" cannot be placed: on a two-day event the useful question is
@@ -112,6 +152,7 @@ export function LocationScreen(): ReactNode {
   const theirJars = useMemo(() => {
     const slotById = new Map(slots.map((s) => [s.id, s]))
     const slotOf = new Map(assignments.data.map((a) => [a.id, slotById.get(a.slotId)]))
+    const personById = new Map(people.data.map((p) => [p.id, p]))
 
     return jars.data
       .filter((j) => j.locationId === locationId)
@@ -131,10 +172,10 @@ export function LocationScreen(): ReactNode {
                 last!.endMin,
               )}`
 
-        return { jar, when }
+        return { jar, when, holder: jar.personId ? personById.get(jar.personId) ?? null : null }
       })
       .sort((a, b) => b.jar.countedAt - a.jar.countedAt)
-  }, [jars.data, assignments.data, slots, locationId])
+  }, [jars.data, assignments.data, people.data, slots, locationId])
 
   /** This event's takings and what an hour there was worth. */
   const metrics = useMemo(() => {
@@ -217,7 +258,11 @@ export function LocationScreen(): ReactNode {
     )
   }
 
-  const worked = shifts.filter((s) => s.assignment.status === 'checkedIn').length
+  // Counted over runs for the same reason the table lists them: an hourly count of
+  // arrivals against a run count of shifts puts more people checked in than booked.
+  const worked = runs.filter(
+    (run) => runState(run.items.map((i) => i.row.assignment)).attendance === 'arrived',
+  ).length
   const openDays = DAYS.filter((d) => isOpenOn(location.openHours, d))
 
   return (
@@ -234,7 +279,12 @@ export function LocationScreen(): ReactNode {
         // Just the pin: the question here is where this place is, not how to reach it from
         // anywhere in particular.
         <MapModal
-          place={{ name: location.name, address: location.address, mapsUrl: mapLink(location) }}
+          place={{
+            name: location.name,
+            address: location.address,
+            mapsUrl: mapLink(location),
+            comments: location.comments,
+          }}
           base={null}
           onClose={() => setShowMap(false)}
         />
@@ -540,7 +590,7 @@ export function LocationScreen(): ReactNode {
         ) : (
           <>
             <p className="small muted" style={{ marginTop: 0 }}>
-              {shifts.length} shift{shifts.length === 1 ? '' : 's'}, {worked} checked in.
+              {runs.length} shift{runs.length === 1 ? '' : 's'}, {worked} checked in.
             </p>
             <div className="table-wrap">
               <table>
@@ -552,18 +602,34 @@ export function LocationScreen(): ReactNode {
                   </tr>
                 </thead>
                 <tbody>
-                  {shifts.map(({ assignment, slot, person }) => (
-                    <tr key={assignment.id}>
-                      <td className="small nowrap">
-                        {slot ? `${DAY_SHORT[slot.day]} ${slot.label}` : assignment.slotId}
-                      </td>
-                      <td>
-                        <PersonLink person={person} personId={assignment.personId} />{' '}
-                        {person && <SectionPill section={person.section} />}
-                      </td>
-                      <td className="small muted">{assignment.status}</td>
-                    </tr>
-                  ))}
+                  {runs.map((run) => {
+                    const { assignment, slot, person } = run.items[0]!.row
+                    const state = runState(run.items.map((i) => i.row.assignment))
+                    return (
+                      <tr key={assignment.id}>
+                        <td className="small nowrap">
+                          {slot
+                            ? `${DAY_SHORT[slot.day]} ${runSpan(run, slot.label)}`
+                            : assignment.slotId}
+                        </td>
+                        <td>
+                          <PersonLink person={person} personId={assignment.personId} />{' '}
+                          {person && <SectionPill section={person.section} />}
+                        </td>
+                        {/*
+                          One word for the stretch. Before the arrival there is nothing to
+                          aggregate, so it keeps saying what the booking says.
+                        */}
+                        <td className="small muted">
+                          {state.attendance === 'arrived'
+                            ? 'checked in'
+                            : state.attendance === 'absent'
+                              ? 'no-show'
+                              : assignment.status}
+                        </td>
+                      </tr>
+                    )
+                  })}
                 </tbody>
               </table>
             </div>
@@ -580,12 +646,13 @@ export function LocationScreen(): ReactNode {
                 <tr>
                   <th>Jar</th>
                   <th>When</th>
+                  <th>Who</th>
                   <th className="right">Amount</th>
                   <th>Method</th>
                 </tr>
               </thead>
               <tbody>
-                {theirJars.map(({ jar, when }) => (
+                {theirJars.map(({ jar, when, holder }) => (
                   <tr key={jar.id}>
                     <td className="small">
                       {jar.jarNumber === null ? (
@@ -604,6 +671,19 @@ export function LocationScreen(): ReactNode {
                       {jar.note && <div className="muted">{jar.note}</div>}
                     </td>
                     <td className="small muted nowrap">{when}</td>
+                    {/*
+                      Who carried it. A row of takings with no name on it is the one thing
+                      nobody can follow up: a jar $40 light needs the person who had it, and
+                      the answer was already on the jar. Blank for money recorded by hand,
+                      which belonged to the table rather than to anybody.
+                    */}
+                    <td className="small">
+                      {jar.personId ? (
+                        <PersonLink person={holder} personId={jar.personId} />
+                      ) : (
+                        <span className="muted">—</span>
+                      )}
+                    </td>
                     <td className="right">
                       {isCounted(jar) ? (
                         <Money value={jar.amount} />

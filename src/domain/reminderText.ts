@@ -93,7 +93,12 @@ function block(youth: RecipientYouth, several: boolean): string {
   const lines: string[] = []
   if (several) lines.push(`${youth.person.firstName}:`)
 
-  // When, and not where. See the note at the top of the file.
+  /*
+    When, and not where. See the note at the top of the file.
+
+    Each line is already a whole stretch: consecutive shifts at one shop were joined when the
+    audience was built, which is where the shop is known. Nothing here has ever seen one.
+  */
   for (const shift of youth.shifts) {
     lines.push(`  ${shift.day} ${shift.slotLabel}`)
   }
