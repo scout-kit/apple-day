@@ -78,6 +78,9 @@ export const missingConfig: string[] = useEmulator
       .filter(([, value]) => !value)
       .map(([name]) => name)
 
+/** Which project this build talks to. On an export, so a restore into the wrong one shows. */
+export const PROJECT_ID = config.projectId
+
 export const app = initializeApp(config)
 
 export const db = initializeFirestore(app, {

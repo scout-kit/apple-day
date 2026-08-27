@@ -927,3 +927,43 @@ describe('money going out', () => {
     )
   })
 })
+
+describe('restoring a year from a file', () => {
+  /*
+    The only way back from a mistake on the free plan, so it is worth knowing the rules do
+    not stop half of it. A restore writes the shops and sections the year names, the event
+    itself, its records, and the passes so links already handed out still work — and those
+    sit behind four different rules.
+  */
+  it('lets an admin write every part of one', async () => {
+    const db = asAdmin()
+    await assertSucceeds(setDoc(doc(db, 'sections', 'cubs'), { name: 'Cubs', order: 2 }))
+    await assertSucceeds(setDoc(doc(db, 'locations', 'restored'), { name: 'A shop' }))
+    await assertSucceeds(setDoc(doc(db, 'events', '2024'), { year: 2024, name: 'Apple Day 2024' }))
+    await assertSucceeds(
+      setDoc(doc(db, 'events', '2024', 'people', 'p-1'), { firstName: 'Alex' }),
+    )
+    await assertSucceeds(
+      setDoc(doc(db, 'passes', 'tok-restored'), { eventId: '2024', personId: 'p-1' }),
+    )
+  })
+
+  it('refuses an organizer the parts that are an admin’s', async () => {
+    // Creating a year and touching the sections are admin work, so a restore is too.
+    await assertFails(
+      setDoc(doc(asOrganizer(), 'events', '2024'), { year: 2024, name: 'Apple Day 2024' }),
+    )
+    await assertFails(
+      setDoc(doc(asOrganizer(), 'sections', 'cubs'), { name: 'Renamed' }, { merge: true }),
+    )
+  })
+
+  it('refuses a viewer all of it', async () => {
+    await assertFails(
+      setDoc(doc(asViewer(), 'events', '2024'), { year: 2024, name: 'Apple Day 2024' }),
+    )
+    await assertFails(
+      setDoc(doc(asViewer(), 'passes', 'tok-restored'), { eventId: '2024', personId: 'p-1' }),
+    )
+  })
+})

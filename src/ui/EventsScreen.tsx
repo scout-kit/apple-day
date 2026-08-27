@@ -24,6 +24,15 @@ import {
   holdsAnything,
 } from '../domain/eventRemoval'
 import type { EventTally } from '../domain/eventRemoval'
+import {
+  describeTransfer,
+  readTransfer,
+  restoreProblem,
+} from '../domain/eventTransfer'
+import type { EventTransfer } from '../domain/eventTransfer'
+import { downloadFile } from '../lib/csv'
+import { exportEvent, restoreEvent } from '../lib/eventTransfer'
+import { PROJECT_ID } from '../lib/firebase'
 import { canAddEvent, canEditEvent, useSession } from '../lib/session'
 import { Modal } from './Modal'
 
@@ -44,6 +53,63 @@ export function EventsScreen(): ReactNode {
   const mayEdit = canEditEvent(role)
   // Starting a year, and ending one, stay with whoever is accountable for the record.
   const mayAdd = canAddEvent(role)
+  const [exporting, setExporting] = useState<string | null>(null)
+  const [restoring, setRestoring] = useState<{ file: EventTransfer; what: string[] } | null>(null)
+
+  /**
+   * A year in a file, for putting back later or carrying to another project.
+   *
+   * Named for the event and the day it was taken, because the question asked of a folder of
+   * these is always "which one is the good one".
+   */
+  const download = async (event: AppleDayEvent): Promise<void> => {
+    setExporting(event.id)
+    setNote(null)
+    try {
+      const file = await exportEvent(event, PROJECT_ID)
+      const day = new Date().toISOString().slice(0, 10)
+      downloadFile(
+        `apple-day-${event.id}-${day}.json`,
+        JSON.stringify(file, null, 2),
+        'application/json',
+      )
+      setNote(`Exported ${event.name || event.id}. Keep it somewhere safe — it has names and contact details in it.`)
+    } catch (error) {
+      setNote((error as Error).message)
+    } finally {
+      setExporting(null)
+    }
+  }
+
+  const chooseFile = async (chosen: File | undefined): Promise<void> => {
+    if (!chosen) return
+    setNote(null)
+    const read = readTransfer(await chosen.text())
+    if ('problem' in read) {
+      setNote(read.problem)
+      return
+    }
+    const stop = restoreProblem(read.file, events.map((e) => e.id))
+    if (stop) {
+      setNote(stop)
+      return
+    }
+    setRestoring({ file: read.file, what: describeTransfer(read.file) })
+  }
+
+  const doRestore = async (): Promise<void> => {
+    if (!restoring) return
+    setBusy(true)
+    try {
+      await restoreEvent(restoring.file)
+      setNote(`Restored ${restoring.file.event.name || restoring.file.event.id}.`)
+      setRestoring(null)
+    } catch (error) {
+      setNote((error as Error).message)
+    } finally {
+      setBusy(false)
+    }
+  }
 
   const { events, event, loading, error, createEvent, saveEvent } = useEvent()
   const library = useLocationLibrary()
@@ -231,6 +297,26 @@ export function EventsScreen(): ReactNode {
               New event
             </button>
           )}
+          {/*
+            Beside New event, because that is what it is: a year arriving, from a file
+            instead of from scratch. Also how a year built in staging is carried into the
+            real project rather than typed again.
+          */}
+          {mayAdd && (
+            <label className="btn tiny" style={{ cursor: 'pointer' }}>
+              Restore from a file
+              <input
+                type="file"
+                accept="application/json,.json"
+                style={{ display: 'none' }}
+                onChange={(e) => {
+                  void chooseFile(e.target.files?.[0])
+                  // Cleared so choosing the same file twice still fires.
+                  e.target.value = ''
+                }}
+              />
+            </label>
+          )}
         </div>
         {events.length === 0 ? (
           <p className="muted">
@@ -303,6 +389,21 @@ export function EventsScreen(): ReactNode {
                         {mayEdit && (
                           <button className="tiny" onClick={() => setEditing(e)}>
                             Edit
+                          </button>
+                        )}
+                        {/*
+                          The only way back from a mistake. An admin pressing Delete takes
+                          this year's people, shifts and jars with it, and the free plan has
+                          no scheduled export to fall back on — so the backup is the one
+                          somebody takes.
+                        */}
+                        {mayAdd && (
+                          <button
+                            className="tiny"
+                            disabled={exporting === e.id}
+                            onClick={() => void download(e)}
+                          >
+                            {exporting === e.id ? 'Gathering…' : 'Export'}
                           </button>
                         )}
                         {/* Admin only, and the only thing here that nothing else can undo. */}
@@ -382,6 +483,42 @@ export function EventsScreen(): ReactNode {
 
             {draftProblem && <div className="note error">{draftProblem}</div>}
           </div>
+        </Modal>
+      )}
+
+      {restoring && (
+        <Modal
+          title={`Restore ${restoring.file.event.name || restoring.file.event.id}?`}
+          onClose={() => setRestoring(null)}
+          footer={
+            <>
+              <button onClick={() => setRestoring(null)} disabled={busy}>
+                Cancel
+              </button>
+              <button className="primary" disabled={busy} onClick={() => void doRestore()}>
+                {busy ? 'Restoring…' : 'Restore it'}
+              </button>
+            </>
+          }
+        >
+          {/*
+            What is in the file, in the words somebody deciding whether to trust it would
+            use. "412 documents" tells nobody whether this is the right one.
+          */}
+          <p>
+            {restoring.what.length > 0 ? restoring.what.join(' · ') : 'Nothing but the event itself.'}
+          </p>
+          <p className="small muted">
+            Taken from <strong>{restoring.file.fromProject || 'an unnamed project'}</strong> on{' '}
+            {new Date(restoring.file.exportedAt).toLocaleDateString('en-CA', {
+              dateStyle: 'medium',
+            })}
+            .
+          </p>
+          <p className="small muted">
+            Shops and sections it names are written too, so the board is not full of unknown
+            places. Nothing already here is removed.
+          </p>
         </Modal>
       )}
 

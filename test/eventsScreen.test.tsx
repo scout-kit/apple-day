@@ -42,6 +42,14 @@ let events: AppleDayEvent[] = []
 /** The tier the screen is being viewed at. Set per test. */
 let viewerRole = 'admin'
 
+// Reached through the export, which stamps the file with the project it came from.
+vi.mock('../src/lib/firebase', () => ({ db: {}, auth: {}, missingConfig: [], PROJECT_ID: 'test' }))
+
+vi.mock('../src/lib/eventTransfer', () => ({
+  exportEvent: vi.fn(async () => ({ format: 'apple-day/event@1' })),
+  restoreEvent: vi.fn(async () => undefined),
+}))
+
 vi.mock('../src/lib/session', () => ({
   useSession: () => ({ user: { uid: 'admin-uid' }, role: viewerRole }),
   runsTheEvent: (role: string) => role === 'admin' || role === 'organizer',
