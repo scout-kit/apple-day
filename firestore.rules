@@ -593,7 +593,22 @@ service cloud.firestore {
           && request.resource.data.sentAt < request.time.toMillis() + 24 * 60 * 60 * 1000;
 
         // Never. A record that can be edited is not one.
-        allow update, delete: if false;
+        allow update: if false;
+        /*
+          Removable only as part of removing the year.
+
+          Append-only stops the ledger being tidied away by the people who send from it: an
+          organizer cannot make "was this parent told" unanswerable, and cannot clear the
+          record that stops a second click sending a second copy. Neither of those is about
+          the year itself being deleted, which is an admin's decision, takes every person the
+          records name with it, and is on the audit log with a name against it.
+
+          It also has to be possible. Firestore does not cascade, so removing an event walks
+          every subcollection — and one that will not let go fails the whole batch, which
+          left "delete this event" stopping dead with a permissions error and no way to tell
+          which collection refused.
+        */
+        allow delete: if isAdmin();
       }
 
       match /swapRequests/{requestId} {

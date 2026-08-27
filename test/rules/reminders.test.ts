@@ -41,6 +41,7 @@ beforeEach(async () => {
   })
 })
 
+const asAdmin = () => testEnv.authenticatedContext(ADMIN).firestore()
 const asOrganizer = () => testEnv.authenticatedContext(ORGANIZER).firestore()
 const asOutsider = () => testEnv.authenticatedContext(OUTSIDER).firestore()
 const anon = () => testEnv.unauthenticatedContext().firestore()
@@ -122,12 +123,27 @@ describe('once it is written down', () => {
     await assertFails(setDoc(at(asOrganizer()), record({ channel: 'csv' })))
   })
 
-  it('cannot be removed', async () => {
+  it('cannot be removed by whoever sends from it', async () => {
     /*
       This is what stops a second click sending a second copy. A record that could be
-      deleted would let somebody clear the way for a duplicate without meaning to.
+      deleted would let somebody clear the way for a duplicate without meaning to — and
+      would make "was this parent actually told" unanswerable by the people it is asked of.
     */
     await assertFails(deleteDoc(at(asOrganizer())))
+  })
+
+  it('goes when an admin removes the year it belongs to', async () => {
+    /*
+      Append-only is about the people who send from it, not about the year ceasing to exist.
+      Removing an event takes every person these records name, is an admin's decision, and is
+      on the audit log with a name against it.
+
+      It also has to be possible: Firestore does not cascade, so the removal walks every
+      subcollection, and one that would not let go failed the whole batch — "delete this
+      event" stopped dead with a permissions error and nothing saying which collection
+      refused.
+    */
+    await assertSucceeds(deleteDoc(at(asAdmin())))
   })
 
   it('can be read by anybody running the event', async () => {

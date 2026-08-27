@@ -3,6 +3,7 @@ import { assertFails, assertSucceeds, initializeTestEnvironment } from '@firebas
 import type { RulesTestEnvironment } from '@firebase/rules-unit-testing'
 import { collection, deleteDoc, doc, getDoc, getDocs, setDoc } from 'firebase/firestore'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
+import { EVENT_SUBCOLLECTIONS } from '../../src/domain/eventRemoval'
 import { RULES_PROJECT_ID } from './projectId'
 
 /**
@@ -757,6 +758,35 @@ describe('removing an event', () => {
     // The walk deletes children first; every one of those needs to be permitted too.
     await assertSucceeds(deleteDoc(doc(asAdmin(), 'events', EVENT, 'people', 'p-gone')))
     await assertSucceeds(deleteDoc(doc(asAdmin(), 'passes', 'tok-gone')))
+  })
+
+  /*
+    Every one of them, and not a hand-picked two.
+
+    Firestore does not cascade, so the app walks `EVENT_SUBCOLLECTIONS` and deletes what it
+    finds. A collection on that list that the rules will not let go of fails the batch it is
+    in — and since the walk collects everything first, nothing is deleted at all: removing a
+    year stops dead with a permissions error and no indication of which collection said no.
+
+    Which is what `reminders` did. It is append-only on purpose, so nobody can tidy away
+    whether a parent was told — and that purpose has nothing to say about the year itself
+    being removed, which is an admin's decision and is on the audit log with a name against
+    it. Two tests, one per collection, said nothing about the other eight.
+  */
+  it.each(EVENT_SUBCOLLECTIONS)('lets an admin read what is in %s', async (name) => {
+    /*
+      The other half of the same walk. Working out what a removal would take reads every
+      subcollection, and so does an export — and a collection with no rule behind it fell to
+      the catch-all deny, which is how exporting a year failed for an admin.
+    */
+    await assertSucceeds(getDocs(collection(asAdmin(), 'events', EVENT, name)))
+  })
+
+  it.each(EVENT_SUBCOLLECTIONS)('lets an admin delete what is in %s', async (name) => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), 'events', EVENT, name, 'doomed'), { any: 'thing' })
+    })
+    await assertSucceeds(deleteDoc(doc(asAdmin(), 'events', EVENT, name, 'doomed')))
   })
 
   it('cannot take the audit trail with it', async () => {
