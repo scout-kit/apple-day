@@ -25,11 +25,20 @@ import {
 } from '../domain/eventRemoval'
 import type { EventTally } from '../domain/eventRemoval'
 import {
+  closingCost,
+  confirmsClosing,
+  describeClosing,
+  isFinished,
+  worthFinishing,
+} from '../domain/closing'
+import type { ClosingCost } from '../domain/closing'
+import {
   describeTransfer,
   readTransfer,
   restoreProblem,
 } from '../domain/eventTransfer'
 import type { EventTransfer } from '../domain/eventTransfer'
+import { finishEvent, gatherClosing, reopenEvent } from '../lib/closing'
 import { downloadFile } from '../lib/csv'
 import { exportEvent, restoreEvent } from '../lib/eventTransfer'
 import { PROJECT_ID } from '../lib/firebase'
@@ -123,6 +132,17 @@ export function EventsScreen(): ReactNode {
   const [removing, setRemoving] = useState<{ event: AppleDayEvent; tally: EventTally } | null>(
     null,
   )
+  /**
+   * The year somebody is being asked to close out, once what it holds has been counted.
+   *
+   * Separate from `removing` rather than one dialog with a mode: the two are different
+   * decisions — one ends a year, the other erases it — and sharing the state is how a
+   * confirmation ends up wired to the wrong verb.
+   */
+  const [finishing, setFinishing] = useState<
+    { event: AppleDayEvent; cost: ClosingCost; gathered: Awaited<ReturnType<typeof gatherClosing>> } | null
+  >(null)
+  const [reopening, setReopening] = useState<AppleDayEvent | null>(null)
   const [typed, setTyped] = useState('')
   const [busy, setBusy] = useState(false)
   const [note, setNote] = useState<string | null>(null)
@@ -216,6 +236,65 @@ export function EventsScreen(): ReactNode {
       setBusy(false)
     }
   }
+  /*
+    Closing out a year.
+
+    Counted before it is offered, for the same reason a removal is: "38 links and 52
+    parents' contact details" is what makes somebody check they took the export first, and
+    "this cannot be undone" on its own is a sentence people click past.
+  */
+  const askFinish = async (target: AppleDayEvent): Promise<void> => {
+    setNote(null)
+    setTyped('')
+    setBusy(true)
+    try {
+      const gathered = await gatherClosing(target.id)
+      setFinishing({
+        event: target,
+        cost: closingCost(gathered.passTokens, gathered.people),
+        gathered,
+      })
+    } catch (e) {
+      setNote(e instanceof Error ? e.message : String(e))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const doFinish = async (): Promise<void> => {
+    if (!finishing) return
+    setBusy(true)
+    try {
+      const cost = await finishEvent(
+        finishing.event,
+        finishing.gathered.people,
+        finishing.gathered.passTokens,
+      )
+      setNote(
+        `Finished ${finishing.event.name || finishing.event.id}. ${describeClosing(cost).join(' and ') || 'Nothing was left to clear'} — gone.`,
+      )
+      setFinishing(null)
+    } catch (e) {
+      setNote(e instanceof Error ? e.message : String(e))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const doReopen = async (): Promise<void> => {
+    if (!reopening) return
+    setBusy(true)
+    try {
+      await reopenEvent(reopening)
+      setNote(`Reopened ${reopening.name || reopening.id}. The passes and contact details stay gone.`)
+      setReopening(null)
+    } catch (e) {
+      setNote(e instanceof Error ? e.message : String(e))
+    } finally {
+      setBusy(false)
+    }
+  }
+
   const currentSettings = useEventLocations()
 
   /**
@@ -365,6 +444,13 @@ export function EventsScreen(): ReactNode {
                           open
                         </span>
                       )}
+                      {/* Said on the row, because it changes what the year will do: no
+                          publishing, no links, and no way to reach a parent. */}
+                      {isFinished(e) && (
+                        <span className="pill" style={{ marginLeft: '0.4rem' }}>
+                          finished
+                        </span>
+                      )}
                       <div className="small muted mono">/e/{eventLinkFor(e)}</div>
                     </td>
                     <td className="small muted nowrap">
@@ -423,6 +509,26 @@ export function EventsScreen(): ReactNode {
                             onClick={() => void download(e)}
                           >
                             {exporting === e.id ? 'Gathering…' : 'Export'}
+                          </button>
+                        )}
+                        {/*
+                          Ending the year, which is a different thing from deleting it: the
+                          record stays and what the record does not need goes. Offered while
+                          there is something left to clear, and then replaced by the way back
+                          — which returns the stamp and nothing else.
+                        */}
+                        {mayAdd && !isFinished(e) && (
+                          <button
+                            className="tiny"
+                            disabled={busy}
+                            onClick={() => void askFinish(e)}
+                          >
+                            Finish
+                          </button>
+                        )}
+                        {mayAdd && isFinished(e) && (
+                          <button className="tiny" disabled={busy} onClick={() => setReopening(e)}>
+                            Reopen
                           </button>
                         )}
                         {/* Admin only, and the only thing here that nothing else can undo. */}
@@ -538,6 +644,116 @@ export function EventsScreen(): ReactNode {
             Shops and sections it names are written too, so the board is not full of unknown
             places. Nothing already here is removed.
           </p>
+        </Modal>
+      )}
+
+      {finishing && (
+        /*
+          What the year stops holding, counted, and typed back before any of it goes.
+
+          The same gesture as a removal because it is the same kind of decision — nothing
+          here can undo it — and a different colour, because this one is the responsible
+          thing to do at the end of a year rather than the drastic one.
+        */
+        <Modal
+          title={`Finish ${finishing.event.name || finishing.event.id}?`}
+          onClose={() => setFinishing(null)}
+          footer={
+            <>
+              <button onClick={() => setFinishing(null)} disabled={busy}>
+                Cancel
+              </button>
+              <button
+                className="primary"
+                disabled={busy || !confirmsClosing(typed, finishing.event.name)}
+                onClick={() => void doFinish()}
+              >
+                {busy ? 'Finishing…' : 'Finish it'}
+              </button>
+            </>
+          }
+        >
+          <div className="stack">
+            {worthFinishing(finishing.cost) ? (
+              <div>
+                <strong className="small">This clears</strong>
+                <ul className="shift-list">
+                  {describeClosing(finishing.cost).map((line) => (
+                    <li key={line}>
+                      <span className="small">{line}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : (
+              <p className="small" style={{ margin: 0 }}>
+                There is nothing left to clear — no volunteer links, and no contact details
+                on anybody. Finishing it only records that the year is over.
+              </p>
+            )}
+
+            {/*
+              What stays, said as plainly as what goes. Somebody deciding whether to press
+              this is deciding whether they can still answer a question about the year in
+              three years' time, and the answer is yes.
+            */}
+            <p className="small" style={{ margin: 0 }}>
+              Everything the year was worth stays: the shifts, the jars, the money, and every
+              volunteer's name and section — so this year's Calvin is still tellable from the
+              last three. What goes is what was only ever there to run the day.
+            </p>
+            <p className="small muted" style={{ margin: 0 }}>
+              A volunteer link is readable by anybody holding it, with no account, and nothing
+              expired one — so a page forwarded to a family group chat answers for as long as
+              it exists. The schedule cannot be published again afterwards, since publishing
+              would write a fresh set of them.
+            </p>
+            <p className="small muted" style={{ margin: 0 }}>
+              Take the export first if you want a copy. Nothing here can put any of this back.
+            </p>
+
+            <label>
+              Type <strong>{finishing.event.name}</strong> to confirm
+              <input
+                value={typed}
+                onChange={(e) => setTyped(e.target.value)}
+                placeholder={finishing.event.name}
+                aria-label="Type the event name to confirm"
+              />
+            </label>
+          </div>
+        </Modal>
+      )}
+
+      {reopening && (
+        <Modal
+          title={`Reopen ${reopening.name || reopening.id}?`}
+          onClose={() => setReopening(null)}
+          footer={
+            <>
+              <button onClick={() => setReopening(null)} disabled={busy}>
+                Cancel
+              </button>
+              <button className="primary" disabled={busy} onClick={() => void doReopen()}>
+                {busy ? 'Reopening…' : 'Reopen it'}
+              </button>
+            </>
+          }
+        >
+          <div className="stack">
+            <p className="small" style={{ margin: 0 }}>
+              The year can be published again, which will hand out new links.
+            </p>
+            {/*
+              The half that does not come back, said before rather than found out after: the
+              reason somebody reaches for this is usually that they did not mean to finish it.
+            */}
+            <p className="small muted" style={{ margin: 0 }}>
+              The links that were deleted stay deleted, and the parents' names, emails and
+              phone numbers stay cleared. Reopening returns nothing but the ability to publish
+              — reminders have no addresses left to send to.
+            </p>
+          </div>
         </Modal>
       )}
 

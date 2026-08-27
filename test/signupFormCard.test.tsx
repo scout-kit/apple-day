@@ -45,6 +45,7 @@ const EVENT: AppleDayEvent = {
   supportNote: '',
   arrivalNote: '',
   baseLocationId: null,
+  finishedAt: null,
   schedule: {
     fri: { startMin: 17 * 60, endMin: 21 * 60 },
     sat: { startMin: 9 * 60, endMin: 15 * 60 },

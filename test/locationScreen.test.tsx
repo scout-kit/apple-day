@@ -125,7 +125,7 @@ const twoYears = () => {
   const event = (id: string, year: number) => ({
     id, name: `Apple Day ${year}`, slug: '', year,
     fridayDate: `${year}-10-02`, saturdayDate: `${year}-10-03`,
-    support: [], supportNote: '', arrivalNote: '', baseLocationId: null,
+    support: [], supportNote: '', arrivalNote: '', baseLocationId: null, finishedAt: null,
     status: 'closed' as const, shiftMode: 'shifts' as const, shiftMinutes: 60,
     overlapMinutes: 0, schedule: { fri: { startMin: 17 * 60, endMin: 19 * 60 } },
   })

@@ -368,6 +368,14 @@ export interface AppleDayEvent {
    * starts every 45.
    */
   overlapMinutes: number
+  /**
+   * When the year was closed out, or null while it is still running.
+   *
+   * A stamp rather than a flag, because "when did we finish 2026" is asked and a boolean
+   * cannot answer it. See `domain/closing`: finishing deletes the passes and clears the
+   * parents' contact details, neither of which comes back.
+   */
+  finishedAt: number | null
 }
 
 /**

@@ -68,6 +68,9 @@ export function readEvent(id: string, d: Record<string, unknown>): AppleDayEvent
     supportNote: typeof d.supportNote === 'string' ? d.supportNote.trim() : '',
     arrivalNote: typeof d.arrivalNote === 'string' ? d.arrivalNote.trim() : '',
     baseLocationId: typeof d.baseLocationId === 'string' ? d.baseLocationId : null,
+    // Absent on every event written before finishing existed, which is what "still running"
+    // reads as — and the right answer for all of them.
+    finishedAt: typeof d.finishedAt === 'number' && d.finishedAt > 0 ? d.finishedAt : null,
     shiftMode: d.shiftMode === 'wholeDay' ? 'wholeDay' : 'shifts',
     shiftMinutes:
       typeof d.shiftMinutes === 'number' && d.shiftMinutes >= 5
@@ -175,6 +178,7 @@ export function blankEvent(
     supportNote: '',
     arrivalNote: '',
     baseLocationId: null,
+    finishedAt: null,
     /*
       Copied a level down, not spread. The windows are objects, and a shallow copy hands
       every draft the same ones — so editing Saturday's hours on a new event would edit the

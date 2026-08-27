@@ -43,6 +43,7 @@ const event = (id: string, over: Partial<AppleDayEvent> = {}): AppleDayEvent => 
   supportNote: '',
   arrivalNote: '',
   baseLocationId: null,
+  finishedAt: null,
   shiftMode: 'shifts',
   shiftMinutes: 60,
   overlapMinutes: 0,

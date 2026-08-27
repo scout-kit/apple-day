@@ -77,7 +77,8 @@ const SLOTS: Slot[] = [
 const event = (id: string, year: number): AppleDayEvent => ({
   id, name: `Apple Day ${year}`, slug: '', year,
   fridayDate: `${year}-10-02`, saturdayDate: `${year}-10-03`,
-  support: [], supportNote: '', arrivalNote: '', baseLocationId: null,  shiftMode: 'shifts', shiftMinutes: 60, overlapMinutes: 0,
+  support: [], supportNote: '', arrivalNote: '', baseLocationId: null, finishedAt: null,
+  shiftMode: 'shifts', shiftMinutes: 60, overlapMinutes: 0,
   schedule: { fri: { startMin: 17 * 60, endMin: 19 * 60 } },
 })
 

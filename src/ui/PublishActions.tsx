@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
+import { canPublish } from '../domain/closing'
 import { unpublishCaution, unpublishCost } from '../domain/unpublish'
 import { useEvent } from '../lib/eventContext'
 import { publish, unpublish } from '../lib/publish'
@@ -105,6 +106,26 @@ export function PublishActions(): ReactNode {
     } finally {
       setPublishing(false)
     }
+  }
+
+  /*
+    A finished year is not published again.
+
+    Publishing would mint a fresh set of the documents finishing existed to delete, for
+    people whose parents can no longer be told — the addresses a reminder would use are
+    among the things that went. Said here rather than left as a button that works: this is
+    the screen somebody is on when they wonder why the schedule is not out.
+  */
+  if (!canPublish(event ?? null)) {
+    return (
+      <div className="no-print" style={{ marginTop: '0.6rem' }}>
+        <div className="note">
+          This year is finished, so the schedule is not published again — the volunteer links
+          were deleted and the contact details cleared. An admin can reopen it on the Events
+          screen, which hands out new links.
+        </div>
+      </div>
+    )
   }
 
   return (

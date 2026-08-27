@@ -26,6 +26,7 @@ const EVENT: AppleDayEvent = {
   supportNote: '',
   arrivalNote: '',
   baseLocationId: null,
+  finishedAt: null,
   schedule: {
     fri: { startMin: 17 * 60, endMin: 21 * 60 },
     sat: { startMin: 7 * 60, endMin: 15 * 60 },
@@ -86,6 +87,17 @@ vi.mock('../src/lib/eventContext', async () => {
 let tally: Record<string, number> = {}
 const removeEvent = vi.fn()
 
+/** What finishing the year would clear, and the calls it makes. */
+let gathered = { people: [] as unknown[], passTokens: [] as string[] }
+const finishEvent = vi.fn()
+const reopenEvent = vi.fn()
+
+vi.mock('../src/lib/closing', () => ({
+  gatherClosing: async () => gathered,
+  finishEvent: (...a: unknown[]) => finishEvent(...a),
+  reopenEvent: (...a: unknown[]) => reopenEvent(...a),
+}))
+
 vi.mock('../src/lib/repo', () => ({
   copyEventLocations: vi.fn(),
   useEventLocations: () => ({ data: [], loading: false, error: null }),
@@ -98,6 +110,20 @@ const { EventsScreen } = await import('../src/ui/EventsScreen')
 
 beforeEach(() => {
   tally = { people: 3, assignments: 2, jars: 1, passes: 2 }
+  gathered = {
+    passTokens: ['tok-a', 'tok-b'],
+    people: [
+      {
+        id: 'p1', firstName: 'Calvin', lastName: 'Osei', section: 'cubs',
+        parentName: 'Ada Osei', parentEmail: 'ada@example.org', parentPhone: '519-555-0100',
+        pairWithPersonId: null,
+      },
+    ],
+  }
+  finishEvent.mockReset()
+  finishEvent.mockResolvedValue({ passes: 2, contacts: 1 })
+  reopenEvent.mockReset()
+  reopenEvent.mockResolvedValue(undefined)
   removeEvent.mockReset()
   removeEvent.mockResolvedValue(undefined)
   viewerRole = 'admin'
@@ -806,5 +832,105 @@ describe('keeping a copy of a year', () => {
   it('offers an export beside each year', () => {
     render(<EventsScreen />)
     expect(screen.getAllByRole('button', { name: 'Export' }).length).toBeGreaterThan(0)
+  })
+})
+
+/**
+ * Closing out a year.
+ *
+ * A pass is readable by anybody holding its token, with no account and no expiry, and a
+ * parent's phone number was collected so somebody could be rung on a day that is over. This
+ * is where both stop being held — and it is not the same button as Delete, which takes the
+ * year itself.
+ */
+describe('finishing a year', () => {
+  const openFinish = async (): Promise<void> => {
+    render(<EventsScreen />)
+    await userEvent.click(screen.getByRole('button', { name: 'Finish' }))
+    await waitFor(() => expect(screen.getByRole('dialog')).toBeTruthy())
+  }
+
+  it('counts what it will clear rather than saying it cannot be undone', async () => {
+    await openFinish()
+    const dialog = screen.getByRole('dialog')
+    expect(within(dialog).getByText('2 volunteer links')).toBeTruthy()
+    expect(within(dialog).getByText("1 parent's name, email and phone")).toBeTruthy()
+  })
+
+  it('says what stays, which is the part somebody is deciding about', async () => {
+    await openFinish()
+    expect(within(screen.getByRole('dialog')).getByText(/name and section/)).toBeTruthy()
+  })
+
+  it('will not go until the year is typed back', async () => {
+    await openFinish()
+    const go = screen.getByRole('button', { name: 'Finish it' }) as HTMLButtonElement
+    expect(go.disabled).toBe(true)
+
+    fireEvent.change(screen.getByLabelText('Type the event name to confirm'), {
+      target: { value: 'Apple Day 2026' },
+    })
+    expect((screen.getByRole('button', { name: 'Finish it' }) as HTMLButtonElement).disabled).toBe(
+      false,
+    )
+  })
+
+  it('clears the passes and the contact details it gathered', async () => {
+    await openFinish()
+    fireEvent.change(screen.getByLabelText('Type the event name to confirm'), {
+      target: { value: 'Apple Day 2026' },
+    })
+    await userEvent.click(screen.getByRole('button', { name: 'Finish it' }))
+
+    await waitFor(() => expect(finishEvent).toHaveBeenCalledTimes(1))
+    const [, people, tokens] = finishEvent.mock.calls[0]!
+    expect(tokens).toEqual(['tok-a', 'tok-b'])
+    expect((people as { id: string }[]).map((x) => x.id)).toEqual(['p1'])
+  })
+
+  it('says plainly when a year has nothing left to clear', async () => {
+    // A warning about data that is not there teaches people the warning is noise.
+    gathered = { people: [], passTokens: [] }
+    await openFinish()
+    expect(within(screen.getByRole('dialog')).getByText(/nothing left to clear/)).toBeTruthy()
+  })
+
+  it('is not offered to an organizer', async () => {
+    // The same line as Delete: ending a year is for whoever is accountable for the record.
+    viewerRole = 'organizer'
+    render(<EventsScreen />)
+    expect(screen.queryByRole('button', { name: 'Finish' })).toBeNull()
+  })
+})
+
+describe('a year that has been finished', () => {
+  beforeEach(() => {
+    events = [{ ...EVENT, finishedAt: 1_700_000_000_000, schedule: { ...EVENT.schedule } }]
+  })
+
+  it('says so on its row', async () => {
+    render(<EventsScreen />)
+    expect(screen.getByText('finished')).toBeTruthy()
+  })
+
+  it('offers the way back instead of finishing again', async () => {
+    render(<EventsScreen />)
+    expect(screen.queryByRole('button', { name: 'Finish' })).toBeNull()
+    expect(screen.getByRole('button', { name: 'Reopen' })).toBeTruthy()
+  })
+
+  it('says what reopening does not bring back', async () => {
+    render(<EventsScreen />)
+    await userEvent.click(screen.getByRole('button', { name: 'Reopen' }))
+    const dialog = screen.getByRole('dialog')
+    expect(within(dialog).getByText(/stay deleted/)).toBeTruthy()
+    expect(within(dialog).getByText(/stay cleared/)).toBeTruthy()
+  })
+
+  it('reopens it', async () => {
+    render(<EventsScreen />)
+    await userEvent.click(screen.getByRole('button', { name: 'Reopen' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Reopen it' }))
+    await waitFor(() => expect(reopenEvent).toHaveBeenCalledTimes(1))
   })
 })

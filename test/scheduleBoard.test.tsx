@@ -89,12 +89,18 @@ vi.mock('../src/lib/repo', () => ({
 }))
 
 // The board carries the publish controls now, and `publish` reaches Firebase directly.
-vi.mock('../src/lib/publish', () => ({ publish: (...a: unknown[]) => publishFn(...a) }))
+vi.mock('../src/lib/publish', () => ({
+  publish: (...a: unknown[]) => publishFn(...a),
+  unpublish: vi.fn(),
+}))
 vi.mock('../src/lib/csv', () => ({ downloadFile: vi.fn(), toCsv: vi.fn(() => '') }))
+
+/** The open event, so a finished year can be put in front of the board. */
+let boardEvent: Record<string, unknown> = { id: '2026', year: 2026, finishedAt: null }
 
 vi.mock('../src/lib/eventContext', () => ({
   useEvent: () => ({
-    event: { id: '2026', year: 2026 },
+    event: boardEvent,
     slots: SLOTS,
     // Names on these screens link to the person's page, and the link is built
     // through pathFor so it survives an event reached by its link name.
@@ -181,6 +187,7 @@ const addPerson = async (
 const OPEN_FRIDAY = { fri: { openMin: 17 * 60, closeMin: 21 * 60 }, sat: null }
 
 beforeEach(() => {
+  boardEvent = { id: '2026', year: 2026, finishedAt: null }
   forgetRememberedDay()
   resetUrl()
   assign.mockReset()
@@ -762,5 +769,36 @@ describe('showing which shops are one place to stand', () => {
     locations = locations.map((l) => ({ ...l, groupCode: '' }))
     render(<ScheduleScreen />)
     expect(document.querySelectorAll('.area-mark').length).toBe(0)
+  })
+})
+
+/**
+ * A year that has been closed out.
+ *
+ * Finishing deletes every volunteer link and clears the parents' contact details, so
+ * publishing again would mint a fresh set of the documents that existed to be deleted — for
+ * people nobody can be told about. This is the screen somebody is on when they wonder why
+ * the schedule is not going out, so it is the screen that has to say why.
+ */
+describe('publishing a finished year', () => {
+  beforeEach(() => {
+    boardEvent = { id: '2026', year: 2026, finishedAt: 1_700_000_000_000 }
+  })
+
+  it('is not offered at all', () => {
+    render(<ScheduleScreen />)
+    expect(screen.queryByRole('button', { name: 'Publish schedule' })).toBeNull()
+  })
+
+  it('says why, and where the way back is', () => {
+    render(<ScheduleScreen />)
+    expect(screen.getByText(/This year is finished/)).toBeTruthy()
+    expect(screen.getByText(/reopen it on the Events screen/)).toBeTruthy()
+  })
+
+  it('leaves the board itself alone', () => {
+    // The schedule is still worth reading — it is what the year was. Only publishing goes.
+    render(<ScheduleScreen />)
+    expect(screen.getByRole('button', { name: 'Friday' })).toBeTruthy()
   })
 })

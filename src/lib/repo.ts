@@ -150,7 +150,8 @@ function toEventLocation(id: string, d: Record<string, unknown>): EventLocation 
   }
 }
 
-function toPerson(id: string, d: Record<string, unknown>): Person {
+// Exported for the closing walk, which reads one year's people without subscribing to them.
+export function toPerson(id: string, d: Record<string, unknown>): Person {
   return {
     id,
     firstName: str(d.firstName),
