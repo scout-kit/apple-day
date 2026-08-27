@@ -4,7 +4,9 @@ import { NavLink, Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { useEvent } from './lib/eventContext'
 import { missingConfig, signInWithGoogle, signOutEverywhere } from './lib/firebase'
 import { JoinPage } from './ui/JoinPage'
+import { syncLabel, syncTitle } from './domain/syncing'
 import { useOnline } from './lib/connection'
+import { usePendingWrites } from './lib/pending'
 import { canSeeTheEvent, runsTheEvent, useSession } from './lib/session'
 import { useRequestActions } from './ui/RequestActions'
 import type { Role } from './lib/session'
@@ -346,6 +348,30 @@ export function AccountButton(): ReactNode {
   )
 }
 
+/**
+ * Says so when a write has not reached the server yet.
+ *
+ * The other half of the offline flag, and a different question: that one is about the
+ * connection, this one is about a jar. Persistence means a count taken with no bars is
+ * accepted and shown, which is right, and which made an unsent count look exactly like a
+ * sent one — so nobody at the table could tell whether to write it down as well.
+ *
+ * Beside the offline flag rather than folded into it, because a tab can be online with a
+ * queue still draining, and offline with nothing outstanding at all.
+ */
+function SyncFlag(): ReactNode {
+  const online = useOnline()
+  const state = usePendingWrites()
+  const label = syncLabel(state, online)
+  if (!label) return null
+
+  return (
+    <span className="offline-flag sync-flag" role="status" title={syncTitle(state, online)}>
+      {label}
+    </span>
+  )
+}
+
 /** Says so when the connection has gone, and what that does and does not mean. */
 function OfflineFlag(): ReactNode {
   const online = useOnline()
@@ -399,6 +425,7 @@ function Shell({ children }: { children: ReactNode }): ReactNode {
           stop being able to trust the screen — and, immediately after, that nothing they do
           in the meantime is lost.
         */}
+        <SyncFlag />
         <OfflineFlag />
         <ThemeButton />
         <AccountButton />

@@ -489,6 +489,17 @@ tbody tr:hover { background: var(--surface-2); }
   border: 1px solid var(--warn);
 }
 
+/*
+  The unsent write, which is a lesser thing than a lost connection: something is in a queue
+  rather than the board having stopped being live. Same shape, beside it in the same row, and
+  quiet — so the offline flag stays the louder of the two when both are up.
+*/
+.sync-flag {
+  background: transparent;
+  color: var(--muted);
+  border-color: var(--border);
+}
+
 /* --------------------------------------------------------------------- areas */
 
 /*
