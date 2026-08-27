@@ -98,13 +98,43 @@ export function LocationScreen(): ReactNode {
       .sort((a, b) => (a.slot?.startMin ?? 0) - (b.slot?.startMin ?? 0))
   }, [assignments.data, slots, people.data, locationId])
 
-  const theirJars = useMemo(
-    () =>
-      jars.data
-        .filter((j) => j.locationId === locationId)
-        .sort((a, b) => b.countedAt - a.countedAt),
-    [jars.data, locationId],
-  )
+  /**
+   * The jars counted here, each with the shift it was out for.
+   *
+   * A row saying "jar 4 · $100" cannot be placed: on a two-day event the useful question is
+   * whether that was the Friday evening or the Saturday morning, and the answer is sitting
+   * on the jar and on the shifts it was issued against.
+   *
+   * A jar that straddles two hours reads as the stretch it covered, because that is what
+   * somebody carried it for. Money recorded by hand has no shift at all, so it gets the day
+   * and nothing more — which is all that was ever known about it.
+   */
+  const theirJars = useMemo(() => {
+    const slotById = new Map(slots.map((s) => [s.id, s]))
+    const slotOf = new Map(assignments.data.map((a) => [a.id, slotById.get(a.slotId)]))
+
+    return jars.data
+      .filter((j) => j.locationId === locationId)
+      .map((jar) => {
+        const covered = jar.assignmentIds
+          .map((id) => slotOf.get(id))
+          .filter((slot): slot is NonNullable<typeof slot> => Boolean(slot))
+          .sort((a, b) => a.startMin - b.startMin)
+
+        const first = covered[0]
+        const last = covered.at(-1)
+        const when = !first
+          ? DAY_LABEL[jar.day]
+          : first === last
+            ? `${DAY_LABEL[jar.day]} · ${first.label}`
+            : `${DAY_LABEL[jar.day]} · ${formatTime(first.startMin)} – ${formatTime(
+                last!.endMin,
+              )}`
+
+        return { jar, when }
+      })
+      .sort((a, b) => b.jar.countedAt - a.jar.countedAt)
+  }, [jars.data, assignments.data, slots, locationId])
 
   /** This event's takings and what an hour there was worth. */
   const metrics = useMemo(() => {
@@ -546,12 +576,13 @@ export function LocationScreen(): ReactNode {
               <thead>
                 <tr>
                   <th>Jar</th>
+                  <th>When</th>
                   <th className="right">Amount</th>
                   <th>Method</th>
                 </tr>
               </thead>
               <tbody>
-                {theirJars.map((jar) => (
+                {theirJars.map(({ jar, when }) => (
                   <tr key={jar.id}>
                     <td className="small">
                       {jar.jarNumber === null ? (
@@ -569,6 +600,7 @@ export function LocationScreen(): ReactNode {
                       */}
                       {jar.note && <div className="muted">{jar.note}</div>}
                     </td>
+                    <td className="small muted nowrap">{when}</td>
                     <td className="right">
                       {isCounted(jar) ? (
                         <Money value={jar.amount} />

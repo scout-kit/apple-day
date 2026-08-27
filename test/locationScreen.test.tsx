@@ -242,6 +242,38 @@ describe('what the page says about a location', () => {
     expect(within(card as HTMLElement).getByText('$100.00')).toBeTruthy()
   })
 
+  it('says which shift each was out for, not just that it was counted', () => {
+    /*
+      A row reading "jar 4 · $100" cannot be placed. On a two-day event the useful question
+      is whether that was the Friday evening or the Saturday morning, and the answer is on
+      the jar and on the shifts it was issued against.
+    */
+    jars = [jar({ assignmentId: 'a1', assignmentIds: ['a1'] })]
+    renderFor()
+
+    const card = screen.getByRole('heading', { name: 'Jars counted here' }).closest('.card')!
+    expect(within(card as HTMLElement).getByText(/Friday · 5:00 PM/)).toBeTruthy()
+  })
+
+  it('reads a jar that straddled two hours as the stretch it covered', () => {
+    // Which is what somebody actually carried it for.
+    assignments = [shift('a1', 'fri-1700'), shift('a2', 'fri-1800')]
+    jars = [jar({ assignmentId: 'a1', assignmentIds: ['a1', 'a2'] })]
+    renderFor()
+
+    const card = screen.getByRole('heading', { name: 'Jars counted here' }).closest('.card')!
+    expect(within(card as HTMLElement).getByText(/Friday · 5:00 PM – 7:00 PM/)).toBeTruthy()
+  })
+
+  it('gives money recorded by hand the day and nothing more', () => {
+    // There was never a shift attached to it, so there is nothing else honest to say.
+    jars = [jar({ id: 'j9', jarNumber: null, assignmentId: null, assignmentIds: [] })]
+    renderFor()
+
+    const card = screen.getByRole('heading', { name: 'Jars counted here' }).closest('.card')!
+    expect(within(card as HTMLElement).getByText('Friday')).toBeTruthy()
+  })
+
   it('carries the note on each, the way the jars screen does', () => {
     // A jar counted at the wrong shop, a float, a miscount — written down when it happened
     // and worth reading where the jar is.
