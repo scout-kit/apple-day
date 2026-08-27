@@ -4,6 +4,7 @@ import { NavLink, Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { useEvent } from './lib/eventContext'
 import { missingConfig, signInWithGoogle, signOutEverywhere } from './lib/firebase'
 import { JoinPage } from './ui/JoinPage'
+import { useOnline } from './lib/connection'
 import { canSeeTheEvent, runsTheEvent, useSession } from './lib/session'
 import { useRequestActions } from './ui/RequestActions'
 import type { Role } from './lib/session'
@@ -345,6 +346,22 @@ export function AccountButton(): ReactNode {
   )
 }
 
+/** Says so when the connection has gone, and what that does and does not mean. */
+function OfflineFlag(): ReactNode {
+  const online = useOnline()
+  if (online) return null
+
+  return (
+    <span
+      className="offline-flag"
+      role="status"
+      title="Anything you do is kept on this device and sent when the signal comes back. What is on screen may be out of date."
+    >
+      Offline
+    </span>
+  )
+}
+
 function Shell({ children }: { children: ReactNode }): ReactNode {
   const { role } = useSession()
   const { pathFor } = useEvent()
@@ -376,6 +393,13 @@ function Shell({ children }: { children: ReactNode }): ReactNode {
         {runsTheEvent(role) && <NotificationBell />}
         {runsTheEvent(role) && <RepublishFlag />}
         <div className="spacer" />
+        {/*
+          Shown only when it is gone, because "connected" is the ordinary case and a badge
+          reporting it would be furniture. What somebody at base ops needs is the moment they
+          stop being able to trust the screen — and, immediately after, that nothing they do
+          in the meantime is lost.
+        */}
+        <OfflineFlag />
         <ThemeButton />
         <AccountButton />
       </header>
