@@ -8,6 +8,7 @@ import { todaysEventDay } from '../domain/today'
 import { DAYS, fullName } from '../domain/types'
 import type { Jar, PaymentMethod } from '../domain/types'
 import { sharesShiftWith } from '../domain/jars'
+import { parseMoney } from '../domain/money'
 import { useEvent } from '../lib/eventContext'
 import { jarNumberFromScan } from '../lib/qr'
 import {
@@ -236,22 +237,20 @@ export function JarsScreen(): ReactNode {
   const submitManual = (): void => {
     if (!event || !manual) return
 
-    const value = Number(manual.amount)
     if (!manual.locationId) {
       setMessage('Pick a location.')
       return
     }
-    /*
-      Negative is allowed, but only without a jar number.
-
-      A float going out, apples bought out of the takings, a payment handed back: all real
-      movements against the day's total. A numbered jar is somebody counting coins, where a
-      minus sign can only be a typo.
-    */
-    if (!Number.isFinite(value)) {
-      setMessage('That amount does not look right.')
+    const value = parseMoney(manual.amount)
+    if (value === null) {
+      setMessage(`"${manual.amount.trim()}" is not an amount. Try 50, $50 or -$50.`)
       return
     }
+    /*
+      Negative is allowed, but only without a jar number: a float going out, apples bought out
+      of the takings, a payment handed back. A numbered jar is somebody counting coins, where
+      a minus sign can only be a typo.
+    */
     if (value < 0 && manual.jarNumber.trim()) {
       setMessage('A jar cannot hold less than nothing. Leave the jar number blank for money going out.')
       return
@@ -308,18 +307,20 @@ export function JarsScreen(): ReactNode {
 
   const submit = (): void => {
     if (!event || !counting) return
-    const value = Number(amount)
     /*
-      Negative is allowed, but only for a record with no jar number.
-
-      Those are real movements against the day's total — a float going out, apples bought out
-      of the takings, a payment handed back. A numbered jar is somebody counting coins, where
-      a minus sign can only be a typo.
+      Read rather than coerced. `Number('')` is zero, so a field that refused what was typed
+      would have recorded nothing wrong — it would have recorded nothing, as a number.
     */
-    if (!Number.isFinite(value)) {
-      setMessage('That amount does not look right.')
+    const value = parseMoney(amount)
+    if (value === null) {
+      setMessage(`"${amount.trim()}" is not an amount. Try 50, $50 or -$50.`)
       return
     }
+    /*
+      Negative is allowed, but only for a record with no jar number: a float going out, apples
+      bought out of the takings, a payment handed back. A numbered jar is somebody counting
+      coins, where a minus sign can only be a typo.
+    */
     if (value < 0 && counting.jarNumber !== null) {
       setMessage('A jar cannot hold less than nothing.')
       return
@@ -530,11 +531,14 @@ export function JarsScreen(): ReactNode {
               <div style={{ flex: '1 1 8rem' }}>
                 <label>
                   Amount
+                  {/*
+                    Text, not `type="number"`. A number input throws away every character it
+                    does not recognise as you type, so a `$` never arrives — the field simply
+                    stays empty and the form has nothing to object to.
+                  */}
                   <input
-                    type="number"
+                    type="text"
                     inputMode="decimal"
-                    step="0.01"
-                    {...(manual.jarNumber.trim() ? { min: '0' } : {})}
                     autoFocus
                     value={manual.amount}
                     onChange={(e) => setManual({ ...manual, amount: e.target.value })}
@@ -606,10 +610,8 @@ export function JarsScreen(): ReactNode {
               <label>
                 Amount
                 <input
-                  type="number"
+                  type="text"
                   inputMode="decimal"
-                  step="0.01"
-                  {...(counting.jarNumber !== null ? { min: '0' } : {})}
                   autoFocus
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}

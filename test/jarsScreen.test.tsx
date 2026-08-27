@@ -550,3 +550,67 @@ describe('recording money going out', () => {
     expect(screen.queryByText(/minus sign for money going out/)).toBeNull()
   })
 })
+
+describe('reading the amount somebody typed', () => {
+  /*
+    Reported as "$50 goes in as nothing".
+
+    A browser number input discards the `$` as it is typed, so the field was left empty — and
+    `Number('')` is `0`, which is a perfectly good amount. Nothing was refused. Zero was
+    recorded, and the day's total was out by fifty with nothing anywhere saying so.
+  */
+  const openByHand = async (): Promise<void> => {
+    render(<JarsScreen />)
+    await userEvent.click(screen.getByRole('button', { name: 'Record by hand…' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Location' }))
+    await userEvent.click(screen.getByRole('option', { name: /Braemar/ }))
+  }
+
+  const record = async (typed: string): Promise<void> => {
+    await userEvent.type(screen.getByLabelText('Amount'), typed)
+    await userEvent.click(screen.getByRole('button', { name: 'Record' }))
+  }
+
+  it('takes an amount written with a currency mark', async () => {
+    await openByHand()
+    await record('$50')
+    expect((recordMoney.mock.calls[0]![1] as { amount: number }).amount).toBe(50)
+  })
+
+  it('takes a negative one written either way round', async () => {
+    await openByHand()
+    await record('-$50')
+    expect((recordMoney.mock.calls[0]![1] as { amount: number }).amount).toBe(-50)
+  })
+
+  it('refuses a blank rather than recording nothing as zero', async () => {
+    await openByHand()
+    await userEvent.click(screen.getByRole('button', { name: 'Record' }))
+
+    expect(recordMoney).not.toHaveBeenCalled()
+    expect(screen.getByText(/is not an amount/)).toBeTruthy()
+  })
+
+  it('says what it could not read, and what would work', async () => {
+    await openByHand()
+    await record('fifty quid')
+
+    expect(recordMoney).not.toHaveBeenCalled()
+    expect(screen.getByText(/"fifty quid" is not an amount/)).toBeTruthy()
+    expect(screen.getByText(/Try 50, \$50 or -\$50/)).toBeTruthy()
+  })
+
+  it('still records a real zero, which is a jar that came back empty', async () => {
+    await openByHand()
+    await record('0')
+    expect((recordMoney.mock.calls[0]![1] as { amount: number }).amount).toBe(0)
+  })
+
+  it('lets the currency mark be typed at all', async () => {
+    // A number input drops it silently, which is what made this invisible.
+    await openByHand()
+    const field = screen.getByLabelText('Amount') as HTMLInputElement
+    await userEvent.type(field, '$50')
+    expect(field.value).toBe('$50')
+  })
+})
