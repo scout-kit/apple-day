@@ -41,6 +41,7 @@ let role = 'admin'
 vi.mock('../src/lib/session', () => ({
   useSession: () => ({ user: { uid: 'u-organizer', email: 'o@example.org' }, role }),
   runsTheEvent: (r: string) => r === 'admin' || r === 'organizer',
+  canSeeTheEvent: (r: string) => r === 'admin' || r === 'organizer' || r === 'viewer',
 }))
 
 vi.mock('../src/lib/repo', () => ({

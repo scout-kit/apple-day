@@ -78,14 +78,17 @@ vi.mock('../src/lib/eventContext', () => ({
   }),
 }))
 
+let role = 'admin'
+
 vi.mock('../src/lib/session', () => ({
-  runsTheEvent: (role: string) => role === 'admin' || role === 'organizer',
+  runsTheEvent: (r: string) => r === 'admin' || r === 'organizer',
+  canSeeTheEvent: (r: string) => r === 'admin' || r === 'organizer' || r === 'viewer',
   canEditSetup: (role: string) => role === 'admin',
   canEditLibrary: (role: string) => role === 'admin' || role === 'organizer',
   canRemoveLibrary: (role: string) => role === 'admin',
   canEditEvent: (role: string) => role === 'admin' || role === 'organizer',
   canAddEvent: (role: string) => role === 'admin',
-  useSession: () => ({ user: { uid: 'organizer' }, role: 'admin' }),
+  useSession: () => ({ user: { uid: 'organizer' }, role }),
 }))
 
 const { JarsScreen } = await import('../src/ui/JarsScreen')
@@ -111,6 +114,7 @@ const counted = (over: Partial<Jar> & { id: string }): Jar => ({
 })
 
 beforeEach(() => {
+  role = 'admin'
   forgetRememberedDay()
   resetUrl()
   // Every mock, not a chosen few: a mock that survives a test makes the next one assert
@@ -612,5 +616,39 @@ describe('reading the amount somebody typed', () => {
     const field = screen.getByLabelText('Amount') as HTMLInputElement
     await userEvent.type(field, '$50')
     expect(field.value).toBe('$50')
+  })
+})
+
+describe('what a read-only account is offered here', () => {
+  /*
+    Day of and Jars are consoles for doing. With the buttons gone they still answer what
+    somebody watching wants to know on the day: how much is in, and which jars are still on
+    the street.
+  */
+  beforeEach(() => {
+    role = 'viewer'
+  })
+
+  it('shows the money and the jars', () => {
+    jars = [counted({ id: 'j1', jarNumber: 12, locationId: 'braemar', amount: 100 })]
+    render(<JarsScreen />)
+    expect(screen.getByText(/Counted \(1/)).toBeTruthy()
+  })
+
+  it('offers no way to get money in', () => {
+    render(<JarsScreen />)
+    expect(screen.queryByRole('button', { name: 'Scan a jar…' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Record by hand…' })).toBeNull()
+  })
+
+  it('offers no way to correct a counted jar', () => {
+    jars = [counted({ id: 'j1', jarNumber: 12, locationId: 'braemar', amount: 100 })]
+    render(<JarsScreen />)
+    expect(screen.queryByRole('button', { name: 'Correct' })).toBeNull()
+  })
+
+  it('still lets them switch day, which changes nothing', () => {
+    render(<JarsScreen />)
+    expect(screen.getByRole('button', { name: 'Friday' })).toBeTruthy()
   })
 })

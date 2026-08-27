@@ -18,7 +18,7 @@ import { cleanSupport } from '../domain/support'
 import type { AppleDayEvent, Slot } from '../domain/types'
 import { auditedBatch, auditedSet } from './audit'
 import { paths } from './paths'
-import { runsTheEvent, useSession } from './session'
+import { canSeeTheEvent, useSession } from './session'
 
 /**
  * Which year is being worked on.
@@ -102,13 +102,18 @@ export function EventProvider({ children }: { children: ReactNode }): ReactNode 
    * dead after an organizer grant that happened while the app was open.
    */
   /*
-    Anybody who works the event needs its list.
+    Anybody on the roster needs the list, whatever they are allowed to do with it.
 
-    This said `admin` only, which meant an organizer subscribed to nothing: the picker was
-    empty, no event was ever selected, and every year-scoped screen came up blank. The whole
-    tier was unusable rather than merely limited.
+    This is the one line that decides whether a tier works at all: without an event nothing
+    is selected, and every screen scoped to a year comes up blank — so a tier that cannot
+    list events is not limited, it is broken. It has been narrowed by mistake twice now,
+    once to admins and once to the two tiers that write, each time making the tier below it
+    useless while looking like a sensible permission.
+
+    So it asks the widest question there is: are they on the roster. What a viewer may not do
+    is enforced by the rules and by the screens, not by starving them of the list.
   */
-  const canListEvents = runsTheEvent(role)
+  const canListEvents = canSeeTheEvent(role)
 
   useEffect(() => {
     if (sessionLoading) return

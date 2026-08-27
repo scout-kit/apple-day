@@ -31,7 +31,7 @@ import {
   usePasses,
   usePeople,
 } from '../lib/repo'
-import { useSession } from '../lib/session'
+import { runsTheEvent, useSession } from '../lib/session'
 import { ErrorNote, Loading, SectionPill, Stat } from './Bits'
 import { ContactFlag } from './ContactFlag'
 import { PersonLink } from './PersonLink'
@@ -78,6 +78,9 @@ interface PersonRow {
 }
 
 export function DayOfScreen(): ReactNode {
+  const { role } = useSession()
+  /* A viewer watches the day rather than working it. */
+  const canEdit = runsTheEvent(role)
   const { event, pathFor, slots: allSlots } = useEvent()
   const { user } = useSession()
   const locations = useLocations()
@@ -500,12 +503,11 @@ export function DayOfScreen(): ReactNode {
             {outWithoutJar.map(({ person, run }) => (
               <li key={run.items[0]!.assignment.id}>
                 <PersonLink person={person} /> — {run.items[0]!.locationName}{' '}
-                <button
-                  className="tiny"
-                  onClick={() => setIssuing(run)}
-                >
-                  Issue jar
-                </button>
+                {canEdit && (
+                  <button className="tiny" onClick={() => setIssuing(run)}>
+                    Issue jar
+                  </button>
+                )}
               </li>
             ))}
           </ul>
@@ -663,16 +665,18 @@ export function DayOfScreen(): ReactNode {
                                   style={{ paddingLeft: '0.45rem' }}
                                 >
                                   {isNumbered(j) ? j.jarNumber : 'jar'}
-                                  <button
-                                    className="x"
-                                    aria-label={`Take jar ${
-                                      isNumbered(j) ? j.jarNumber : ''
-                                    } back from ${fullName(row.person)}`}
-                                    title="Take this jar back"
-                                    onClick={() => takeBack(run, j)}
-                                  >
-                                    ×
-                                  </button>
+                                  {canEdit && (
+                                    <button
+                                      className="x"
+                                      aria-label={`Take jar ${
+                                        isNumbered(j) ? j.jarNumber : ''
+                                      } back from ${fullName(row.person)}`}
+                                      title="Take this jar back"
+                                      onClick={() => takeBack(run, j)}
+                                    >
+                                      ×
+                                    </button>
+                                  )}
                                 </span>
                               ))}
                               {counted.length > 0 && (
@@ -703,8 +707,16 @@ export function DayOfScreen(): ReactNode {
                             a decision stays on screen as the way to undo it, and nothing
                             else does.
                           */}
+                          {/*
+                            A viewer watches the day rather than working it.
+
+                            The rules refuse every one of these, so this is not the guard —
+                            it is what keeps a row from carrying six buttons that fail. What
+                            is left is the state itself: who has arrived, who is out, which
+                            jar they have.
+                          */}
                           <div className="row" style={{ gap: '0.25rem' }}>
-                            {can.checkIn && (
+                            {canEdit && can.checkIn && (
                               <button
                                 className={`tiny${arrived ? ' primary' : ''}`}
                                 title={
@@ -721,7 +733,7 @@ export function DayOfScreen(): ReactNode {
                                 {arrived ? 'Here' : 'Check in'}
                               </button>
                             )}
-                            {can.noShow && (
+                            {canEdit && can.noShow && (
                               <button
                                 className={`tiny${absent ? ' danger' : ''}`}
                                 title={
@@ -737,7 +749,7 @@ export function DayOfScreen(): ReactNode {
                                 {absent ? 'Undo no-show' : 'No-show'}
                               </button>
                             )}
-                            {can.issue && (
+                            {canEdit && can.issue && (
                               <button
                                 className="tiny"
                                 title={`Give ${fullName(row.person)} a jar and send them out`}
@@ -749,7 +761,7 @@ export function DayOfScreen(): ReactNode {
                             {/* Issuing and counting a jar normally move these. The buttons
                                 are for the shift that goes out without one, or comes back
                                 without the jar it left with. */}
-                            {can.out && (
+                            {canEdit && can.out && (
                               <button
                                 className={`tiny${away ? ' primary' : ''}`}
                                 title="Mark them out collecting without recording a jar"
@@ -758,7 +770,7 @@ export function DayOfScreen(): ReactNode {
                                 Out
                               </button>
                             )}
-                            {can.back && (
+                            {canEdit && can.back && (
                               <button
                                 className={`tiny${done ? ' primary' : ''}`}
                                 title={
@@ -771,7 +783,7 @@ export function DayOfScreen(): ReactNode {
                                 Back
                               </button>
                             )}
-                            {can.swap && shifts.length === 1 && (
+                            {canEdit && can.swap && shifts.length === 1 && (
                               <button
                                 className={`tiny${swapFrom?.id === a.id ? ' primary' : ''}`}
                                 onClick={() => handleSwapClick(a)}
@@ -779,7 +791,7 @@ export function DayOfScreen(): ReactNode {
                                 Swap
                               </button>
                             )}
-                            {can.swap && shifts.length > 1 && (
+                            {canEdit && can.swap && shifts.length > 1 && (
                               // Swapping trades one shift for one shift, so it has no
                               // meaning for a stretch of several — that is a change to the
                               // plan, and the board is where the plan lives.

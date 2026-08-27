@@ -18,6 +18,7 @@ let session: { user: { uid: string; email?: string; displayName?: string } | nul
 vi.mock('../src/lib/session', () => ({
   useSession: () => session,
   runsTheEvent: () => false,
+  canSeeTheEvent: (r: string) => r === 'admin' || r === 'organizer' || r === 'viewer',
 }))
 
 vi.mock('../src/lib/firebase', () => ({

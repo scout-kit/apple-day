@@ -147,17 +147,15 @@ const ORGANIZER_NAV: NavGroup[] = [
 /**
  * What somebody who cannot change anything is shown.
  *
- * Not the organizer menu with the buttons taken out. Two of those screens — Day of and Jars
- * — are consoles for doing: check somebody in, hand a jar over, count one back. With nothing
- * to press they are a table of state that the schedule board already answers, and stripping
- * them would be most of the work for the ten hours a year they matter.
+ * The working screens, minus the working. Day of and Jars are consoles for doing — check
+ * somebody in, hand a jar over, count one back — and with the buttons gone they still answer
+ * the questions somebody watching has on the day: who has turned up, who is out, how much is
+ * in so far, which jars are still on the street.
  *
- * Setup goes for the same reason in reverse: the library, the locations a year uses and the
- * importer are how the event is assembled, and somebody who is being shown the event has no
- * business in the workshop. Reminders go because sending is an action.
- *
- * What is left is the two questions a viewer is actually asked: what does the day look like,
- * and what did it make.
+ * What goes is the setup: the library, the locations a year uses, the importer, the events
+ * themselves. Somebody being shown the event has no business in the workshop. Reminders go
+ * because sending is an action, and the ledger holds contact details for people this account
+ * is not chasing.
  */
 const VIEWER_NAV: NavGroup[] = [
   {
@@ -165,6 +163,8 @@ const VIEWER_NAV: NavGroup[] = [
     screens: [
       { screen: 'schedule-board', label: 'Schedule' },
       { screen: 'people', label: 'Signups' },
+      { screen: 'day-of', label: 'Day of' },
+      { screen: 'jars', label: 'Jars' },
     ],
   },
   {
@@ -701,8 +701,8 @@ export function App(): ReactNode {
           ['access', <AccessScreen key="acc" />, ADMIN],
 
           // The day itself.
-          ['jars', <JarsScreen key="j" />, RUNS],
-          ['day-of', <Watched key="d"><DayOfScreen /></Watched>, RUNS],
+          ['jars', <JarsScreen key="j" />, SEEN],
+          ['day-of', <Watched key="d"><DayOfScreen /></Watched>, SEEN],
         ] as [string, ReactNode, Role[]][]
       ).flatMap(([screen, element, allow]) => {
         const wrapped = (

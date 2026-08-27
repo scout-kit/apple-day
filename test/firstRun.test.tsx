@@ -23,6 +23,7 @@ let session: { user: { uid: string; email?: string } | null; role: string; disca
 vi.mock('../src/lib/session', () => ({
   useSession: () => session,
   runsTheEvent: () => false,
+  canSeeTheEvent: (r: string) => r === 'admin' || r === 'organizer' || r === 'viewer',
   canEditSetup: () => false,
   canEditLibrary: () => false,
   canRemoveLibrary: () => false,

@@ -56,6 +56,7 @@ vi.mock('../src/lib/mail/gmail', () => ({
 
 vi.mock('../src/lib/session', () => ({
   runsTheEvent: () => true,
+  canSeeTheEvent: (r: string) => r === 'admin' || r === 'organizer' || r === 'viewer',
   canEditSetup: () => true,
   canEditLibrary: () => true,
   canRemoveLibrary: () => true,

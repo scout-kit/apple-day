@@ -21,7 +21,7 @@ import {
   useLocations,
   usePeople,
 } from '../lib/repo'
-import { useSession } from '../lib/session'
+import { runsTheEvent, useSession } from '../lib/session'
 import { ErrorNote, Loading, Money, Stat } from './Bits'
 import { JarLabels } from './JarLabels'
 import { LocationLink } from './LocationLink'
@@ -47,6 +47,8 @@ import { RequestsInbox } from './RequestsInbox'
  */
 export function JarsScreen(): ReactNode {
   const { user, role } = useSession()
+  /* A viewer sees the money and the jars still out; counting them is work. */
+  const canEdit = runsTheEvent(role)
   const { event, slots } = useEvent()
   const locations = useLocations()
   const people = usePeople()
@@ -418,6 +420,7 @@ export function JarsScreen(): ReactNode {
           The ellipsis is the app's own mark for a control that opens something rather than
           doing it on the spot, the same as `+ add…` on the schedule board.
         */}
+        {canEdit && (
         <div className="row" style={{ marginTop: '0.6rem' }}>
           <button onClick={() => setScanning(true)}>Scan a jar…</button>
           <button
@@ -438,6 +441,7 @@ export function JarsScreen(): ReactNode {
             Jars are issued on the Day of screen — scanning one here counts it in.
           </span>
         </div>
+        )}
         {message && <div className="note info" style={{ marginTop: '0.5rem' }}>{message}</div>}
       </div>
 
@@ -718,18 +722,21 @@ export function JarsScreen(): ReactNode {
                     <td className="mono">{jar.jarNumber}</td>
                     <td>{describe(jar)}</td>
                     <td>
-                      <div className="row" style={{ gap: '0.25rem' }}>
-                        <button className="tiny primary" onClick={() => startCounting(jar)}>
-                          Count in
-                        </button>
-                        <button
-                          className="tiny"
-                          title="Take it back without counting — issued by mistake, or they never went out"
-                          onClick={() => takeBack(jar)}
-                        >
-                          Take back
-                        </button>
-                      </div>
+                      {/* A viewer sees which jars are still out; counting one in is work. */}
+                      {canEdit && (
+                        <div className="row" style={{ gap: '0.25rem' }}>
+                          <button className="tiny primary" onClick={() => startCounting(jar)}>
+                            Count in
+                          </button>
+                          <button
+                            className="tiny"
+                            title="Take it back without counting — issued by mistake, or they never went out"
+                            onClick={() => takeBack(jar)}
+                          >
+                            Take back
+                          </button>
+                        </div>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -802,9 +809,11 @@ export function JarsScreen(): ReactNode {
                     <td className="small muted">{jar.method}</td>
                     <td>
                       <div className="row" style={{ gap: '0.25rem' }}>
-                        <button className="tiny" onClick={() => startCounting(jar)}>
-                          Correct
-                        </button>
+                        {canEdit && (
+                          <button className="tiny" onClick={() => startCounting(jar)}>
+                            Correct
+                          </button>
+                        )}
                         {role === 'admin' && (
                           <>
                             <button

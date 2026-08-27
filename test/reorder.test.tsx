@@ -45,6 +45,7 @@ let viewerRole = 'admin'
 vi.mock('../src/lib/session', () => ({
   useSession: () => ({ user: { uid: 'admin-uid' }, role: viewerRole }),
   runsTheEvent: (role: string) => role === 'admin' || role === 'organizer',
+  canSeeTheEvent: (r: string) => r === 'admin' || r === 'organizer' || r === 'viewer',
   canEditSetup: (role: string) => role === 'admin',
   canEditLibrary: (role: string) => role === 'admin' || role === 'organizer',
   canRemoveLibrary: (role: string) => role === 'admin',

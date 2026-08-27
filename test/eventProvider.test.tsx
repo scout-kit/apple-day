@@ -36,6 +36,8 @@ vi.mock('../src/lib/session', () => ({
   canRemoveLibrary: (role: string) => role === 'admin',
   canEditEvent: (role: string) => role === 'admin' || role === 'organizer',
   canAddEvent: (role: string) => role === 'admin',
+  canSeeTheEvent: (role: string) =>
+    role === 'admin' || role === 'organizer' || role === 'viewer',
   useSession: () => session,
 }))
 
@@ -186,5 +188,34 @@ describe('an organizer gets the list of events', () => {
     session = { user: { uid: 'u1' }, role: 'organizer', loading: false }
     renderProvider()
     await waitFor(() => expect(onSnapshot).toHaveBeenCalled())
+  })
+})
+
+describe('who gets the list of events', () => {
+  /*
+    The one line that decides whether a tier works at all.
+
+    Without an event nothing is selected, and every screen scoped to a year comes up blank —
+    so a tier that cannot list events is not limited, it is broken. This has been narrowed by
+    mistake twice: once to admins, which left organizers with an empty picker, and once to
+    the tiers that write, which did the same to viewers. Both times it looked like a sensible
+    permission.
+
+    So it is asserted for every tier on the roster rather than for the one being added, which
+    is what a third narrowing would have to get past.
+  */
+  for (const role of ['admin', 'organizer', 'viewer']) {
+    it(`subscribes for ${role}`, () => {
+      session = { user: { uid: 'u1' }, role, loading: false }
+      renderProvider()
+      expect(onSnapshot, `${role} got no event list`).toHaveBeenCalled()
+    })
+  }
+
+  it('does not subscribe for somebody with no access', () => {
+    // Their writes and reads would both be refused, and the screen behind the gate says so.
+    session = { user: { uid: 'u1' }, role: 'none', loading: false }
+    renderProvider()
+    expect(onSnapshot).not.toHaveBeenCalled()
   })
 })

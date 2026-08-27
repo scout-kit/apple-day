@@ -35,6 +35,7 @@ vi.mock('../src/lib/eventContext', () => ({
 vi.mock('../src/lib/session', () => ({
   useSession: () => ({ user: { uid: 'organizer' }, role }),
   runsTheEvent: (r: string) => r === 'admin' || r === 'organizer',
+  canSeeTheEvent: (r: string) => r === 'admin' || r === 'organizer' || r === 'viewer',
   canEditSetup: (r: string) => r === 'admin',
   canEditLibrary: (role: string) => role === 'admin' || role === 'organizer',
   canRemoveLibrary: (role: string) => role === 'admin',

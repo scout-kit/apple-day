@@ -90,6 +90,7 @@ vi.mock('../src/lib/session', () => ({
   canEditEvent: (role: string) => role === 'admin' || role === 'organizer',
   canAddEvent: (role: string) => role === 'admin',
   runsTheEvent: (r: string) => r === 'admin' || r === 'organizer',
+  canSeeTheEvent: (r: string) => r === 'admin' || r === 'organizer' || r === 'viewer',
 }))
 
 vi.mock('../src/lib/sections', () => ({
