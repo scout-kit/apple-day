@@ -241,8 +241,19 @@ export function JarsScreen(): ReactNode {
       setMessage('Pick a location.')
       return
     }
-    if (!Number.isFinite(value) || value < 0) {
+    /*
+      Negative is allowed, but only without a jar number.
+
+      A float going out, apples bought out of the takings, a payment handed back: all real
+      movements against the day's total. A numbered jar is somebody counting coins, where a
+      minus sign can only be a typo.
+    */
+    if (!Number.isFinite(value)) {
       setMessage('That amount does not look right.')
+      return
+    }
+    if (value < 0 && manual.jarNumber.trim()) {
+      setMessage('A jar cannot hold less than nothing. Leave the jar number blank for money going out.')
       return
     }
 
@@ -298,8 +309,19 @@ export function JarsScreen(): ReactNode {
   const submit = (): void => {
     if (!event || !counting) return
     const value = Number(amount)
-    if (!Number.isFinite(value) || value < 0) {
+    /*
+      Negative is allowed, but only for a record with no jar number.
+
+      Those are real movements against the day's total — a float going out, apples bought out
+      of the takings, a payment handed back. A numbered jar is somebody counting coins, where
+      a minus sign can only be a typo.
+    */
+    if (!Number.isFinite(value)) {
       setMessage('That amount does not look right.')
+      return
+    }
+    if (value < 0 && counting.jarNumber !== null) {
+      setMessage('A jar cannot hold less than nothing.')
       return
     }
 
@@ -499,19 +521,33 @@ export function JarsScreen(): ReactNode {
             </div>
 
             <div className="row">
-              <label style={{ flex: '1 1 8rem' }}>
-                Amount
-                <input
-                  type="number"
-                  inputMode="decimal"
-                  step="0.01"
-                  min="0"
-                  autoFocus
-                  value={manual.amount}
-                  onChange={(e) => setManual({ ...manual, amount: e.target.value })}
-                  placeholder="0.00"
-                />
-              </label>
+              {/*
+                The hint sits beside the label rather than inside it. A `<span>` within the
+                label becomes part of the field's accessible name, so a screen reader
+                announces "Amount, a minus sign for money going out — a float, apples bought
+                out of the takings…" as the name of the box.
+              */}
+              <div style={{ flex: '1 1 8rem' }}>
+                <label>
+                  Amount
+                  <input
+                    type="number"
+                    inputMode="decimal"
+                    step="0.01"
+                    {...(manual.jarNumber.trim() ? { min: '0' } : {})}
+                    autoFocus
+                    value={manual.amount}
+                    onChange={(e) => setManual({ ...manual, amount: e.target.value })}
+                    placeholder="0.00"
+                  />
+                </label>
+                {!manual.jarNumber.trim() && (
+                  <div className="small muted">
+                    A minus sign for money going out — a float, apples bought out of the
+                    takings, a payment handed back.
+                  </div>
+                )}
+              </div>
               <label style={{ flex: '0 1 9rem' }}>
                 Method
                 <select
@@ -566,22 +602,29 @@ export function JarsScreen(): ReactNode {
             {counting.status === 'counted' && ' · already counted, this will correct it'}
           </p>
           <div className="row">
-            <label style={{ flex: '1 1 8rem' }}>
-              Amount
-              <input
-                type="number"
-                inputMode="decimal"
-                step="0.01"
-                min="0"
-                autoFocus
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') submit()
-                }}
-                placeholder="0.00"
-              />
-            </label>
+            <div style={{ flex: '1 1 8rem' }}>
+              <label>
+                Amount
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  step="0.01"
+                  {...(counting.jarNumber !== null ? { min: '0' } : {})}
+                  autoFocus
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') submit()
+                  }}
+                  placeholder="0.00"
+                />
+              </label>
+              {counting.jarNumber === null && (
+                <div className="small muted">
+                  A minus sign for money going out rather than coming in.
+                </div>
+              )}
+            </div>
             <label style={{ flex: '1 1 8rem' }}>
               Method
               <select

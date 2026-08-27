@@ -502,3 +502,51 @@ describe('the two ways to get money in', () => {
     expect(screen.getByRole('button', { name: 'Record by hand…' })).toBeTruthy()
   })
 })
+
+describe('recording money going out', () => {
+  /*
+    A float sent to a shop, apples bought out of the takings, a payment handed back. Real
+    movements against the day's total, and with no way to enter one they go in a note while
+    the figure stays wrong.
+
+    The line follows the jar number: a numbered jar is somebody counting coins, where a minus
+    sign can only be a typo.
+  */
+  const openByHand = async (): Promise<void> => {
+    render(<JarsScreen />)
+    await userEvent.click(screen.getByRole('button', { name: 'Record by hand…' }))
+    // A location is required whatever the amount, so every case here picks one first.
+    await userEvent.click(screen.getByRole('button', { name: 'Location' }))
+    await userEvent.click(screen.getByRole('option', { name: /Braemar/ }))
+  }
+
+  it('takes a negative amount when no jar number is given', async () => {
+    await openByHand()
+    await userEvent.type(screen.getByLabelText('Amount'), '-50')
+    await userEvent.click(screen.getByRole('button', { name: 'Record' }))
+
+    expect(recordMoney).toHaveBeenCalled()
+    expect((recordMoney.mock.calls[0]![1] as { amount: number }).amount).toBe(-50)
+  })
+
+  it('says what a minus sign means, where it is allowed', async () => {
+    await openByHand()
+    expect(screen.getByText(/minus sign for money going out/)).toBeTruthy()
+  })
+
+  it('refuses one against a numbered jar, and says why', async () => {
+    await openByHand()
+    await userEvent.type(screen.getByLabelText(/Jar number/), '7')
+    await userEvent.type(screen.getByLabelText('Amount'), '-50')
+    await userEvent.click(screen.getByRole('button', { name: 'Record' }))
+
+    expect(screen.getByText(/cannot hold less than nothing/)).toBeTruthy()
+    expect(recordMoney).not.toHaveBeenCalled()
+  })
+
+  it('stops offering the hint once a jar number is typed', async () => {
+    await openByHand()
+    await userEvent.type(screen.getByLabelText(/Jar number/), '7')
+    expect(screen.queryByText(/minus sign for money going out/)).toBeNull()
+  })
+})

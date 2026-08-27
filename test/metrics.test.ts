@@ -3,10 +3,13 @@ import {
   locationMetrics,
   personTotals,
   sectionParticipation,
+  splitAmount,
+  splitByWeight,
   staffedHoursByLocation,
   summariseMoney,
 } from '../src/domain/metrics'
 import { buildSlots } from '../src/domain/slots'
+import type { Jar } from '../src/domain/types'
 import {
   KNOWN,
   assignments2025,
@@ -228,5 +231,50 @@ describe('no-shows and integrity', () => {
     expect(y01.jarCount).toBe(3)
     expect(y01.revenue).toBe(127.5)
     expect(y01.hours).toBe(1)
+  })
+})
+
+describe('money going out', () => {
+  const counted = (over: Partial<Jar>): Jar => ({
+    id: 'j', jarNumber: 1, day: 'fri', locationId: 'braemar', personId: null,
+    assignmentId: null, assignmentIds: [], status: 'counted', issuedAt: 1, issuedBy: 'o',
+    amount: 0, method: 'cash', note: '', countedBy: 'o', countedAt: 2,
+    ...over,
+  })
+
+  /*
+    A float sent to a shop, apples bought out of the takings, a card payment handed back.
+    Real movements against the day's total, recorded as what they are rather than left in a
+    note with the figure staying wrong.
+
+    Everything downstream divides money across shifts and hours, and those splits were
+    written when the only amounts were positive. A rounding rule that quietly drops a cent on
+    the way down is the kind of thing that shows up as a total nobody can reconcile.
+  */
+  it('divides evenly without losing a cent', () => {
+    for (const amount of [-40, -0.01, -33.33, -100]) {
+      for (const parts of [1, 2, 3, 7]) {
+        const split = splitAmount(amount, parts)
+        expect(split.reduce((a, b) => a + b, 0), `${amount} over ${parts}`).toBeCloseTo(amount, 10)
+      }
+    }
+  })
+
+  it('divides by weight without losing a cent', () => {
+    // What a shift straddling two clock hours does to a jar's takings.
+    for (const amount of [-40, -33.33, -0.03]) {
+      const split = splitByWeight(amount, [30, 30])
+      expect(split.reduce((a, b) => a + b, 0), String(amount)).toBeCloseTo(amount, 10)
+    }
+  })
+
+  it('subtracts from the day it was recorded against', () => {
+    const jars = [
+      counted({ id: 'in', day: 'fri', amount: 100 }),
+      counted({ id: 'out', day: 'fri', jarNumber: null, amount: -40 }),
+    ]
+    const summary = summariseMoney(jars)
+    expect(summary.jarTotal).toBe(60)
+    expect(summary.days.find((d) => d.day === 'fri')!.jarTotal).toBe(60)
   })
 })

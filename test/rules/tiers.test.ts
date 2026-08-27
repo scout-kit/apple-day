@@ -881,3 +881,49 @@ describe('a level nobody recognises', () => {
     )
   })
 })
+
+describe('money going out', () => {
+  /*
+    A float sent to a shop, apples bought out of the takings, a payment handed back. Real
+    movements against the day's total, and the only honest way to record one is as what it
+    is — otherwise it goes in a note and the figure stays wrong.
+
+    The line follows the jar number. Where there is one, somebody is counting coins and a
+    minus sign can only be a typo; where there is not, it is a direction.
+  */
+  const money = (over: Record<string, unknown>) => ({
+    jarNumber: null, day: 'fri', locationId: 'braemar', status: 'counted',
+    method: 'cash', ...over,
+  })
+
+  it('records a negative amount with no jar number', async () => {
+    await assertSucceeds(
+      setDoc(doc(asOrganizer(), 'events', EVENT, 'jars', 'float-out'), money({ amount: -50 })),
+    )
+  })
+
+  it('refuses a negative amount on a numbered jar', async () => {
+    await assertFails(
+      setDoc(
+        doc(asOrganizer(), 'events', EVENT, 'jars', 'jar-7'),
+        money({ jarNumber: 7, amount: -50 }),
+      ),
+    )
+  })
+
+  it('still bounds it, so a typo cannot swallow the year', async () => {
+    await assertFails(
+      setDoc(doc(asOrganizer(), 'events', EVENT, 'jars', 'silly'), money({ amount: -10001 })),
+    )
+  })
+
+  it('leaves a jar that is still out with no amount at all', async () => {
+    // Null, not zero: a jar on the street is not a jar that came back empty.
+    await assertFails(
+      setDoc(
+        doc(asOrganizer(), 'events', EVENT, 'jars', 'out-1'),
+        money({ jarNumber: 3, status: 'out', amount: 0 }),
+      ),
+    )
+  })
+})

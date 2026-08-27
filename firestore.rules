@@ -456,12 +456,24 @@ service cloud.firestore {
                 && request.resource.data.assignmentIds.size() <= 24);
         }
 
+        /*
+          A numbered jar cannot hold less than nothing.
+
+          Money recorded without one can, and regularly does: a float going out to a shop,
+          apples bought out of the takings, a card payment handed back. Those are real
+          movements against the day's total and the only honest way to record them is as
+          what they are — otherwise they go in the notes and the figure stays wrong.
+
+          So the floor follows the jar number. Where there is one, somebody is counting
+          coins and a minus sign is a typo; where there is not, it is a direction.
+        */
         function validAmount() {
           return request.resource.data.status == 'out'
             ? request.resource.data.amount == null
             : (request.resource.data.amount is number
-                && request.resource.data.amount >= 0
-                && request.resource.data.amount <= 10000);
+                && request.resource.data.amount <= 10000
+                && request.resource.data.amount
+                   >= (request.resource.data.jarNumber == null ? -10000 : 0));
         }
 
         allow read: if isViewer();

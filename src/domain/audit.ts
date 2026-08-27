@@ -88,7 +88,10 @@ export function diffFields<T extends Record<string, unknown>>(
 
 /** Money, for a summary line. Kept here so the log reads the same as the screens do. */
 export const auditMoney = (amount: number | null): string =>
-  amount === null ? '—' : `$${amount.toFixed(2)}`
+  // The sign goes in front of the currency, not between it and the digits: "$-40.00" reads
+  // as a typo. Money going out is a real entry here — a float, apples bought out of the
+  // takings — so the log has to render it as something somebody would write.
+  amount === null ? '—' : `${amount < 0 ? '-' : ''}$${Math.abs(amount).toFixed(2)}`
 
 /**
  * Whether an entry is worth writing.
