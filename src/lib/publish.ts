@@ -5,7 +5,7 @@ import {
   publishedFingerprint,
 } from '../domain/publishing'
 import type { PublishInput, PublishedPass } from '../domain/publishing'
-import { fullName } from '../domain/types'
+import { fullName, wasWorked } from '../domain/types'
 import { db } from './firebase'
 import { paths } from './paths'
 import { recordInBatch } from './audit'
@@ -40,9 +40,22 @@ export async function publish(
     existingTokens = new Map(),
   } = input
 
-  const scheduledPersonIds = new Set(
-    assignments.filter((a) => a.status !== 'swapped').map((a) => a.personId),
-  )
+  const live = assignments.filter((a) => a.status !== 'swapped')
+  const scheduledPersonIds = new Set(live.map((a) => a.personId))
+
+  /*
+    Who has already turned up, so re-publishing does not send them back to base.
+
+    A pass hides where somebody is going until an organizer checks them in. Writing that flag
+    as a flat `false` is right for the first publish, when nobody has arrived, and wrong for
+    every one after: re-publishing part-way through the Saturday — or after it, to correct
+    something — took the locations off the pass of everybody already standing at a door.
+
+    Read off the board rather than carried over from the old pass, because the board is what
+    the check-in actually changed. Somebody who has been un-checked-in is hidden again by the
+    same reading, which is what the flag is for.
+  */
+  const arrived = new Set(live.filter(wasWorked).map((a) => a.personId))
   const personById = new Map(people.map((p) => [p.id, p]))
 
   const published: PublishedPass[] = []
@@ -76,11 +89,12 @@ export async function publish(
         Where they are going is withheld until an organizer checks them in.
 
         Everyone reports to base first — that is where the jars and apples are — so a pass
-        that names a location invites a youth to skip it and go straight there. It also
-        means a link that gets forwarded around does not tell a stranger where a named child
-        will be standing at five o'clock. The organizer checking them in reveals it.
+        that names a location invites a youth to skip it and go straight there. It also means
+        a link that gets forwarded around does not tell a stranger where a named child will be
+        standing at five o'clock. The organizer checking them in reveals it, and a re-publish
+        keeps it revealed for anybody who has already arrived.
       */
-      revealShifts: false,
+      revealShifts: arrived.has(personId),
       // On the pass itself: where to report is the first thing a parent needs, and looking
       // it up would cost a second read on a phone with one bar of signal.
       base,
