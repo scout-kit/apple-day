@@ -18,6 +18,25 @@ import { paths } from './paths'
 const PER_BATCH = 400
 
 /**
+ * A read that says what it was reading when it failed.
+ *
+ * An export walks a dozen collections, and "Missing or insufficient permissions" names none
+ * of them. That is the whole of what somebody gets to act on: which rule, which collection,
+ * whether it is this year's records or the shared library. Twice now the answer has been a
+ * subcollection with no rule behind it, and both times finding out meant reading this file.
+ *
+ * The original is kept as the cause, so nothing is lost by naming the path.
+ */
+async function reading<T>(what: string, read: () => Promise<T>): Promise<T> {
+  try {
+    return await read()
+  } catch (cause) {
+    const said = cause instanceof Error ? cause.message : String(cause)
+    throw new Error(`${said} (reading ${what})`, { cause })
+  }
+}
+
+/**
  * Everything needed to rebuild a year somewhere else.
  *
  * Reads the event's own subcollections, then the shops and sections its records point at.
@@ -32,7 +51,9 @@ export async function exportEvent(
   const records: EventTransfer['records'] = {}
 
   for (const name of EVENT_SUBCOLLECTIONS) {
-    const snap = await getDocs(collection(db, 'events', event.id, name))
+    const snap = await reading(`events/${event.id}/${name}`, () =>
+      getDocs(collection(db, 'events', event.id, name)),
+    )
     if (snap.docs.length === 0) continue
     records[name] = Object.fromEntries(snap.docs.map((d) => [d.id, d.data()]))
   }
@@ -57,7 +78,7 @@ export async function exportEvent(
 
   const locations: EventTransfer['locations'] = {}
   for (const id of wanted) {
-    const snap = await getDoc(paths.location(id))
+    const snap = await reading(`locations/${id}`, () => getDoc(paths.location(id)))
     if (snap.exists()) locations[id] = snap.data()
   }
 
@@ -68,7 +89,7 @@ export async function exportEvent(
   )
   const sections: EventTransfer['sections'] = {}
   for (const id of usedSections) {
-    const snap = await getDoc(paths.section(id))
+    const snap = await reading(`sections/${id}`, () => getDoc(paths.section(id)))
     if (snap.exists()) sections[id] = snap.data()
   }
 
@@ -77,7 +98,9 @@ export async function exportEvent(
     does not know an event id. Kept so links already handed out still work after a restore —
     and the reason the file is as sensitive as it is.
   */
-  const passSnap = await getDocs(query(paths.passes(), where('eventId', '==', event.id)))
+  const passSnap = await reading('passes', () =>
+    getDocs(query(paths.passes(), where('eventId', '==', event.id))),
+  )
   const passes = Object.fromEntries(passSnap.docs.map((d) => [d.id, d.data()]))
 
   return {

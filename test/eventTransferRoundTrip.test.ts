@@ -21,6 +21,12 @@ interface Written {
 let stored: Record<string, Record<string, Record<string, unknown>>> = {}
 let writes: Written[] = []
 let commits = 0
+/** Paths the rules refuse, so a denial can be provoked the way a missing rule causes one. */
+let denied = new Set<string>()
+
+const refuse = (path: string): void => {
+  if (denied.has(path)) throw new Error('Missing or insufficient permissions.')
+}
 
 const at = (path: string): Record<string, Record<string, unknown>> => stored[path] ?? {}
 
@@ -34,13 +40,17 @@ vi.mock('firebase/firestore', () => ({
     return { path: [prefix, ...segments].filter(Boolean).join('/') }
   },
   getDoc: async (ref: { path: string }) => {
+    refuse(ref.path)
     const cut = ref.path.lastIndexOf('/')
     const data = at(ref.path.slice(0, cut))[ref.path.slice(cut + 1)]
     return { exists: () => data !== undefined, data: () => data }
   },
-  getDocs: async (ref: { path: string }) => ({
-    docs: Object.entries(at(ref.path)).map(([id, data]) => ({ id, data: () => data })),
-  }),
+  getDocs: async (ref: { path: string }) => {
+    refuse(ref.path)
+    return {
+      docs: Object.entries(at(ref.path)).map(([id, data]) => ({ id, data: () => data })),
+    }
+  },
   query: (ref: unknown) => ref,
   where: () => ({}),
   writeBatch: () => ({
@@ -71,6 +81,7 @@ const event = {
 beforeEach(() => {
   writes = []
   commits = 0
+  denied = new Set()
   stored = {
     'events/2025/people': { 'p-1': { firstName: 'Alex', section: 'cubs' } },
     'events/2025/assignments': { a1: { personId: 'p-1', locationId: 'braemar' } },
@@ -201,5 +212,49 @@ describe('putting it back', () => {
 
     // Firestore refuses a batch over 500 writes; 900 people cannot be one commit.
     expect(commits).toBeGreaterThan(2)
+  })
+})
+
+/**
+ * What an export says when a read is refused.
+ *
+ * "Missing or insufficient permissions" names neither the collection nor the year, and an
+ * export walks a dozen of them. Twice the answer has been a subcollection with no rule
+ * behind it, and both times finding out which one meant reading the source.
+ */
+describe('when the rules refuse one of the reads', () => {
+  it('says which path it was reading', async () => {
+    denied = new Set(['events/2025/reconciliation'])
+    await expect(exportEvent(event, 'apple-day-live')).rejects.toThrow(
+      /reading events\/2025\/reconciliation/,
+    )
+  })
+
+  it('keeps what the failure actually said', async () => {
+    denied = new Set(['events/2025/people'])
+    await expect(exportEvent(event, 'apple-day-live')).rejects.toThrow(
+      /Missing or insufficient permissions/,
+    )
+  })
+
+  it('names a shared record as clearly as one of the year’s', async () => {
+    // Which matters more, not less: the library is the half a restore cannot rebuild.
+    denied = new Set(['locations/braemar'])
+    await expect(exportEvent(event, 'apple-day-live')).rejects.toThrow(/reading locations\/braemar/)
+  })
+
+  it('names the passes, which are not under the event at all', async () => {
+    denied = new Set(['passes'])
+    await expect(exportEvent(event, 'apple-day-live')).rejects.toThrow(/reading passes/)
+  })
+
+  it('keeps the original as the cause, so nothing is lost by naming the path', async () => {
+    denied = new Set(['sections/cubs'])
+    const failure: unknown = await exportEvent(event, 'apple-day-live').catch(
+      (e: unknown) => e,
+    )
+    expect(((failure as Error).cause as Error).message).toBe(
+      'Missing or insufficient permissions.',
+    )
   })
 })
