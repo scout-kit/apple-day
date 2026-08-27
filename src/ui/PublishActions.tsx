@@ -54,6 +54,17 @@ export function PublishActions(): ReactNode {
     return () => clearTimeout(timer)
   }, [justPublished])
 
+  /*
+    And the same for a withdrawal, which is a heavier thing to say and still only worth
+    saying once. It sits longer because it is worth reading twice — but it does go: the row
+    above it already shows the truth of it, with nothing left to unpublish.
+  */
+  useEffect(() => {
+    if (withdrawn === 0) return
+    const timer = setTimeout(() => setWithdrawn(0), 8000)
+    return () => clearTimeout(timer)
+  }, [withdrawn])
+
   const existingTokens = new Map(passes.data.map((p) => [p.personId, p.token]))
 
   /*
@@ -117,9 +128,11 @@ export function PublishActions(): ReactNode {
 
       {justPublished && <div className="note good">Schedule published.</div>}
       {withdrawn > 0 && (
-        <div className="note">
-          Schedule unpublished. {withdrawn} {withdrawn === 1 ? 'link' : 'links'} no longer
-          work.
+        // A warning, not a confirmation: what it reports is that something people were sent
+        // has stopped working, which is the same kind of thing as the two notices below it.
+        <div className="note warning">
+          Schedule unpublished. {withdrawn} {withdrawn === 1 ? 'link' : 'links'} no longer{' '}
+          {withdrawn === 1 ? 'works' : 'work'}.
         </div>
       )}
 
