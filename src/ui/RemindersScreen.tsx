@@ -55,10 +55,10 @@ import {
   useSentReminders,
 } from '../lib/reminders'
 import type { SendChannel } from '../lib/reminders'
-import { useAssignments, usePasses, usePeople } from '../lib/repo'
+import { useAssignments, useBaseLocation, usePasses, usePeople } from '../lib/repo'
 import { useUrlState } from '../lib/urlState'
 import { PLACEHOLDERS, templateProblem } from '../domain/reminderText'
-import { Empty, ErrorNote, Loading } from './Bits'
+import { Empty, ErrorNote, Loading, SectionPill } from './Bits'
 import { PersonLink } from './PersonLink'
 import { Modal } from './Modal'
 
@@ -98,6 +98,7 @@ export function RemindersScreen(): ReactNode {
   const people = usePeople()
   const assignments = useAssignments()
   const passes = usePasses()
+  const base = useBaseLocation()
   const wordings = useReminderTemplates()
   const alreadyOut = useSentReminders()
 
@@ -180,8 +181,19 @@ export function RemindersScreen(): ReactNode {
       eventName: event?.name ?? 'Apple Day',
       occasion: occasionOf(selection, slots),
       supportLine: (event?.support ?? []).map(contactLabel).filter(Boolean).join(', '),
+      /*
+        Where to report. Named and addressed, because this is read at home the night before
+        by somebody working out how long the drive is — the pass can afford to say only the
+        name, since whoever is reading it is being handed a map on the same screen.
+
+        Resolved through the shared hook: the base is deliberately not one of the year's
+        selected locations, so looking it up among those finds nothing and empties the line.
+      */
+      meetingPoint: base.data
+        ? [base.data.name, base.data.address].filter(Boolean).join(', ')
+        : '',
     }),
-    [event, selection, slots],
+    [event, selection, slots, base.data],
   )
 
   /*
@@ -566,7 +578,10 @@ export function RemindersScreen(): ReactNode {
                     <div key={y.person.id} className="small">
                       {/* Their own page, like every other list of people here — a name
                           that is not a way through to the person is a dead end. */}
-                      <PersonLink person={y.person} />
+                      <PersonLink person={y.person} />{' '}
+                      {/* And their section. Two troops send from this screen, and a list of
+                          bare first names gives no way to tell whose youth is whose. */}
+                      <SectionPill section={y.person.section} />
                       <span className="muted">
                         {' — '}
                         {y.shifts.map((s) => `${s.day} ${s.slotLabel}`).join(', ')}
@@ -609,7 +624,8 @@ export function RemindersScreen(): ReactNode {
                       <span className="small">
                         {/* Especially here: this list exists so somebody can be chased, and
                             their page is where a number gets added if there is none. */}
-                        <PersonLink person={u.person} />
+                        <PersonLink person={u.person} />{' '}
+                        <SectionPill section={u.person.section} />
                         {u.phone ? (
                           <>
                             {' — '}

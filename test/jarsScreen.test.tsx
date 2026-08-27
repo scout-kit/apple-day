@@ -239,7 +239,8 @@ describe('the counted list', () => {
     const headers = Array.from(table().querySelectorAll('thead th')).map((h) => h.textContent)
     expect(headers).toEqual(['Jar', 'Where', 'Who', 'Amount', 'Method', ''])
     expect(rows()[0]![1]).toContain('Braemar')
-    expect(rows()[0]![2]).toBe('Alpha One')
+    // The name, and the section with it: two troops read this screen.
+    expect(rows()[0]![2]).toBe('Alpha One Cubs')
   })
 
   it('links the youth a jar is against to their own page', () => {
@@ -282,7 +283,7 @@ describe('the counted list', () => {
     render(<JarsScreen />)
     await userEvent.type(screen.getByLabelText('Search counted jars'), 'beta')
     expect(rows()).toHaveLength(1)
-    expect(rows()[0]![2]).toBe('Beta Two')
+    expect(rows()[0]![2]).toBe('Beta Two Scouts')
   })
 
   it('takes several words, each of which has to appear somewhere', async () => {

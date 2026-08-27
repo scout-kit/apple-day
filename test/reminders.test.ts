@@ -363,7 +363,13 @@ describe('what a reminder must never say', () => {
       { slotId: 'sat-0900', day: 'Saturday', slotLabel: '9:00 AM – 10:00 AM' },
     ])
 
-    const ctx = { eventName: 'Apple Day 2026', occasion: 'Saturday', supportLine: '' }
+    const ctx = {
+      eventName: 'Apple Day 2026',
+      occasion: 'Saturday',
+      supportLine: '',
+      // The base, which is not one of the shops and is the one place a reminder may name.
+      meetingPoint: 'The Scout Hall, 5 King St',
+    }
     for (const t of DEFAULT_TEMPLATES) {
       const text = `${fillTemplate(t.subject, only, ctx)} ${fillTemplate(t.body, only, ctx)}`
       expect(text, t.id).toContain('9:00 AM')

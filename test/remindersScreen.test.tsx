@@ -46,6 +46,12 @@ let sendFails = new Set<string>()
 vi.mock('../src/lib/repo', () => ({
   usePeople: () => ({ data: people, loading: false, error: null }),
   useAssignments: () => ({ data: assignments, loading: false, error: null }),
+  // Where to report, which every wording names.
+  useBaseLocation: () => ({
+    data: { id: 'hall', name: 'The Scout Hall', address: '5 King St' },
+    loading: false,
+    error: null,
+  }),
   usePasses: () => ({
     data: people.map((p) => ({
       token: `tok-${p.id}`, personId: p.id, displayName: p.firstName, shiftCount: 1,

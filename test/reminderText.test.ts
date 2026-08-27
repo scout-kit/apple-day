@@ -48,6 +48,7 @@ const CTX: TemplateContext = {
   eventName: 'Apple Day 2026',
   occasion: 'Saturday, 9:00 AM',
   supportLine: 'base on 519-555-0100',
+  meetingPoint: 'The Scout Hall, 5 King St',
 }
 
 const render = (id: string, r: Recipient) => {
@@ -373,7 +374,7 @@ describe('where the not-checked-in filter starts', () => {
 })
 
 describe('a gap left by an empty placeholder', () => {
-  const ctx = { eventName: 'Apple Day 2026', occasion: '', supportLine: '' }
+  const ctx = { eventName: 'Apple Day 2026', occasion: '', supportLine: '', meetingPoint: '' }
 
   it('is closed up rather than left as a double space', () => {
     // The line stays — it still says something — but "Your {{occasion}} shift" should not
@@ -394,5 +395,35 @@ describe('a gap left by an empty placeholder', () => {
 
   it('does not touch a line where nothing was empty', () => {
     expect(fillTemplate('Hi {{parent}}, see you.', one, ctx)).toBe('Hi Ada Ramsahai, see you.')
+  })
+})
+
+/**
+ * Where to meet.
+ *
+ * The emails said when and never said where. A parent reads that as an oversight, and the
+ * one place a reminder may name is base: everybody reports there first, so saying it gives
+ * nothing away about which shop anybody ends up at.
+ */
+describe('the meeting point', () => {
+  it('is in every wording, so no reminder goes out without it', () => {
+    for (const t of DEFAULT_TEMPLATES) {
+      expect(fillTemplate(t.body, one, CTX), t.id).toContain('The Scout Hall, 5 King St')
+    }
+  })
+
+  it('takes its line with it when no base is set', () => {
+    // Rather than "Report to  first". Publishing warns about a missing base separately.
+    for (const t of DEFAULT_TEMPLATES) {
+      const body = fillTemplate(t.body, one, { ...CTX, meetingPoint: '' })
+      expect(body, t.id).not.toContain('Report to')
+      expect(body, t.id).not.toMatch(/check-in/)
+    }
+  })
+
+  it('is still only the base — a wording cannot name the shop instead', () => {
+    // The guard above holds: there is nothing to put a shop's name into.
+    expect(PLACEHOLDERS.map((p) => p.token)).toContain('meet')
+    expect(templateProblem({ subject: 's', body: '{{shifts}} {{meet}}' })).toBeNull()
   })
 })

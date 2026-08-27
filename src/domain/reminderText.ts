@@ -17,8 +17,12 @@ import type { Audience, Recipient, RecipientYouth, SelectionKind } from './remin
  * Every default names the day and the hour outright. An organizer chooses when to send, so
  * "tomorrow" is a promise about the clock that nothing here can keep.
  *
- * There is no placeholder for a location and none to add. Where somebody is standing is not
- * told to them until they report to base, and an email cannot be taken back.
+ * There is no placeholder for a shop and none to add. Where somebody is standing is not told
+ * to them until they report to base, and an email cannot be taken back.
+ *
+ * Where to *meet* is a different thing, and it is here: everybody reports to base first, so
+ * base is the one place a reminder can name. Without it the email says when and never says
+ * where, and a parent reads it as an oversight.
  *
  * Plain text. This is read on a phone in a shop doorway.
  */
@@ -32,6 +36,13 @@ export interface TemplateContext {
   occasion: string
   /** Who to ring on the day. */
   supportLine: string
+  /**
+   * Where to report before a shift — the event's base, named and addressed.
+   *
+   * Empty when no base is set, which drops the line that mentions it rather than sending
+   * "report to  first". An event with no base has a warning of its own on publishing.
+   */
+  meetingPoint: string
 }
 
 /** The wording of one reminder — the half an organizer may change. */
@@ -78,6 +89,7 @@ export const PLACEHOLDERS: { token: string; describes: string }[] = [
   { token: 'occasion', describes: 'The day or hour it is about — “Saturday 9:00 AM”' },
   { token: 'shifts', describes: 'Their shift times, and a link to each child’s own page' },
   { token: 'support', describes: 'Who to ring on the day' },
+  { token: 'meet', describes: 'Where to report before a shift — the event’s base' },
 ]
 
 /** "Elliot and Nadia" — a parent may have more than one child here. */
@@ -130,6 +142,7 @@ export function fillTemplate(text: string, r: Recipient, ctx: TemplateContext): 
     occasion: ctx.occasion,
     shifts: shiftDetail(r),
     support: ctx.supportLine,
+    meet: ctx.meetingPoint,
   }
   const TOKEN = /\{\{\s*(\w+)\s*\}\}/g
 
@@ -180,6 +193,8 @@ export const DEFAULT_TEMPLATES: ReminderTemplate[] = [
       '',
       '{{shifts}}',
       '',
+      'Report to {{meet}} first — where you are going is given out at check-in.',
+      '',
       'On the day, ring {{support}}.',
     ].join('\n'),
   },
@@ -199,6 +214,8 @@ export const DEFAULT_TEMPLATES: ReminderTemplate[] = [
       '',
       '{{shifts}}',
       '',
+      'Report to {{meet}} first — where you are going is given out at check-in.',
+      '',
       'On the day, ring {{support}}.',
     ].join('\n'),
   },
@@ -215,6 +232,8 @@ export const DEFAULT_TEMPLATES: ReminderTemplate[] = [
       'We have not checked {{youth}} in yet for {{occasion}}, and we are still expecting them.',
       '',
       '{{shifts}}',
+      '',
+      'Report to {{meet}} — where you are going is given out at check-in.',
       '',
       'If something has come up, please let us know so we can cover the shift.',
       '',

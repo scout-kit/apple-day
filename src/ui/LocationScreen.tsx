@@ -679,7 +679,10 @@ export function LocationScreen(): ReactNode {
                     */}
                     <td className="small">
                       {jar.personId ? (
-                        <PersonLink person={holder} personId={jar.personId} />
+                        <>
+                          <PersonLink person={holder} personId={jar.personId} />{' '}
+                          {holder && <SectionPill section={holder.section} />}
+                        </>
                       ) : (
                         <span className="muted">—</span>
                       )}

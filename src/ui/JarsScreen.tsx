@@ -22,7 +22,7 @@ import {
   usePeople,
 } from '../lib/repo'
 import { runsTheEvent, useSession } from '../lib/session'
-import { ErrorNote, Loading, Money, Stat } from './Bits'
+import { ErrorNote, Loading, Money, SectionPill, Stat } from './Bits'
 import { JarLabels } from './JarLabels'
 import { LocationLink } from './LocationLink'
 import { PersonLink } from './PersonLink'
@@ -775,7 +775,9 @@ export function JarsScreen(): ReactNode {
                 </tr>
               </thead>
               <tbody>
-                {countedShown.map((jar) => (
+                {countedShown.map((jar) => {
+                  const holder = jar.personId ? personById.get(jar.personId) : undefined
+                  return (
                   <tr key={jar.id}>
                     <td className="mono">
                       {isNumbered(jar) ? (
@@ -795,10 +797,13 @@ export function JarsScreen(): ReactNode {
                     </td>
                     <td className="small">
                       {jar.personId ? (
-                        <PersonLink
-                          person={personById.get(jar.personId)}
-                          personId={jar.personId}
-                        />
+                        <>
+                          <PersonLink person={holder} personId={jar.personId} />{' '}
+                          {/* With their section, as everywhere else a name is listed: two
+                              troops run this together, and "which of ours is that" is the
+                              first thing asked of any name on a money screen. */}
+                          {holder && <SectionPill section={holder.section} />}
+                        </>
                       ) : (
                         <span className="muted">not recorded</span>
                       )}
@@ -834,7 +839,8 @@ export function JarsScreen(): ReactNode {
                       </div>
                     </td>
                   </tr>
-                ))}
+                  )
+                })}
               </tbody>
             </table>
           </div>
