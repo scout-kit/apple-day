@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, within, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { AppleDayEvent } from '../src/domain/types'
@@ -757,5 +757,54 @@ describe('creating an event', () => {
     render(<EventsScreen />)
     await openEditor()
     expect(screen.queryByLabelText(/Start from another event/)).toBeNull()
+  })
+})
+
+describe('keeping a copy of a year', () => {
+  /*
+    Restoring is the rarer of the two, so it takes the plain weight and the ellipsis that
+    means it opens something. What it must not be is a smaller control of a different kind:
+    a `btn tiny` label beside a full-size primary read as a heading with two unrelated bits
+    stuck to it, and the label could not be reached by keyboard at all.
+  */
+  it('puts both actions in the header, as buttons of the same kind', () => {
+    render(<EventsScreen />)
+    // Both are actions on this page and both are real buttons of the same size; what
+    // separates them is weight, not one of them being dressed as something smaller.
+    const header = screen.getByRole('heading', { name: 'Events' }).closest('.row')!
+    const buttons = within(header as HTMLElement).getAllByRole('button')
+    expect(buttons.map((b) => b.textContent)).toEqual([
+      'Restore from a file…',
+      'New event',
+    ])
+    expect(buttons.every((b) => b.tagName === 'BUTTON')).toBe(true)
+  })
+
+  it('offers restoring as a real button, not a label dressed as one', () => {
+    // A `<label>` styled as a button cannot be reached by keyboard and is not announced as
+    // a button by a screen reader.
+    render(<EventsScreen />)
+    const restore = screen.getByRole('button', { name: 'Restore from a file…' })
+    expect(restore.tagName).toBe('BUTTON')
+  })
+
+  it('says why it is worth doing, next to the buttons', () => {
+    /*
+      Nobody exports a year they have not been told they can lose. Said in a line by the
+      buttons rather than a card further down: that is where it goes out of sight the moment
+      a group has run four Apple Days.
+    */
+    render(<EventsScreen />)
+    expect(screen.getByText(/only backup there is/)).toBeTruthy()
+  })
+
+  it('says what is in the file, since it is the most sensitive thing here', () => {
+    render(<EventsScreen />)
+    expect(screen.getByText(/parents’ numbers|parents' numbers/)).toBeTruthy()
+  })
+
+  it('offers an export beside each year', () => {
+    render(<EventsScreen />)
+    expect(screen.getAllByRole('button', { name: 'Export' }).length).toBeGreaterThan(0)
   })
 })

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { activeDays, DAY_SHORT, formatTime } from '../domain/slots'
 import type { AppleDayEvent } from '../domain/types'
@@ -53,6 +53,7 @@ export function EventsScreen(): ReactNode {
   const mayEdit = canEditEvent(role)
   // Starting a year, and ending one, stay with whoever is accountable for the record.
   const mayAdd = canAddEvent(role)
+  const fileInput = useRef<HTMLInputElement>(null)
   const [exporting, setExporting] = useState<string | null>(null)
   const [restoring, setRestoring] = useState<{ file: EventTransfer; what: string[] } | null>(null)
 
@@ -287,37 +288,55 @@ export function EventsScreen(): ReactNode {
         <div className="row" style={{ justifyContent: 'space-between' }}>
           <h1>Events</h1>
           {mayAdd && (
-            <button
-              className="primary"
-              onClick={() => {
-                setCopyFrom('')
-                setDraft(blankEvent(nextUp.name, nextUp.year, nextUp.template ?? undefined))
-              }}
-            >
-              New event
-            </button>
-          )}
-          {/*
-            Beside New event, because that is what it is: a year arriving, from a file
-            instead of from scratch. Also how a year built in staging is carried into the
-            real project rather than typed again.
-          */}
-          {mayAdd && (
-            <label className="btn tiny" style={{ cursor: 'pointer' }}>
-              Restore from a file
+            /*
+              Both real buttons, the same size, grouped to one side. Restoring is the rarer
+              of the two, so it takes the plain weight and the ellipsis that means it opens
+              something — but it is still the same kind of control, and dressing it as a
+              smaller one made the row read as a heading with two unrelated bits stuck to it.
+            */
+            <div className="row">
+              <button onClick={() => fileInput.current?.click()}>Restore from a file…</button>
+              {/*
+                A real button opening a hidden input. A `<label>` dressed as one cannot be
+                reached by keyboard and is not announced as a button by a screen reader.
+              */}
               <input
+                ref={fileInput}
                 type="file"
                 accept="application/json,.json"
                 style={{ display: 'none' }}
+                aria-hidden="true"
+                tabIndex={-1}
                 onChange={(e) => {
                   void chooseFile(e.target.files?.[0])
                   // Cleared so choosing the same file twice still fires.
                   e.target.value = ''
                 }}
               />
-            </label>
+              <button
+                className="primary"
+                onClick={() => {
+                  setCopyFrom('')
+                  setDraft(blankEvent(nextUp.name, nextUp.year, nextUp.template ?? undefined))
+                }}
+              >
+                New event
+              </button>
+            </div>
           )}
         </div>
+        {mayAdd && (
+          <p className="small muted" style={{ marginTop: 0 }}>
+            {/*
+              Said once, near the buttons, rather than in a card further down the page — which
+              is where it goes out of sight the moment a group has run four Apple Days.
+            */}
+            <strong>Export</strong> beside a year writes it to a file, with the shops and
+            sections it names, so it can be put back or carried into another project. On the
+            free plan it is the only backup there is — and it holds children&apos;s names and
+            their parents&apos; numbers, so keep it accordingly.
+          </p>
+        )}
         {events.length === 0 ? (
           <p className="muted">
             No events yet. Create one — each keeps its own signups, schedule and money.
