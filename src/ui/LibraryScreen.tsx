@@ -16,7 +16,7 @@ import { Modal } from './Modal'
 import { useEvent } from '../lib/eventContext'
 import { addLocationsToEvent } from '../lib/repo'
 import { LocationLink } from './LocationLink'
-import { ErrorNote, Loading } from './Bits'
+import { AreaMark, ErrorNote, Loading } from './Bits'
 import { LocationEditor } from './LocationEditor'
 
 const blank = (): Location => ({
@@ -211,10 +211,16 @@ export function LibraryScreen(): ReactNode {
                       )}
                     </td>
                     <td>
-                      <div>
+                      <div style={{ display: 'flex', alignItems: 'center' }}>
+                        <AreaMark code={loc.groupCode} />
                         <LocationLink name={loc.name} locationId={loc.id} />
                       </div>
-                      {loc.address && <div className="small muted">{loc.address}</div>}
+                      {(loc.address || loc.groupCode.trim()) && (
+                        <div className="small muted">
+                          {loc.groupCode.trim() && `${loc.groupCode.trim().toUpperCase()} · `}
+                          {loc.address}
+                        </div>
+                      )}
                       {loc.aliases.length > 0 && (
                         <div className="small muted">
                           also known as {loc.aliases.join('; ')}

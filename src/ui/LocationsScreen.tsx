@@ -20,7 +20,7 @@ import {
   useLocations,
 } from '../lib/repo'
 import { LocationLink } from './LocationLink'
-import { ErrorNote, Hours, Loading, Money } from './Bits'
+import { AreaMark, ErrorNote, Hours, Loading, Money } from './Bits'
 import { LocationsMapCard } from './LocationsMapCard'
 import { Modal } from './Modal'
 
@@ -323,10 +323,14 @@ export function LocationsScreen(): ReactNode {
                         )}
                       </td>
                       <td>
-                        <div>
+                        <div style={{ display: 'flex', alignItems: 'center' }}>
+                          <AreaMark code={loc.groupCode} />
                           <LocationLink name={loc.name} locationId={loc.id} />
                         </div>
                         <div className="small muted">
+                          {/* The code as well as the colour: a stripe says "with that one",
+                              and the code says which plaza it is when they are far apart. */}
+                          {loc.groupCode.trim() && `${loc.groupCode.trim().toUpperCase()} · `}
                           {loc.address}
                           {staffable === 0 && (
                             <span style={{ color: 'var(--warn)' }}>

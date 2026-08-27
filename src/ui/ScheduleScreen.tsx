@@ -8,7 +8,7 @@ import { fullName } from '../domain/types'
 import type { Assignment, Person, Slot } from '../domain/types'
 import { validateSchedule } from '../domain/validation'
 import type { ScheduleIssue } from '../domain/validation'
-import { areaOf, areaTone } from '../domain/areas'
+import { areaOf } from '../domain/areas'
 import { useEvent } from '../lib/eventContext'
 import { runsTheEvent, useSession } from '../lib/session'
 import {
@@ -20,7 +20,7 @@ import {
   useSignups,
 } from '../lib/repo'
 import { LocationLink } from './LocationLink'
-import { ErrorNote, IssueBanner, Loading, SectionPill, Stat } from './Bits'
+import { AreaMark, ErrorNote, IssueBanner, Loading, SectionPill, Stat } from './Bits'
 import { PublishActions } from './PublishActions'
 import { PersonLink } from './PersonLink'
 import { RequestsInbox } from './RequestsInbox'
@@ -406,12 +406,7 @@ export function ScheduleScreen(): ReactNode {
                         colour links them where they are; sorting by area would take that
                         ordering away to say the same thing.
                       */}
-                      {areaOf(location) && (
-                        <span
-                          className={`area-mark tone-${areaTone(areaOf(location)!)}`}
-                          title={`In ${areaOf(location)} — anybody paired here can stand at any shop in it`}
-                        />
-                      )}
+                      <AreaMark code={location.groupCode} />
                       <LocationLink name={location.name} locationId={location.id} />
                     </div>
                     <div className="small muted">

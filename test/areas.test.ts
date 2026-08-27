@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { AREA_TONES, areaOf, areaTone, sameArea } from '../src/domain/areas'
 import type { Location } from '../src/domain/types'
@@ -92,5 +93,29 @@ describe('the colour an area gets', () => {
   it('gives different areas different colours, for the ones a group will have', () => {
     const tones = new Set(['LINDEN', 'FARMERS', 'MARKET', 'FOXGLOVE'].map(areaTone))
     expect(tones.size).toBeGreaterThan(1)
+  })
+})
+
+describe('every list that names shops marks the area the same way', () => {
+  /*
+    One shared piece rather than a copy per screen. The colour is the whole point — two rows
+    carrying the same one are the same plaza — and three copies of the mark is three chances
+    for one list to disagree with another about which colour that is.
+  */
+  const source = (path: string): string => readFileSync(path, 'utf8')
+
+  it('uses the shared mark, not its own', () => {
+    for (const screen of ['ScheduleScreen', 'LocationsScreen', 'LibraryScreen']) {
+      const text = source(`src/ui/${screen}.tsx`)
+      expect(text, `${screen} does not mark the area`).toContain('<AreaMark')
+      // The stripe's class belongs to the one component that draws it.
+      expect(text, `${screen} draws its own stripe`).not.toContain('area-mark tone-')
+    }
+  })
+
+  it('draws nothing for a shop on its own', () => {
+    // Most of a fresh library has no area, and a mark on every row would say they were all
+    // together.
+    expect(areaOf({ groupCode: '' })).toBeNull()
   })
 })

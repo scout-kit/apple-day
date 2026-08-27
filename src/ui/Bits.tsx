@@ -1,10 +1,37 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
+import { areaOf, areaTone } from '../domain/areas'
 import { useSections } from '../lib/sections'
 import type { Section } from '../domain/types'
 import type { IssueSeverity, ScheduleIssue } from '../domain/validation'
 
 /** Small shared pieces, kept together rather than one file each. */
+
+/**
+ * The area a shop is in, marked so two of them read as one place.
+ *
+ * A stripe and the code, in every list that names shops: the schedule board, the year's
+ * locations, the library. One piece rather than three, because the colour is the whole point
+ * — two rows carrying the same one are the same plaza — and three copies of it is three
+ * chances for one list to disagree with another about which colour that is.
+ *
+ * Nothing at all for a shop on its own. Most of a fresh library has no area, and a mark on
+ * every row would say they were all together.
+ */
+export function AreaMark({ code, label = false }: { code: string; label?: boolean }): ReactNode {
+  const area = areaOf({ groupCode: code })
+  if (!area) return null
+
+  return (
+    <>
+      <span
+        className={`area-mark tone-${areaTone(area)}`}
+        title={`In ${area} — anybody paired here can stand at any shop in it`}
+      />
+      {label && <span className="small muted">{area}</span>}
+    </>
+  )
+}
 
 /**
  * Copy something, and say that it happened.
