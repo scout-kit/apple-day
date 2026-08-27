@@ -37,6 +37,7 @@ import type {
 import { useEvent } from './eventContext'
 import { auth, db } from './firebase'
 import { normaliseEmail, readTier } from '../domain/access'
+import type { LocationUsage } from '../domain/libraryRemoval'
 import type { Invitation, RosterEntry, Tier } from '../domain/access'
 import { readAssignment } from '../domain/assignments'
 import { generateToken } from '../domain/publishing'
@@ -535,6 +536,56 @@ export async function reorderEventLocations(
     )
   })
   await batch.commit()
+}
+
+/**
+ * What still points at a shop, year by year.
+ *
+ * Read across every event rather than the one being looked at: the library is shared, and a
+ * shop nobody has used since 2024 is exactly the one somebody will try to tidy away.
+ *
+ * A handful of reads for an admin pressing a button they press once a year. Counting this
+ * properly is the difference between a delete that is safe and one that is merely confirmed.
+ */
+export async function locationUsage(
+  locationId: string,
+  events: { id: string; name: string }[],
+): Promise<LocationUsage[]> {
+  return Promise.all(
+    events.map(async (event) => {
+      const [shifts, jars, listed] = await Promise.all([
+        getDocs(query(paths.assignments(event.id), where('locationId', '==', locationId))),
+        getDocs(query(paths.jars(event.id), where('locationId', '==', locationId))),
+        getDoc(paths.eventLocation(event.id, locationId)),
+      ])
+      return {
+        eventId: event.id,
+        eventName: event.name || event.id,
+        shifts: shifts.docs.length,
+        jars: jars.docs.length,
+        inThatYear: listed.exists(),
+      }
+    }),
+  )
+}
+
+/**
+ * Take a shop out of the library.
+ *
+ * Only ever for one nothing points at — the caller checks with `locationUsage` first, and
+ * the screen refuses rather than warns. Admin-only by rule, because the cost of getting it
+ * wrong is a year of takings against a shop that no longer exists.
+ */
+export async function removeLibraryLocation(location: Location): Promise<void> {
+  await auditedDelete(paths.location(location.id), {
+    entity: 'location',
+    entityId: location.id,
+    eventId: null,
+    // The name and the address, because once it is gone the id says nothing to anybody.
+    summary: `Removed ${location.name || location.id} from the library${
+      location.address ? ` (${location.address})` : ''
+    }`,
+  })
 }
 
 /** Remove a location from a year entirely. Its library record and history are untouched. */

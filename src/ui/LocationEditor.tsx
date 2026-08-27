@@ -138,19 +138,24 @@ export function LocationEditor({
                 placeholder="Braemar — 640 Linden Drive"
               />
             </label>
-            <div style={{ flex: '0 1 9rem' }}>
-              <label>
-                Area
-                <input
-                  value={draft.groupCode}
-                  placeholder="LINDEN"
-                  onChange={(e) => setDraft({ ...draft, groupCode: e.target.value })}
-                />
-              </label>
-              <div className="small muted">
-                Shops sharing this are one place to stand, so a pair split between them is
-                not split. Leave it blank for a shop on its own.
-              </div>
+          </div>
+
+          {/*
+            Under the name rather than beside it. Squeezed into the same row it needed a
+            column too narrow for the one line that makes it mean anything, and the wrapping
+            left the two inputs looking out of line with each other.
+          */}
+          <div className="row" style={{ alignItems: 'center' }}>
+            <label style={{ flex: '0 1 12rem' }}>
+              Area <span className="muted">(optional)</span>
+              <input
+                value={draft.groupCode}
+                placeholder="LINDEN"
+                onChange={(e) => setDraft({ ...draft, groupCode: e.target.value })}
+              />
+            </label>
+            <div className="small muted" style={{ flex: '1 1 16rem' }}>
+              Shops sharing an area count as one place to stand.
             </div>
           </div>
 
@@ -163,6 +168,7 @@ export function LocationEditor({
               />
             </label>
           </div>
+
 
           <div className="row">
             {draft.mapsUrl || customLink ? (

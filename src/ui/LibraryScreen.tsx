@@ -4,7 +4,15 @@ import { DAY_SHORT, formatOpenRange, isHoursRecorded, isOpenOn } from '../domain
 import { eventLabel } from '../domain/events'
 import { DAYS } from '../domain/types'
 import type { Day, Location } from '../domain/types'
-import { useEventLocations, useLocationLibrary } from '../lib/repo'
+import { removalProblem, removalSummary } from '../domain/libraryRemoval'
+import {
+  locationUsage,
+  removeLibraryLocation,
+  useEventLocations,
+  useLocationLibrary,
+} from '../lib/repo'
+import { canRemoveLibrary, useSession } from '../lib/session'
+import { Modal } from './Modal'
 import { useEvent } from '../lib/eventContext'
 import { addLocationsToEvent } from '../lib/repo'
 import { LocationLink } from './LocationLink'
@@ -42,9 +50,50 @@ const openDays = (loc: Location): Day[] =>
  * the year, on the Locations screen.
  */
 export function LibraryScreen(): ReactNode {
-  const { event } = useEvent()
+  const { event, events } = useEvent()
   const library = useLocationLibrary()
   const inYear = useEventLocations()
+
+  const { role } = useSession()
+  /*
+    Admin only, and the role helper for it has existed since the tiers did — the rules allow
+    the delete and nothing ever offered it. Half-built rather than deliberately withheld.
+  */
+  const mayRemove = canRemoveLibrary(role)
+  const [checking, setChecking] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [removing, setRemoving] = useState<{
+    location: Location
+    problem: string | null
+  } | null>(null)
+
+  /**
+   * Ask the database what points at it, then ask the person.
+   *
+   * The other way round is a confirmation nobody can answer: what a shop is holding lives
+   * across every year, and the person pressing Remove is looking at one row.
+   */
+  const askRemove = async (location: Location): Promise<void> => {
+    setChecking(location.id)
+    try {
+      const usage = await locationUsage(location.id, events)
+      setRemoving({ location, problem: removalProblem(usage) })
+    } finally {
+      setChecking(null)
+    }
+  }
+
+  const doRemove = async (): Promise<void> => {
+    if (!removing || removing.problem) return
+    setBusy(true)
+    try {
+      await removeLibraryLocation(removing.location)
+      setRemoving(null)
+    } finally {
+      setBusy(false)
+    }
+  }
+
 
   /*
     Held for adding only.
@@ -144,6 +193,7 @@ export function LibraryScreen(): ReactNode {
                   <th>Location</th>
                   <th>Open</th>
                   <th>{event ? `In ${eventLabel(event)}` : 'In year'}</th>
+                  <th />
                 </tr>
               </thead>
               <tbody>
@@ -197,6 +247,24 @@ export function LibraryScreen(): ReactNode {
                         <span className="muted">no</span>
                       )}
                     </td>
+                    <td>
+                      {/*
+                        Admin only, and it asks the database before it asks the person.
+
+                        A shop is what years of jars and shifts hang off; removing one that
+                        anything points at orphans all of it, and unlike a wrong address that
+                        is not something the person who did it will see.
+                      */}
+                      {mayRemove && (
+                        <button
+                          className="tiny danger"
+                          disabled={checking === loc.id}
+                          onClick={() => void askRemove(loc)}
+                        >
+                          {checking === loc.id ? 'Checking…' : 'Remove'}
+                        </button>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -204,6 +272,47 @@ export function LibraryScreen(): ReactNode {
           </div>
         )}
       </div>
+
+      {removing && (
+        <Modal
+          title={`Remove ${removing.location.name} from the library?`}
+          onClose={() => setRemoving(null)}
+          footer={
+            <>
+              <button onClick={() => setRemoving(null)} disabled={busy}>
+                Cancel
+              </button>
+              {!removing.problem && (
+                <button className="danger" disabled={busy} onClick={() => void doRemove()}>
+                  {busy ? 'Removing…' : 'Remove it'}
+                </button>
+              )}
+            </>
+          }
+        >
+          {removing.problem ? (
+            <>
+              {/*
+                Refused rather than confirmed. "Are you sure" is the wrong question when the
+                answer is knowable, and the person pressing it cannot see what it would break.
+              */}
+              <p>{removing.problem}</p>
+              <p className="small muted">
+                Take it off that year&apos;s list of places first, on the Locations screen. A
+                shop you no longer call on can simply stay here unused — the library is a
+                record of where the group has been, and its past takings hang off this row.
+              </p>
+            </>
+          ) : (
+            <>
+              <p>{removalSummary(removing.location.name)}</p>
+              <p className="small muted">
+                It goes for good. Nothing else changes.
+              </p>
+            </>
+          )}
+        </Modal>
+      )}
 
       {adding && <LocationEditor location={adding} onClose={() => setAdding(null)} />}
     </div>

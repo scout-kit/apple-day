@@ -21,6 +21,19 @@ const library: { data: Location[]; loading: boolean; error: null } = {
   error: null,
 }
 
+// Reached through the session, which the remove control asks for the tier.
+let role = 'admin'
+
+vi.mock('../src/lib/session', () => ({
+  useSession: () => ({ user: { uid: 'u1' }, role }),
+  runsTheEvent: (r: string) => r === 'admin' || r === 'organizer',
+  canSeeTheEvent: (r: string) => r === 'admin' || r === 'organizer' || r === 'viewer',
+  canEditLibrary: (r: string) => r === 'admin' || r === 'organizer',
+  canRemoveLibrary: (r: string) => r === 'admin',
+}))
+
+vi.mock('../src/lib/firebase', () => ({ db: {}, auth: {}, missingConfig: [] }))
+
 vi.mock('../src/lib/repo', () => ({
   saveLocation: vi.fn(),
   useLocationLibrary: () => library,

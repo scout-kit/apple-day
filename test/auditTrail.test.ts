@@ -410,6 +410,9 @@ describe('every way the app changes something', () => {
     // Counts what an event holds, so somebody can be told before they lose it. The removal
     // itself is \`removeEvent\`, and that does write a line naming everything that went.
     'src/lib/repo.ts:tallyEvent': 'counts before a removal, changes nothing',
+    // Counts what points at a shop across every year, so a removal can be refused rather
+    // than confirmed. The removal itself is `removeLibraryLocation`, and that writes a line.
+    'src/lib/repo.ts:locationUsage': 'counts before a removal, changes nothing',
   }
 
   const AUDITS = /recordInBatch|auditedSet|auditedDelete|auditedBatch/
