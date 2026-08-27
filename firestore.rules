@@ -56,14 +56,29 @@ service cloud.firestore {
         .data.get('level', 'admin');
     }
 
-    /** Anybody on the roster: organizers and admins alike. Runs the event. */
-    function isOrganizer() {
+    /**
+     * Three tiers, each named rather than inferred from not being another.
+     *
+     * `isAdmin` was "on the roster and not an organizer", which reads fine with two tiers and
+     * is a trapdoor with three: a level nobody had thought of — a typo, a tier added later —
+     * passed it. Asked positively, an unrecognised level is a reader and nothing more, which
+     * is the way round this should fail.
+     *
+     * A viewer is on the roster, so `onRoster` still gates reading. What it does not gate is
+     * writing: every rule that changes anything asks for `isOrganizer` or `isAdmin`.
+     */
+    function isViewer() {
       return onRoster();
+    }
+
+    /** Runs the event: the schedule, the day, the jars, the money. */
+    function isOrganizer() {
+      return onRoster() && (rosterLevel() == 'admin' || rosterLevel() == 'organizer');
     }
 
     /** Full access, including the setup that spans every year. */
     function isAdmin() {
-      return onRoster() && rosterLevel() != 'organizer';
+      return onRoster() && rosterLevel() == 'admin';
     }
 
     function isUnchanged(field) {
@@ -264,7 +279,7 @@ service cloud.firestore {
     // one location they are sent to, denormalized onto their own pass.
 
     match /locations/{locationId} {
-      allow read: if isOrganizer();
+      allow read: if isViewer();
       /*
         Adding a shop and correcting an address are things that happen on the day, by
         whoever is standing there finding out the address is wrong — so an organizer does
@@ -327,7 +342,7 @@ service cloud.firestore {
     // can be shown on the day; only admins change the list.
 
     match /sections/{sectionId} {
-      allow read: if isOrganizer();
+      allow read: if isViewer();
       // Setup: every year's figures are grouped by these.
       allow write: if isAdmin();
     }
@@ -335,7 +350,7 @@ service cloud.firestore {
     // ----------------------------------------------------------------- events
 
     match /events/{eventId} {
-      allow read: if isOrganizer();
+      allow read: if isViewer();
       /*
         Editing the year that is being run — its dates, its hours, the number to ring — is
         organizing it, and wanting the support number changed at 8am on the Saturday is not
@@ -351,7 +366,7 @@ service cloud.firestore {
       // Which library locations this year uses, and in what order. Read by anybody running
       // the event so the jar screen can name a location; only admins set them.
       match /eventLocations/{locationId} {
-        allow read: if isOrganizer();
+        allow read: if isViewer();
         /*
           Which shops this year uses is this year's schedule, not the shape of the app —
           the same decision as which hour somebody works, made by the same person, often in
@@ -373,7 +388,7 @@ service cloud.firestore {
         should be able to make.
       */
       match /people/{personId} {
-        allow read: if isOrganizer();
+        allow read: if isViewer();
         allow write: if isOrganizer();
       }
 
@@ -402,7 +417,7 @@ service cloud.firestore {
                 || request.resource.data.whereabouts in ['here', 'out', 'back']);
         }
 
-        allow read: if isOrganizer();
+        allow read: if isViewer();
         allow create, update: if isOrganizer() && validShift();
         allow delete: if isOrganizer();
       }
@@ -449,7 +464,7 @@ service cloud.firestore {
                 && request.resource.data.amount <= 10000);
         }
 
-        allow read: if isOrganizer();
+        allow read: if isViewer();
         allow create, update: if isOrganizer() && validJar();
 
         allow delete: if isOrganizer();
@@ -463,7 +478,7 @@ service cloud.firestore {
         is where it differs from the public schedule document this replaced.
       */
       match /meta/{docId} {
-        allow read: if isOrganizer();
+        allow read: if isViewer();
         allow write: if isOrganizer();
       }
 
@@ -476,7 +491,7 @@ service cloud.firestore {
         become a document nobody can load the screen past.
       */
       match /notes/{noteId} {
-        allow read: if isOrganizer();
+        allow read: if isViewer();
         allow delete: if isOrganizer();
         allow create, update: if isOrganizer()
           && request.resource.data.keys().hasOnly(['text', 'at', 'by'])

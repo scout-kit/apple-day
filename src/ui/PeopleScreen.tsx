@@ -8,6 +8,7 @@ import { DAYS, fullName } from '../domain/types'
 import type { Person, Section, Slot } from '../domain/types'
 import { downloadFile, toCsv } from '../lib/csv'
 import { useEvent } from '../lib/eventContext'
+import { runsTheEvent, useSession } from '../lib/session'
 import {
   deletePerson,
   removeFromEvent,
@@ -64,6 +65,7 @@ interface Row {
 }
 
 export function PeopleScreen(): ReactNode {
+  const { role } = useSession()
   const { event, slots } = useEvent()
   const { sections } = useSections()
   const people = usePeople()
@@ -92,6 +94,13 @@ export function PeopleScreen(): ReactNode {
     Editing happens on the person's own page, so this needs no companion flag saying which
     of the two it is: if it is set, somebody is being added.
   */
+  /*
+    A viewer reads the signups and changes none of them.
+
+    The rules refuse their writes regardless; this is what keeps the screen from offering a
+    grid of cells that all fail silently when pressed.
+  */
+  const canEdit = runsTheEvent(role)
   const [newPerson, setNewPerson] = useState<Person | null>(null)
   const [writeError, setWriteError] = useState<Error | null>(null)
   const [removing, setRemoving] = useState<Row | null>(null)
@@ -435,18 +444,20 @@ export function PeopleScreen(): ReactNode {
           <button className="tiny" onClick={exportCsv} disabled={visible.length === 0}>
             Export
           </button>
-          <button
-            className="primary tiny"
-            onClick={() => {
-              setNewPerson({
-                id: '', firstName: '', lastName: '',
-                section: sections[0]?.id ?? 'cubs',
-                parentName: '', parentEmail: '', parentPhone: '', pairWithPersonId: null,
-              })
-            }}
-          >
-            Add person
-          </button>
+          {canEdit && (
+            <button
+              className="primary tiny"
+              onClick={() => {
+                setNewPerson({
+                  id: '', firstName: '', lastName: '',
+                  section: sections[0]?.id ?? 'cubs',
+                  parentName: '', parentEmail: '', parentPhone: '', pairWithPersonId: null,
+                })
+              }}
+            >
+              Add person
+            </button>
+          )}
         </div>
       </div>
 
@@ -540,6 +551,7 @@ export function PeopleScreen(): ReactNode {
                                   ? `Withdraw all of ${DAY_LABEL[day]}`
                                   : `Offer all of ${DAY_LABEL[day]}`
                               }
+                              disabled={!canEdit}
                               onClick={() => setWholeDay(row, day, !all)}
                             >
                               {all ? `−${DAY_SHORT[day]}` : `+${DAY_SHORT[day]}`}
@@ -578,6 +590,7 @@ export function PeopleScreen(): ReactNode {
                             aria-label={`${fullName(row.person)} ${when}`}
                             aria-pressed={state === 'offered' || state === 'booked'}
                             title={title}
+                            disabled={!canEdit}
                             onClick={() => toggleHour(row, slot)}
                             style={{
                               border: 0,
@@ -604,6 +617,7 @@ export function PeopleScreen(): ReactNode {
                         which is where their details are changed. Removing them from the
                         year stays, because it is about this list rather than about them.
                       */}
+                      {canEdit && (
                       <button
                         className="tiny"
                         title={`Remove ${fullName(row.person)} from ${(event ? eventLabel(event) : 'this year')}`}
@@ -611,6 +625,7 @@ export function PeopleScreen(): ReactNode {
                       >
                         Remove
                       </button>
+                      )}
                     </td>
                   </tr>
                 ))}

@@ -40,8 +40,11 @@ vi.mock('../src/lib/eventContext', () => ({
   useEvent: () => ({ event: { id: '2026', name: 'Apple Day 2026' } }),
 }))
 
+let role = 'admin'
+
 vi.mock('../src/lib/session', () => ({
-  useSession: () => ({ user: { uid: 'u1', email: 'devin@example.org' }, role: 'admin' }),
+  useSession: () => ({ user: { uid: 'u1', email: 'devin@example.org' }, role }),
+  runsTheEvent: (r: string) => r === 'admin' || r === 'organizer',
 }))
 
 vi.mock('../src/lib/sections', () => ({
@@ -66,6 +69,7 @@ beforeEach(() => {
   downloadFile.mockReset()
   notes = []
   jars = []
+  role = 'admin'
 })
 
 afterEach(cleanup)
@@ -220,5 +224,36 @@ describe('taking them away with you', () => {
   it('offers nothing to export when there is nothing', () => {
     render(<ReconcileScreen />)
     expect(screen.queryByRole('button', { name: 'Export CSV' })).toBeNull()
+  })
+})
+
+describe('what a read-only account is offered here', () => {
+  beforeEach(() => {
+    role = 'viewer'
+    notes = [note()]
+  })
+
+  it('shows the figures and the notes', () => {
+    render(<ReconcileScreen />)
+    expect(screen.getByText('raised in total')).toBeTruthy()
+    expect(within(notesCard()).getByText(/Found jar 14/)).toBeTruthy()
+  })
+
+  it('offers no way to write one', () => {
+    render(<ReconcileScreen />)
+    expect(screen.queryByLabelText('Write a note')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Add note' })).toBeNull()
+  })
+
+  it('offers no way to change or remove one', () => {
+    render(<ReconcileScreen />)
+    expect(within(notesCard()).queryByRole('button', { name: 'Edit' })).toBeNull()
+    expect(within(notesCard()).queryByRole('button', { name: 'Delete' })).toBeNull()
+  })
+
+  it('still lets them export', () => {
+    // Reading includes taking a copy away, which is most of why the tier exists.
+    render(<ReconcileScreen />)
+    expect(screen.getByRole('button', { name: 'Export CSV' })).toBeTruthy()
   })
 })

@@ -153,7 +153,15 @@ describe('the menu and the routes agree', () => {
   /** Every routed screen with the tier its route demands. */
   const routeTiers = (): Map<string, string> => {
     const tiers = new Map<string, string>()
-    for (const m of app.matchAll(/\['([a-z-]+)', <[^>]*?\/?>(?:<\/\w+>)?, (RUNS|ADMIN)\]/g)) {
+    /*
+      Tolerant of how the element is written, because half of them are wrapped: the old
+      pattern wanted a single tag and so quietly skipped every `<Watched>` route — including
+      the schedule board, which is the screen this check most needs to cover.
+
+      Anchored on the `<` that opens the element, or the tier arrays themselves — which are
+      lists of role names in square brackets — match first and swallow the route after them.
+    */
+    for (const m of app.matchAll(/\['([a-z-]+)', <[\s\S]*?, (RUNS|ADMIN|SEEN)\]/g)) {
       tiers.set(m[1]!, m[2]!)
     }
     return tiers
@@ -162,11 +170,28 @@ describe('the menu and the routes agree', () => {
   it('finds a tier for every routed screen', () => {
     // The regex above is the whole test; if it stops matching, everything below passes
     // vacuously. This is what makes that fail instead.
-    const routed = [...app.matchAll(/\['([a-z-]+)', <\w+Screen/g)].map((m) => m[1]!)
+    const routed = [...app.matchAll(/\['([a-z-]+)', <\w+/g)].map((m) => m[1]!)
     const tiers = routeTiers()
     expect(routed.length).toBeGreaterThan(10)
     for (const screen of routed) {
       expect([...tiers.keys()], `no tier found for ${screen}`).toContain(screen)
+    }
+  })
+
+  /** Everything the read-only menu offers. */
+  const viewerScreens = (): string[] => {
+    const start = app.indexOf('const VIEWER_NAV')
+    expect(start, 'no VIEWER_NAV').toBeGreaterThan(-1)
+    const source = app.slice(start, app.indexOf('\n]', start))
+    return [...source.matchAll(/screen: '([a-z-]+)'/g)].map((m) => m[1]!)
+  }
+
+  it('routes every screen the read-only menu offers so a viewer can open it', () => {
+    // The failure this whole describe exists for, in its newest form: a link in the menu
+    // that answers "not your screen".
+    const tiers = routeTiers()
+    for (const screen of viewerScreens()) {
+      expect(tiers.get(screen), `${screen} is in the read-only menu`).toBe('SEEN')
     }
   })
 
@@ -175,14 +200,17 @@ describe('the menu and the routes agree', () => {
     const flagged = new Set(
       ['Running', 'Records', 'Setup', 'Admin'].flatMap((label) => adminOnly(label)),
     )
+    const seen = new Set(viewerScreens())
 
     for (const [screen, tier] of tiers) {
       // 'notifications' is reached by the bell rather than the menu, so it has no entry to
-      // compare against.
+      // compare against. A person's page and a location's page are reached by name from the
+      // tables a viewer can read, so they are open to one without being in any menu.
       if (screen === 'notifications') continue
-      expect(tier, `${screen}: menu says ${flagged.has(screen) ? 'admin' : 'organizer'}`).toBe(
-        flagged.has(screen) ? 'ADMIN' : 'RUNS',
-      )
+      if (tier === 'SEEN' && !seen.has(screen)) continue
+
+      const wanted = flagged.has(screen) ? 'ADMIN' : seen.has(screen) ? 'SEEN' : 'RUNS'
+      expect(tier, `${screen}: menu says ${wanted.toLowerCase()}`).toBe(wanted)
     }
   })
 })

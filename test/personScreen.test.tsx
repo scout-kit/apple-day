@@ -36,6 +36,13 @@ const savePersonWithPairing = vi.fn()
 /** Passes exist only once the schedule has been published; some tests take them away. */
 let passes: { token: string; personId: string; displayName: string; shiftCount: number }[] = []
 
+let role = 'admin'
+
+vi.mock('../src/lib/session', () => ({
+  useSession: () => ({ user: { uid: 'u-organizer', email: 'o@example.org' }, role }),
+  runsTheEvent: (r: string) => r === 'admin' || r === 'organizer',
+}))
+
 vi.mock('../src/lib/repo', () => ({
   usePeople: () => ({ data: people, loading: false, error: null }),
   useSignups: () => ({ data: signups, loading: false, error: null }),
@@ -87,6 +94,7 @@ const renderFor = (personId = 'p-one'): void => {
 }
 
 beforeEach(() => {
+  role = 'admin'
   forgetRememberedDay()
   passes = [{ token: 'tok-one', personId: 'p-one', displayName: 'Edsger Dijkstra', shiftCount: 1 }]
   savePersonWithPairing.mockReset()

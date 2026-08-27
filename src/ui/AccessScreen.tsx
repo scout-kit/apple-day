@@ -44,11 +44,15 @@ import { Modal } from './Modal'
 const TIER_LABEL: Record<Tier, string> = {
   admin: 'Admin',
   organizer: 'Organizer',
+  viewer: 'Read only',
 }
 
 const TIER_BLURB: Record<Tier, string> = {
   admin: 'Everything, including the library, the sections and the events themselves.',
   organizer: 'Runs the event: the schedule, the day, the jars, the money. Not the setup.',
+  viewer:
+    'Can open the schedule, the signups and the figures, and change none of it. For somebody' +
+    ' who is asked how the day went rather than running it.',
 }
 
 export function AccessScreen(): ReactNode {
@@ -198,9 +202,11 @@ export function AccessScreen(): ReactNode {
       <div className="card">
         <h1>Who has access</h1>
         <p className="small muted">
-          Two tiers. An <strong>organizer</strong> runs the event; an <strong>admin</strong>{' '}
-          also changes the things shared between years. You cannot change your own access —
-          ask another admin — which is what stops the group locking itself out.
+          Three tiers. An <strong>organizer</strong> runs the event; an{' '}
+          <strong>admin</strong> also changes the things shared between years; a{' '}
+          <strong>read only</strong> account opens the schedule, the signups and the figures
+          and changes none of it. You cannot change your own access — ask another admin —
+          which is what stops the group locking itself out.
         </p>
         <div className="table-wrap">
           <table>
@@ -232,6 +238,7 @@ export function AccessScreen(): ReactNode {
                         >
                           <option value="organizer">Organizer</option>
                           <option value="admin">Admin</option>
+                          <option value="viewer">Read only</option>
                         </select>
                       )}
                     </td>
@@ -284,6 +291,7 @@ export function AccessScreen(): ReactNode {
             <select value={tier} onChange={(e) => setTierChoice(e.target.value as Tier)}>
               <option value="organizer">Organizer</option>
               <option value="admin">Admin</option>
+              <option value="viewer">Read only</option>
             </select>
           </label>
           <label style={{ flex: '2 1 12rem' }}>

@@ -475,32 +475,30 @@ describe('the two ways to get money in', () => {
   /*
     Reported as looking like toggles that do not toggle.
 
-    A primary button beside a plain one in a row is how this app shows a choice — which day,
-    which measure, day or hour. Two *actions* laid out that way read as a toggle with the
-    left one selected, so pressing the right one looks like it did nothing.
+    A row of buttons with one highlighted is how this app shows a choice — which day, which
+    measure, day or hour. Highlighting "Scan a jar" among them reads as "scanning is on", and
+    leaves the other looking inert; pressing it then appears to do nothing until a form opens
+    further down the page.
   */
   it('opens the form when the second one is pressed', async () => {
     render(<JarsScreen />)
 
-    await userEvent.click(screen.getByRole('button', { name: 'Record one by hand' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Record by hand…' }))
     expect(screen.getByRole('heading', { name: 'Record money by hand' })).toBeTruthy()
   })
 
-  it('does not dress them as a choice between two settings', () => {
-    /*
-      One is the main action and the other is an alternative. Giving the second the same
-      weight as an unselected day button is what made it read as a state.
-    */
+  it('highlights neither, because neither is a state', () => {
     render(<JarsScreen />)
 
-    const byHand = screen.getByRole('button', { name: 'Record one by hand' })
-    expect(byHand.className).toContain('ghost')
-    expect(byHand.className).not.toContain('primary')
+    for (const name of ['Scan a jar…', 'Record by hand…']) {
+      expect(screen.getByRole('button', { name }).className, name).not.toContain('primary')
+    }
   })
 
-  it('says "or" between them, so they read as one thing and an alternative', () => {
+  it('marks both as opening something, the way the board marks its add button', () => {
+    // The app's own convention for a control that opens rather than does: `+ add…`.
     render(<JarsScreen />)
-    const row = screen.getByRole('button', { name: 'Scan a jar' }).closest('.row')!
-    expect(row.textContent).toMatch(/Scan a jar\s*or\s*Record one by hand/)
+    expect(screen.getByRole('button', { name: 'Scan a jar…' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Record by hand…' })).toBeTruthy()
   })
 })

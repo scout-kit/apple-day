@@ -7,7 +7,8 @@ import { recordInBatch } from './audit'
 import { auth, db } from './firebase'
 import { isFatalClientFailure } from '../domain/clientFailure'
 import { recoverFromFatalFailure } from './recover'
-import { claimedEntry } from '../domain/access'
+import { claimedEntry, readTier } from '../domain/access'
+import type { Tier } from '../domain/access'
 import { toPass } from '../domain/passes'
 import type { PassData } from '../domain/passes'
 export type { PassData }
@@ -31,11 +32,23 @@ import { forgetInvite, pendingInvite } from './pendingInvite'
  * the sections and the events are shared across years, so a wrong edit there is wrong for
  * every year at once.
  */
-export type Role = 'admin' | 'organizer' | 'volunteer' | 'none'
+export type Role = 'admin' | 'organizer' | 'viewer' | 'volunteer' | 'none'
 
-/** Anybody on the roster, whichever tier. Used to gate the screens that run the event. */
+/** Runs the event: the schedule, the day, the jars, the money. Not a viewer. */
 export function runsTheEvent(role: Role): boolean {
   return role === 'admin' || role === 'organizer'
+}
+
+/**
+ * On the roster at all, which is what gets somebody past the sign-in page.
+ *
+ * A viewer can open the schedule, the signups and the figures and change none of it. Worth
+ * having for a treasurer or a committee member who is asked how the day went and otherwise
+ * has to be sent a screenshot — or given an organizer's account, which is how read-only
+ * people end up able to edit the board.
+ */
+export function canSeeTheEvent(role: Role): boolean {
+  return runsTheEvent(role) || role === 'viewer'
 }
 
 /*
@@ -118,7 +131,7 @@ const SessionContext = createContext<Session>({
  * email could only be claimed by an account carrying that address, which is a guess about
  * somebody else's arrangements and wrong often enough to matter.
  */
-async function recordClaim(user: User, tier: 'admin' | 'organizer'): Promise<void> {
+async function recordClaim(user: User, tier: Tier): Promise<void> {
   const batch = writeBatch(db)
   recordInBatch(batch, {
     action: 'created',
@@ -138,8 +151,7 @@ async function claimInvite(user: User, code: string): Promise<boolean> {
     const invite = await getDoc(paths.invite(code))
     if (!invite.exists()) return false
 
-    const tier =
-      (invite.data() as { level?: string }).level === 'organizer' ? 'organizer' : 'admin'
+    const tier = readTier((invite.data() as { level?: string }).level)
 
     /*
       Granted and spent in one commit, which is what makes an invitation single-use.
@@ -263,10 +275,8 @@ export function SessionProvider({ children }: { children: ReactNode }): ReactNod
         stopAdmin = onSnapshot(
           paths.admin(user.uid),
           (snap) => {
-            // No level means a full admin. Reading such an entry as the lesser tier would
-            // lock the group out of its own setup screens.
             const level = (snap.data() as { level?: string } | undefined)?.level
-            rostered = snap.exists() ? (level === 'organizer' ? 'organizer' : 'admin') : null
+            rostered = snap.exists() ? readTier(level) : null
             applyRole()
             /*
               No entry yet? See whether they arrived holding an invitation.

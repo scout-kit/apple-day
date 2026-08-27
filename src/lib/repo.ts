@@ -36,7 +36,7 @@ import type {
 } from '../domain/types'
 import { useEvent } from './eventContext'
 import { auth, db } from './firebase'
-import { normaliseEmail } from '../domain/access'
+import { normaliseEmail, readTier } from '../domain/access'
 import type { Invitation, RosterEntry, Tier } from '../domain/access'
 import { readAssignment } from '../domain/assignments'
 import { generateToken } from '../domain/publishing'
@@ -1642,9 +1642,7 @@ function toRosterEntry(uid: string, d: Record<string, unknown>): RosterEntry {
   return {
     uid,
     email: typeof d.email === 'string' ? d.email : '',
-    // An entry with no level is a full admin. Reading it as the lesser tier would lock the
-    // group out.
-    tier: d.level === 'organizer' ? 'organizer' : 'admin',
+    tier: readTier(d.level),
     addedAt: typeof d.addedAt === 'number' ? d.addedAt : 0,
     addedBy: typeof d.addedBy === 'string' ? d.addedBy : '',
   }
@@ -1664,7 +1662,7 @@ function toInvitation(code: string, d: Record<string, unknown>): Invitation {
         : typeof d.label === 'string' && d.label.trim()
           ? d.label
           : '',
-    tier: d.level === 'organizer' ? 'organizer' : 'admin',
+    tier: readTier(d.level),
     invitedAt: typeof d.invitedAt === 'number' ? d.invitedAt : 0,
     invitedBy: typeof d.invitedBy === 'string' ? d.invitedBy : '',
     note: typeof d.note === 'string' ? d.note : '',

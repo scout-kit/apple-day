@@ -6,6 +6,7 @@ import { DAY_LABEL } from '../domain/slots'
 import { DAYS, fullName, isCounted, isNumbered } from '../domain/types'
 import type { Day } from '../domain/types'
 import { useEvent } from '../lib/eventContext'
+import { runsTheEvent, useSession } from '../lib/session'
 import {
   useAssignments,
   useJars,
@@ -38,6 +39,8 @@ import { PersonEditor } from './PersonEditor'
  * shared identity because a shop is not a child.
  */
 export function PersonScreen(): ReactNode {
+  /* A viewer opens somebody's page from the board and changes nothing on it. */
+  const canEdit = runsTheEvent(useSession().role)
   const { personId } = useParams<{ personId: string }>()
   const [editing, setEditing] = useState(false)
   const { slots } = useEvent()
@@ -178,7 +181,7 @@ export function PersonScreen(): ReactNode {
               misspelled name or a wrong number gets noticed, and it should be where it gets
               fixed — not back on the roster, hunting for the row again.
             */}
-            <button onClick={() => setEditing(true)}>Edit details</button>
+            {canEdit && <button onClick={() => setEditing(true)}>Edit details</button>}
           </div>
         </div>
 
@@ -196,7 +199,7 @@ export function PersonScreen(): ReactNode {
             </a>
           )}
           {/* The warning is the button: noticing it and fixing it are one press. */}
-          {!person.parentName && !person.parentPhone && !person.parentEmail && (
+          {canEdit && !person.parentName && !person.parentPhone && !person.parentEmail && (
             <button className="tiny" onClick={() => setEditing(true)}>
               <span style={{ color: 'var(--warn)' }}>
                 No contact details on file — they cannot be reached on the day. Add them.

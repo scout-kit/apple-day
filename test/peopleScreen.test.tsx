@@ -25,6 +25,13 @@ let people: Person[] = []
 let signups: Signup[] = []
 let assignments: Assignment[] = []
 
+let role = 'admin'
+
+vi.mock('../src/lib/session', () => ({
+  useSession: () => ({ user: { uid: 'u-organizer', email: 'o@example.org' }, role }),
+  runsTheEvent: (r: string) => r === 'admin' || r === 'organizer',
+}))
+
 vi.mock('../src/lib/repo', () => ({
   savePersonWithPairing: (...args: unknown[]) => savePersonWithPairing(...args),
   saveAvailability: (...args: unknown[]) => saveAvailability(...args),
@@ -81,6 +88,7 @@ const pickerSearch = (): HTMLElement =>
   screen.getByRole('combobox', { name: /^Search people for/ })
 
 beforeEach(() => {
+  role = 'admin'
   resetUrl()
   savePersonWithPairing.mockReset()
   savePersonWithPairing.mockResolvedValue(undefined)
@@ -754,5 +762,42 @@ describe('parents’ contact details are not on the list', () => {
       ),
     )
     expect(new Set(widths).size).toBe(1)
+  })
+})
+
+describe('what a read-only account is offered here', () => {
+  /*
+    The rules refuse their writes either way. This is what stops the screen offering a grid
+    of cells that fail silently when pressed — the availability grid is the whole screen, and
+    a hundred dead toggles is worse than none.
+  */
+  beforeEach(() => {
+    role = 'viewer'
+  })
+
+  it('shows the signups', () => {
+    render(<PeopleScreen />)
+    expect(screen.getAllByRole('row').length).toBeGreaterThan(1)
+  })
+
+  it('offers no way to add somebody', () => {
+    render(<PeopleScreen />)
+    expect(screen.queryByRole('button', { name: 'Add person' })).toBeNull()
+  })
+
+  it('leaves the availability grid unpressable', () => {
+    render(<PeopleScreen />)
+    const live = screen
+      .getAllByRole('button')
+      .filter((b) => !(b as HTMLButtonElement).disabled)
+      .map((b) => b.textContent)
+    // What is left is reading: the export, and the filters above the table.
+    expect(live).not.toContain('Add person')
+  })
+
+  it('still lets them take the figures away', () => {
+    // Reading includes taking a copy. Nothing is written by an export.
+    render(<PeopleScreen />)
+    expect(screen.getByRole('button', { name: 'Export' })).toBeTruthy()
   })
 })

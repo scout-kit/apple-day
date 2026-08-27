@@ -9,6 +9,7 @@ import type { Assignment, Person, Slot } from '../domain/types'
 import { validateSchedule } from '../domain/validation'
 import type { ScheduleIssue } from '../domain/validation'
 import { useEvent } from '../lib/eventContext'
+import { runsTheEvent, useSession } from '../lib/session'
 import {
   assign,
   unassign,
@@ -35,6 +36,7 @@ import { PersonPicker } from './PersonPicker'
  * for good reasons; the job here is to make sure nothing is missed by accident.
  */
 export function ScheduleScreen(): ReactNode {
+  const { role } = useSession()
   /*
     Null until somebody picks a day, so the default can follow the date.
 
@@ -43,6 +45,14 @@ export function ScheduleScreen(): ReactNode {
     year. A choice, once made, sticks: the organizer looking at Friday's numbers on the
     Saturday is not second-guessed.
   */
+  /*
+    A viewer gets the board and nothing to press.
+
+    The rules refuse their writes either way, so this is not the guard — it is what stops a
+    screen offering a dozen controls that all fail. What is left is the board itself, which
+    is what they came to read.
+  */
+  const canEdit = runsTheEvent(role)
   const [highlight, setHighlight] = useState<ScheduleIssue | null>(null)
   const [writeError, setWriteError] = useState<Error | null>(null)
   /**
@@ -302,11 +312,11 @@ export function ScheduleScreen(): ReactNode {
 
         {/* Publishing belongs with the day switch and the counts: it is part of what this
             card says about the state of the schedule, not a separate errand. */}
-        <PublishActions />
+        {canEdit && <PublishActions />}
       </div>
 
       <IssueBanner issues={dayIssues} onSelect={setHighlight} />
-      {picking &&
+      {canEdit && picking &&
         (() => {
           const { available, other } = candidatesFor(picking.slot)
           const location = locations.data.find((l) => l.id === picking.locationId)
@@ -436,17 +446,19 @@ export function ScheduleScreen(): ReactNode {
                                 <PersonLink person={person} personId={a.personId} />{' '}
                                 {person && <SectionPill section={person.section} />}
                               </span>
-                              <button
-                                className="x"
-                                title="Remove from this shift"
-                                onClick={() => remove(a.id)}
-                              >
-                                ×
-                              </button>
+                              {canEdit && (
+                                <button
+                                  className="x"
+                                  title="Remove from this shift"
+                                  onClick={() => remove(a.id)}
+                                >
+                                  ×
+                                </button>
+                              )}
                             </div>
                           )
                         })}
-                        {blocked ? (
+                        {!canEdit ? null : blocked ? (
                           <button
                             className="tiny ghost"
                             style={{ width: '100%', color: 'var(--muted)' }}

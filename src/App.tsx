@@ -4,7 +4,7 @@ import { NavLink, Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { useEvent } from './lib/eventContext'
 import { missingConfig, signInWithGoogle, signOutEverywhere } from './lib/firebase'
 import { JoinPage } from './ui/JoinPage'
-import { runsTheEvent, useSession } from './lib/session'
+import { canSeeTheEvent, runsTheEvent, useSession } from './lib/session'
 import { useRequestActions } from './ui/RequestActions'
 import type { Role } from './lib/session'
 import { Loading } from './ui/Bits'
@@ -59,6 +59,14 @@ interface NavGroup {
 
 /** Anybody on the roster: organizers and admins alike. */
 const RUNS: Role[] = ['admin', 'organizer']
+/*
+  Screens a viewer may open as well, and the ones a link from them leads to.
+
+  A person's page and a location's page are reached by name from every table that lists one,
+  so leaving them out would give a viewer tables of names that go nowhere. Both offer their
+  edit controls to organizers only, so what a viewer gets is the page and nothing to press.
+*/
+const SEEN: Role[] = ['admin', 'organizer', 'viewer']
 
 /** Only the tier that looks after what is shared between years. */
 const ADMIN: Role[] = ['admin']
@@ -132,6 +140,39 @@ const ORGANIZER_NAV: NavGroup[] = [
         it sits here and not beside the money it explains.
       */
       { screen: 'audit', label: 'Audit log', adminOnly: true },
+    ],
+  },
+]
+
+/**
+ * What somebody who cannot change anything is shown.
+ *
+ * Not the organizer menu with the buttons taken out. Two of those screens — Day of and Jars
+ * — are consoles for doing: check somebody in, hand a jar over, count one back. With nothing
+ * to press they are a table of state that the schedule board already answers, and stripping
+ * them would be most of the work for the ten hours a year they matter.
+ *
+ * Setup goes for the same reason in reverse: the library, the locations a year uses and the
+ * importer are how the event is assembled, and somebody who is being shown the event has no
+ * business in the workshop. Reminders go because sending is an action.
+ *
+ * What is left is the two questions a viewer is actually asked: what does the day look like,
+ * and what did it make.
+ */
+const VIEWER_NAV: NavGroup[] = [
+  {
+    label: 'The day',
+    screens: [
+      { screen: 'schedule-board', label: 'Schedule' },
+      { screen: 'people', label: 'Signups' },
+    ],
+  },
+  {
+    label: 'Records',
+    screens: [
+      { screen: 'money', label: 'Money' },
+      { screen: 'reconcile', label: 'Totals' },
+      { screen: 'history', label: 'History' },
     ],
   },
 ]
@@ -316,7 +357,9 @@ function Shell({ children }: { children: ReactNode }): ReactNode {
     Filtered per entry and then per group, which is what empties the Admin heading for an
     organizer rather than leaving it standing with nothing under it.
   */
-  const nav: NavGroup[] = (runsTheEvent(role) ? ORGANIZER_NAV : [])
+  const nav: NavGroup[] = (
+    runsTheEvent(role) ? ORGANIZER_NAV : role === 'viewer' ? VIEWER_NAV : []
+  )
     .map((group) => ({
       ...group,
       screens: group.screens.filter((entry) => !entry.adminOnly || role === 'admin'),
@@ -329,7 +372,7 @@ function Shell({ children }: { children: ReactNode }): ReactNode {
         <div className="brand">
           Apple<span>Day</span>
         </div>
-        {runsTheEvent(role) && <EventPicker />}
+        {canSeeTheEvent(role) && <EventPicker />}
         {runsTheEvent(role) && <NotificationBell />}
         {runsTheEvent(role) && <RepublishFlag />}
         <div className="spacer" />
@@ -567,21 +610,30 @@ function RequireRole({
   if (!allow.includes(role)) {
     // Signed in, just not to this. Saying so beats a sign-in prompt to somebody who is
     // already signed in, which reads as if their account has stopped working.
-    return runsTheEvent(role) ? <NotYours /> : <SignInPrompt />
+    return canSeeTheEvent(role) ? <NotYours /> : <SignInPrompt />
   }
   return children
 }
 
 /** For somebody on the roster who has followed a link to a screen above their tier. */
 function NotYours(): ReactNode {
+  const { role } = useSession()
+
   return (
     <div className="card">
       <h1>Not your screen</h1>
-      <p className="muted">
-        This one changes how the event itself is set up — the location library, the sections,
-        the events. Those are shared across every year, so they are kept to the organizers
-        who look after them. Ask one of them if something here needs changing.
-      </p>
+      {role === 'viewer' ? (
+        <p className="muted">
+          Your account can read the schedule, the signups and the figures. This one is for
+          running the event or setting it up, so it is kept to the organizers who do that.
+        </p>
+      ) : (
+        <p className="muted">
+          This one changes how the event itself is set up — the location library, the
+          sections, the events. Those are shared across every year, so they are kept to the
+          organizers who look after them. Ask one of them if something here needs changing.
+        </p>
+      )}
     </div>
   )
 }
@@ -609,7 +661,7 @@ export function App(): ReactNode {
           <Shell>
             {loading ? (
               <Loading what="Starting up" />
-            ) : runsTheEvent(role) ? (
+            ) : canSeeTheEvent(role) ? (
               <Landing screen="schedule-board" />
             ) : (
               <SignInPrompt />
@@ -621,17 +673,17 @@ export function App(): ReactNode {
       {(
         [
           // Running the event, and the records of it: anybody on the roster.
-          ['schedule-board', <Watched key="s"><ScheduleScreen /></Watched>, RUNS],
-          ['people', <Watched key="pe"><PeopleScreen /></Watched>, RUNS],
-          ['money', <Watched key="m"><MoneyScreen /></Watched>, RUNS],
-          ['history', <HistoryScreen key="h" />, RUNS],
-          ['reconcile', <ReconcileScreen key="r" />, RUNS],
+          ['schedule-board', <Watched key="s"><ScheduleScreen /></Watched>, SEEN],
+          ['people', <Watched key="pe"><PeopleScreen /></Watched>, SEEN],
+          ['money', <Watched key="m"><MoneyScreen /></Watched>, SEEN],
+          ['history', <HistoryScreen key="h" />, SEEN],
+          ['reconcile', <ReconcileScreen key="r" />, SEEN],
           ['audit', <AuditScreen key="ac" />, ADMIN],
           // A person, not a screen full of people. The id is in the path so the page can be
           // linked to from anywhere that names somebody.
-          ['person/:personId', <Watched key="pn"><PersonScreen /></Watched>, RUNS],
+          ['person/:personId', <Watched key="pn"><PersonScreen /></Watched>, SEEN],
           // Reached by name from every table that lists one, like a person's page.
-          ['location/:locationId', <Watched key="loc"><LocationScreen /></Watched>, RUNS],
+          ['location/:locationId', <Watched key="loc"><LocationScreen /></Watched>, SEEN],
           // Reached by the bell rather than the nav: it is a place to go when something is
           // waiting, not one of the screens the event is run from.
           ['notifications', <NotificationsScreen key="n" />, RUNS],

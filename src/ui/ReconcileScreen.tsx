@@ -6,7 +6,7 @@ import type { EventNote } from '../domain/types'
 import { toCsv, downloadFile } from '../lib/csv'
 import { useEvent } from '../lib/eventContext'
 import { deleteEventNote, saveEventNote, useEventNotes, useJars } from '../lib/repo'
-import { useSession } from '../lib/session'
+import { runsTheEvent, useSession } from '../lib/session'
 import { ErrorNote, Loading, Money, Stat } from './Bits'
 
 /**
@@ -28,10 +28,12 @@ import { ErrorNote, Loading, Money, Stat } from './Bits'
  */
 export function ReconcileScreen(): ReactNode {
   const { event } = useEvent()
-  const { user } = useSession()
+  const { user, role } = useSession()
   const jars = useJars()
   const notes = useEventNotes()
 
+  /* A viewer reads the notes and the figures, and writes neither. */
+  const canEdit = runsTheEvent(role)
   const [draft, setDraft] = useState('')
   const [editing, setEditing] = useState<EventNote | null>(null)
   const [busy, setBusy] = useState(false)
@@ -183,6 +185,7 @@ export function ReconcileScreen(): ReactNode {
           came back, a count nobody trusts.
         </p>
 
+        {canEdit && (
         <div className="row" style={{ alignItems: 'flex-start' }}>
           <textarea
             rows={2}
@@ -206,6 +209,7 @@ export function ReconcileScreen(): ReactNode {
             </button>
           )}
         </div>
+        )}
 
         {ordered.length === 0 ? (
           <p className="small muted" style={{ marginTop: '0.75rem' }}>
@@ -229,20 +233,22 @@ export function ReconcileScreen(): ReactNode {
                     {note.by && ` · ${note.by}`}
                   </div>
                 </div>
-                <div className="row" style={{ gap: '0.3rem' }}>
-                  <button
-                    className="tiny"
-                    onClick={() => {
-                      setEditing(note)
-                      setDraft(note.text)
-                    }}
-                  >
-                    Edit
-                  </button>
-                  <button className="tiny danger" onClick={() => remove(note)}>
-                    Delete
-                  </button>
-                </div>
+                {canEdit && (
+                  <div className="row" style={{ gap: '0.3rem' }}>
+                    <button
+                      className="tiny"
+                      onClick={() => {
+                        setEditing(note)
+                        setDraft(note.text)
+                      }}
+                    >
+                      Edit
+                    </button>
+                    <button className="tiny danger" onClick={() => remove(note)}>
+                      Delete
+                    </button>
+                  </div>
+                )}
               </li>
             ))}
           </ul>

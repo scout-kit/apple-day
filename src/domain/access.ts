@@ -16,7 +16,27 @@
  * exactly like being refused outright.
  */
 
-export type Tier = 'admin' | 'organizer'
+export type Tier = 'admin' | 'organizer' | 'viewer'
+
+/**
+ * The tier a stored `level` means.
+ *
+ * Named rather than inferred from not being another. "Anything that is not an organizer is
+ * an admin" reads fine with two tiers and is a trapdoor with three: a level nobody had
+ * thought of — a typo, a tier added later — comes back as full access. Asked positively, an
+ * unrecognised one is a reader, which is the way round this should fail.
+ *
+ * An entry with no level at all is the exception, and deliberately: those were written
+ * before there were tiers, when being on the roster meant everything. Reading them as the
+ * lesser thing would lock a group out of its own setup screens. The rules default the same
+ * way, and the two have to agree or the app offers a screen the database then refuses.
+ */
+export function readTier(level: unknown): Tier {
+  if (level === undefined || level === null || level === '') return 'admin'
+  if (level === 'admin') return 'admin'
+  if (level === 'organizer') return 'organizer'
+  return 'viewer'
+}
 
 export interface RosterEntry {
   /** The Firebase uid. This is the document id and cannot be chosen. */

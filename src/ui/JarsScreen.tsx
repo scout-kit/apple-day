@@ -385,21 +385,19 @@ export function JarsScreen(): ReactNode {
           </div>
         </div>
         {/*
-          One action and an alternative, not a pair of settings.
+          Two actions, and neither of them a setting.
 
-          A primary button beside a plain one in a row is how this app shows a *choice* —
-          which day, which measure, day or hour — so two actions laid out that way read as a
-          toggle with the left one selected, and pressing the right one appears to do nothing
-          until a dialog opens. The word between them and the lighter weight say which this
-          is.
+          A row of buttons with one highlighted is how this app shows a *choice* — which day,
+          which measure, day or hour — so highlighting either of these reads as "scanning is
+          currently on", and the other one looks inert. Neither is highlighted, because
+          neither is a state.
+
+          The ellipsis is the app's own mark for a control that opens something rather than
+          doing it on the spot, the same as `+ add…` on the schedule board.
         */}
-        <div className="row" style={{ marginTop: '0.6rem', alignItems: 'baseline' }}>
-          <button className="primary" onClick={() => setScanning(true)}>
-            Scan a jar
-          </button>
-          <span className="small muted">or</span>
+        <div className="row" style={{ marginTop: '0.6rem' }}>
+          <button onClick={() => setScanning(true)}>Scan a jar…</button>
           <button
-            className="ghost"
             onClick={() =>
               setManual({
                 locationId: '',
@@ -411,7 +409,7 @@ export function JarsScreen(): ReactNode {
               })
             }
           >
-            Record one by hand
+            Record by hand…
           </button>
           <span className="small muted">
             Jars are issued on the Day of screen — scanning one here counts it in.

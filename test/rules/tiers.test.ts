@@ -20,6 +20,9 @@ import { RULES_PROJECT_ID } from './projectId'
 const EVENT = '2026'
 const ADMIN = 'admin-uid'
 const ORGANIZER = 'organizer-uid'
+const VIEWER = 'viewer-uid'
+/** A level nobody has thought of: a typo, or a tier added later than this test. */
+const STRANGE = 'strange-uid'
 
 let testEnv: RulesTestEnvironment
 
@@ -41,6 +44,8 @@ beforeEach(async () => {
     // No level: a full admin. This is what every entry written before the tiers looked like.
     await setDoc(doc(db, 'admins', ADMIN), { addedAt: 0 })
     await setDoc(doc(db, 'admins', ORGANIZER), { addedAt: 0, level: 'organizer' })
+    await setDoc(doc(db, 'admins', VIEWER), { addedAt: 0, level: 'viewer' })
+    await setDoc(doc(db, 'admins', STRANGE), { addedAt: 0, level: 'treasurer' })
     await setDoc(doc(db, 'events', EVENT), { year: 2026, name: 'Apple Day 2026' })
     await setDoc(doc(db, 'locations', 'braemar'), { name: 'Braemar' })
     await setDoc(doc(db, 'sections', 'cubs'), { name: 'Cubs', order: 2 })
@@ -50,6 +55,8 @@ beforeEach(async () => {
 
 const asAdmin = () => testEnv.authenticatedContext(ADMIN).firestore()
 const asOrganizer = () => testEnv.authenticatedContext(ORGANIZER).firestore()
+const asViewer = () => testEnv.authenticatedContext(VIEWER).firestore()
+const asStranger = () => testEnv.authenticatedContext(STRANGE).firestore()
 
 describe('an entry with no level is a full admin', () => {
   it('can still change the library', async () => {
@@ -765,5 +772,112 @@ describe('removing an event', () => {
       })
     })
     await assertFails(deleteDoc(doc(asAdmin(), 'audit', 'e-keep')))
+  })
+})
+
+describe('a read-only account', () => {
+  /*
+    Somebody asked how the day went rather than running it — a treasurer, a committee member.
+    Without this they get an organizer's account, which is how read-only people end up able
+    to edit the board, or they get screenshots.
+
+    The rules are the guarantee. The menu offers a viewer fewer screens and the screens offer
+    them nothing to press, but neither of those is a defence: both live in a bundle anybody
+    can read.
+  */
+  it('reads the schedule, the people and the money', async () => {
+    const db = asViewer()
+    await assertSucceeds(getDoc(doc(db, 'events', EVENT)))
+    await assertSucceeds(getDoc(doc(db, 'events', EVENT, 'people', 'p-one')))
+    await assertSucceeds(getDocs(collection(db, 'events', EVENT, 'assignments')))
+    await assertSucceeds(getDocs(collection(db, 'events', EVENT, 'jars')))
+    await assertSucceeds(getDoc(doc(db, 'locations', 'braemar')))
+    await assertSucceeds(getDoc(doc(db, 'sections', 'cubs')))
+  })
+
+  it('cannot move anybody on the board', async () => {
+    await assertFails(
+      setDoc(doc(asViewer(), 'events', EVENT, 'assignments', 'a1'), {
+        slotId: 'fri-1700', locationId: 'braemar', personId: 'p-one', status: 'planned',
+      }),
+    )
+  })
+
+  it('cannot touch the money', async () => {
+    await assertFails(
+      setDoc(doc(asViewer(), 'events', EVENT, 'jars', 'fri-jar-1'), {
+        jarNumber: 1, day: 'fri', locationId: 'braemar', status: 'counted',
+        amount: 100, method: 'cash',
+      }),
+    )
+    await assertFails(
+      setDoc(doc(asViewer(), 'events', EVENT, 'notes', 'n1'), {
+        text: 'anything', at: Date.now(), by: 'v@example.org',
+      }),
+    )
+  })
+
+  it('cannot change a person, a location or a section', async () => {
+    await assertFails(
+      setDoc(doc(asViewer(), 'events', EVENT, 'people', 'p-one'), { firstName: 'Renamed' },
+        { merge: true }),
+    )
+    await assertFails(
+      setDoc(doc(asViewer(), 'locations', 'braemar'), { name: 'Renamed' }, { merge: true }),
+    )
+    await assertFails(
+      setDoc(doc(asViewer(), 'sections', 'cubs'), { name: 'Renamed' }, { merge: true }),
+    )
+  })
+
+  it('cannot let itself or anybody else in', async () => {
+    // The one that would make the tier pointless.
+    await assertFails(
+      setDoc(doc(asViewer(), 'admins', VIEWER), { level: 'admin' }, { merge: true }),
+    )
+    await assertFails(
+      setDoc(doc(asViewer(), 'admins', 'somebody-new'), { level: 'admin', addedAt: 1 }),
+    )
+    await assertFails(getDocs(collection(asViewer(), 'admins')))
+  })
+
+  it('is kept out of the reminders and the requests', async () => {
+    // Sending is an action, and both hold contact details for people they are not chasing.
+    await assertFails(getDocs(collection(asViewer(), 'events', EVENT, 'reminders')))
+    await assertFails(getDocs(collection(asViewer(), 'events', EVENT, 'swapRequests')))
+    await assertFails(getDocs(collection(asViewer(), 'reminderTemplates')))
+  })
+
+  it('cannot read the audit log, which is admin work', async () => {
+    await assertFails(getDocs(collection(asViewer(), 'audit')))
+  })
+})
+
+describe('a level nobody recognises', () => {
+  /*
+    The trapdoor this replaced: `isAdmin` was "on the roster and not an organizer", so a
+    level added later — or mistyped — was a full admin. Asked positively, an unrecognised
+    level reads and nothing more, which is the way round this should fail.
+  */
+  it('can read, because being on the roster is what reading needs', async () => {
+    await assertSucceeds(getDoc(doc(asStranger(), 'events', EVENT)))
+  })
+
+  it('is not an admin', async () => {
+    await assertFails(
+      setDoc(doc(asStranger(), 'admins', 'somebody-new'), { level: 'admin', addedAt: 1 }),
+    )
+    await assertFails(
+      setDoc(doc(asStranger(), 'sections', 'cubs'), { name: 'Renamed' }, { merge: true }),
+    )
+  })
+
+  it('is not an organizer either', async () => {
+    await assertFails(
+      setDoc(doc(asStranger(), 'events', EVENT, 'jars', 'j1'), {
+        jarNumber: 1, day: 'fri', locationId: 'braemar', status: 'counted',
+        amount: 10, method: 'cash',
+      }),
+    )
   })
 })
