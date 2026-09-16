@@ -25,7 +25,8 @@
   --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
 }
 
-@media (prefers-color-scheme: dark) {
+/* `screen`, not print: see the note on the block below. */
+@media screen and (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --bg: #16130f;
     --surface: #221d19;
@@ -55,27 +56,36 @@
    Same tokens as the block above. A media query cannot be overridden by a preference the
    app holds, so the choice needs its own selector — and it has to come after, so that a
    phone set to dark still goes light when this screen is asked to.
+
+   Both dark blocks are `screen` only, because paper is white whatever the screen was. A
+   phone on dark at ten at night is the ordinary way to reach these screens, and every word
+   written in `--text` was going to the printer in near-white ink — the jar numbers under
+   the labels came out as nothing at all. Leaving print to the values at the top of the file
+   keeps one set of light colours rather than a second set copied into a print block to be
+   forgotten about the next time these are touched.
 */
-:root[data-theme="dark"] {
-  --bg: #16130f;
-  --surface: #221d19;
-  --surface-2: #2b251f;
-  --border: #3b332b;
-  --text: #f2ece5;
-  --muted: #a99d8f;
-  --accent: #e8807a;
-  --accent-soft: #3a201e;
-  --good: #7ed39a;
-  --good-soft: #17301f;
-  --warn: #e8bd6d;
-  --warn-soft: #322612;
-  --bad: #f08b84;
-  --bad-soft: #381a18;
-  --blue: #8ab6e0;
-  --blue-soft: #17242f;
-  --purple: #bda2e0;
-  --purple-soft: #241a30;
-  --shadow: 0 1px 2px rgb(0 0 0 / 40%), 0 4px 12px rgb(0 0 0 / 25%);
+@media screen {
+  :root[data-theme="dark"] {
+    --bg: #16130f;
+    --surface: #221d19;
+    --surface-2: #2b251f;
+    --border: #3b332b;
+    --text: #f2ece5;
+    --muted: #a99d8f;
+    --accent: #e8807a;
+    --accent-soft: #3a201e;
+    --good: #7ed39a;
+    --good-soft: #17301f;
+    --warn: #e8bd6d;
+    --warn-soft: #322612;
+    --bad: #f08b84;
+    --bad-soft: #381a18;
+    --blue: #8ab6e0;
+    --blue-soft: #17242f;
+    --purple: #bda2e0;
+    --purple-soft: #241a30;
+    --shadow: 0 1px 2px rgb(0 0 0 / 40%), 0 4px 12px rgb(0 0 0 / 25%);
+  }
 }
 
 * { box-sizing: border-box; }
@@ -617,6 +627,8 @@ video.scanner { width: 100%; max-width: 24rem; border-radius: var(--radius);
     max-height: none; overflow: visible;
   }
   th, td:first-child { position: static; }
+  /* The page itself is paper white rather than the app's cream, for a printer set to put
+     backgrounds on the page at all. */
   body { background: #fff; }
   /*
    * No line to cut along, because a cut that misses one is worse than no line at all.
