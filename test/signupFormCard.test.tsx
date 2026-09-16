@@ -109,8 +109,9 @@ describe('creating it through Google', () => {
 
     await waitFor(() => expect(createForm).toHaveBeenCalled())
     const spec = createForm.mock.calls[0]![0] as { questions: { title: string }[] }
-    expect(spec.questions.map((q) => q.title)).toContain('Friday')
-    expect(spec.questions.map((q) => q.title)).toContain('Saturday')
+    // Dated, because the form goes out weeks ahead and "Friday" is not a date.
+    expect(spec.questions.map((q) => q.title)).toContain('Friday, October 2, 2026')
+    expect(spec.questions.map((q) => q.title)).toContain('Saturday, October 3, 2026')
   })
 
   it('says what went wrong rather than looking like it worked', async () => {

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   buildSignupForm,
+  dayTitle,
   formIsCurrent,
   shiftSnapshot,
   staleFormWarning,
@@ -50,6 +51,14 @@ const EVENT: AppleDayEvent = {
 const spec = (over: Partial<AppleDayEvent> = {}) =>
   buildSignupForm({ ...EVENT, ...over }, DEFAULT_SECTIONS)
 
+/*
+  The day questions are headed with their date, and that heading is the column name in the
+  export. Taken from the form rather than written out again here: a fixture that spells it
+  itself is a fixture that can agree with nothing.
+*/
+const FRIDAY = dayTitle(EVENT, 'fri')
+const SATURDAY = dayTitle(EVENT, 'sat')
+
 describe('the form maps itself', () => {
   it('gives every field a column the importer finds on its own', () => {
     /*
@@ -73,8 +82,8 @@ describe('the form maps itself', () => {
     const headers = ['Timestamp', ...spec().questions.map((q) => q.title)]
     const mapping = detectMapping(headers, formDays(EVENT))
 
-    expect(mapping.days?.fri).toBe('Friday')
-    expect(mapping.days?.sat).toBe('Saturday')
+    expect(mapping.days?.fri).toBe(FRIDAY)
+    expect(mapping.days?.sat).toBe(SATURDAY)
   })
 
   it('leaves nothing required unmapped', () => {
@@ -103,6 +112,57 @@ describe('the form maps itself', () => {
   })
 })
 
+describe('which Friday the form is asking about', () => {
+  /*
+    The form goes out weeks ahead, to families holding several of them. A question headed
+    "Friday" is the Friday the sender had in mind and not necessarily the one the reader
+    has, and the ticks come back against hours nobody meant.
+  */
+
+  it('heads each day with the day of the week and the date it falls on', () => {
+    const titles = spec().questions.map((q) => q.title)
+    expect(titles).toContain('Friday, October 2, 2026')
+    expect(titles).toContain('Saturday, October 3, 2026')
+  })
+
+  it('reads the date off the event rather than the weekday alone', () => {
+    // Same weekdays, a year later. Nothing here is hardcoded to one Apple Day.
+    const next = spec({ fridayDate: '2027-10-01', saturdayDate: '2027-10-02', year: 2027 })
+    expect(next.questions.map((q) => q.title)).toContain('Friday, October 1, 2027')
+  })
+
+  it('falls back to the plain weekday before the dates are typed in', () => {
+    // A form can be drafted on an event that has its hours but not its dates yet.
+    const undated = spec({ fridayDate: '', saturdayDate: '' })
+    expect(undated.questions.map((q) => q.title)).toContain('Friday')
+  })
+
+  it('still maps itself, date and all', () => {
+    // The importer strips everything but letters, so the heading reduces to `fridayoctober`
+    // — which still contains `friday`. The date costs the round trip nothing.
+    const headers = ['Timestamp', ...spec().questions.map((q) => q.title)]
+    const mapping = detectMapping(headers, formDays(EVENT))
+    expect(mapping.days?.fri).toBe('Friday, October 2, 2026')
+    expect(mapping.days?.sat).toBe('Saturday, October 3, 2026')
+  })
+
+  it('goes on reading a form built before the dates were added', () => {
+    /*
+      Last year's form, and any form built by hand from the old instructions, heads its
+      columns with the plain weekday. Those responses still import.
+    */
+    const mapping = detectMapping(['Timestamp', 'Youth name', 'Friday', 'Saturday'], formDays(EVENT))
+    expect(mapping.days?.fri).toBe('Friday')
+    expect(mapping.days?.sat).toBe('Saturday')
+  })
+
+  it('asks for the hours in the words a parent would use', () => {
+    const friday = spec().questions.find((q) => q.title === FRIDAY)!
+    // First, because it is the instruction — the rest is the reason for it.
+    expect(friday.help?.startsWith('Tick every hour you can help.')).toBe(true)
+  })
+})
+
 describe('the shift options are this event’s own shifts', () => {
   it('offers exactly what the schedule shows', () => {
     const labels = buildSlots('fri', EVENT.schedule, EVENT).map((s) => s.label)
@@ -111,18 +171,18 @@ describe('the shift options are this event’s own shifts', () => {
 
   it('follows the hours, not a fixed list', () => {
     const late = spec({ schedule: { fri: { startMin: 17 * 60, endMin: 22 * 60 } } })
-    const friday = late.questions.find((q) => q.title === 'Friday')!
+    const friday = late.questions.find((q) => q.title === FRIDAY)!
     expect(friday.options).toHaveLength(5)
   })
 
   it('follows the shift length', () => {
     const half = spec({ shiftMinutes: 30 })
-    expect(half.questions.find((q) => q.title === 'Friday')!.options).toHaveLength(8)
+    expect(half.questions.find((q) => q.title === FRIDAY)!.options).toHaveLength(8)
   })
 
   it('offers one box for a whole-day event', () => {
     const wholeDay = spec({ shiftMode: 'wholeDay' })
-    expect(wholeDay.questions.find((q) => q.title === 'Friday')!.options).toHaveLength(1)
+    expect(wholeDay.questions.find((q) => q.title === FRIDAY)!.options).toHaveLength(1)
   })
 })
 
@@ -137,8 +197,8 @@ describe('what comes back imports without a correction', () => {
     'Parent phone': '555-0100',
     'Will you attend with your youth?': 'Yes',
     // Google joins ticked boxes with a comma and a space.
-    Friday: '5:00 PM – 6:00 PM, 6:00 PM – 7:00 PM',
-    Saturday: '9:00 AM – 10:00 AM',
+    [FRIDAY]: '5:00 PM – 6:00 PM, 6:00 PM – 7:00 PM',
+    [SATURDAY]: '9:00 AM – 10:00 AM',
     Notes: 'Back by 8 if possible.',
     ...over,
   })
@@ -184,8 +244,8 @@ describe('what comes back imports without a correction', () => {
   it('reads every option of every day, not just the convenient ones', () => {
     // One response per day with everything ticked, so no label escapes the check.
     const everything = response({
-      Friday: shiftOptions(EVENT, 'fri').join(', '),
-      Saturday: shiftOptions(EVENT, 'sat').join(', '),
+      [FRIDAY]: shiftOptions(EVENT, 'fri').join(', '),
+      [SATURDAY]: shiftOptions(EVENT, 'sat').join(', '),
     })
     const plan = importIt([everything])
 
@@ -200,8 +260,8 @@ describe('what comes back imports without a correction', () => {
     const plan = planImport(
       [
         response({
-          Friday: shiftOptions(overlapping, 'fri').join(', '),
-          Saturday: shiftOptions(overlapping, 'sat').join(', '),
+          [FRIDAY]: shiftOptions(overlapping, 'fri').join(', '),
+          [SATURDAY]: shiftOptions(overlapping, 'sat').join(', '),
         }),
       ],
       {
@@ -373,7 +433,7 @@ describe('what the form insists on', () => {
   })
 
   it('leaves the availability optional, so somebody with no free hours can still say so', () => {
-    const friday = spec().questions.find((q) => q.title === 'Friday')!
+    const friday = spec().questions.find((q) => q.title === FRIDAY)!
     expect(friday.required).toBe(false)
   })
 })
@@ -397,7 +457,7 @@ describe('who the form is for', () => {
           Timestamp: '2026-09-14 18:32:05',
           'Youth name': 'Sam Reid',
           Section: 'Scouters',
-          Friday: '5:00 PM – 6:00 PM',
+          [FRIDAY]: '5:00 PM – 6:00 PM',
         },
       ],
       {

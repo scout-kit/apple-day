@@ -1,4 +1,5 @@
 import { buildSlots, DAY_LABEL } from './slots'
+import { datesForEventDays } from './today'
 import type { SectionDef } from './sections'
 import type { AppleDayEvent, Day } from './types'
 
@@ -73,6 +74,45 @@ const DEFAULTS: Required<SignupFormOptions> = {
  */
 export function shiftOptions(event: AppleDayEvent, day: Day): string[] {
   return buildSlots(day, event.schedule, event).map((slot) => slot.label)
+}
+
+const MONTHS = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+]
+
+/** A stored `YYYY-MM-DD` as "October 3, 2026", or null if it is not one. */
+function spellDate(iso: string): string | null {
+  const parts = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso)
+  const month = parts ? MONTHS[Number(parts[2]) - 1] : undefined
+  // Spelled out from the parts rather than through a locale, because this string is a CSV
+  // column heading on the way back: it has to read the same on every machine that builds one.
+  return parts && month ? `${month} ${Number(parts[3])}, ${parts[1]}` : null
+}
+
+/**
+ * The heading on a day's availability question — "Friday, October 2, 2026".
+ *
+ * The weekday alone was what the form asked about, and a form goes out weeks ahead to
+ * families holding several of them. "Friday" is the Friday the sender had in mind; it is not
+ * the one the reader has in mind, and the ticks come back against hours nobody meant.
+ *
+ * The date rides along without costing the round trip. The importer finds an availability
+ * column by looking for the day's name inside the heading, and it compares headings with
+ * everything but the letters stripped out — so this one reduces to `fridayoctober`, still
+ * contains `friday`, and maps on sight. Last year's plain "Friday" still maps too, which is
+ * what lets an event built before this go on importing.
+ *
+ * An event with no dates typed in yet falls back to the weekday on its own, since a heading
+ * is needed either way and half a date is worse than none.
+ */
+export function dayTitle(
+  event: Pick<AppleDayEvent, 'fridayDate' | 'saturdayDate' | 'schedule'>,
+  day: Day,
+): string {
+  const date = datesForEventDays(event).get(day)
+  const spelled = date ? spellDate(date) : null
+  return spelled ? `${DAY_LABEL[day]}, ${spelled}` : DAY_LABEL[day]
 }
 
 /** The days this event runs, in week order. */
@@ -175,16 +215,13 @@ export function buildSignupForm(
   }
 
   /*
-    One question per day, titled with the day and nothing else.
-
-    The importer finds an availability column by looking for the day's name in the heading,
-    so "Friday" is found and so is "Friday availability" — but the plain day is the one that
-    cannot collide with anything, and it reads as a heading on the form.
+    One question per day, headed with the day and the date it falls on. See `dayTitle` for
+    why the date is there and why carrying it costs the importer nothing.
   */
   for (const day of formDays(event)) {
     questions.push({
-      title: DAY_LABEL[day],
-      help: 'Tick every hour they could work. More ticks makes the schedule easier to build.',
+      title: dayTitle(event, day),
+      help: 'Tick every hour you can help. More ticks makes the schedule easier to build.',
       kind: 'checkboxes',
       required: false,
       options: shiftOptions(event, day),
