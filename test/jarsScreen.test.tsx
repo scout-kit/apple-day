@@ -461,6 +461,33 @@ describe('labelling the jars', () => {
     expect(screen.getByText('4 labels: 1–3, 15')).toBeTruthy()
   })
 
+  it('puts the labels on the paper and leaves the screen off it', async () => {
+    /*
+      Reported as printing the whole page. Print is the browser's own print and the sheet
+      sits at the foot of a long screen, so the labels came out behind the night's counts,
+      the money and the requests inbox. The class is what the print stylesheet reads to keep
+      the sheet and drop the rest; taken off again once the printer is done with it.
+    */
+    const print = vi.spyOn(window, 'print').mockImplementation(() => {})
+    try {
+      render(<JarsScreen />)
+      await userEvent.click(screen.getByRole('button', { name: 'Make labels' }))
+      await userEvent.click(screen.getByRole('button', { name: 'Print' }))
+
+      expect(print).toHaveBeenCalled()
+      expect(document.body.classList.contains('printing-sheet')).toBe(true)
+      // What the rule keeps has to be what the labels are in.
+      const sheet = document.querySelector('.print-sheet')
+      expect(sheet?.contains(document.querySelector('.qr-sheet'))).toBe(true)
+
+      window.dispatchEvent(new Event('afterprint'))
+      expect(document.body.classList.contains('printing-sheet')).toBe(false)
+    } finally {
+      print.mockRestore()
+      document.body.classList.remove('printing-sheet')
+    }
+  })
+
   it('says what is wrong instead of printing nothing', async () => {
     render(<JarsScreen />)
     await userEvent.click(screen.getByRole('button', { name: 'Make labels' }))

@@ -17,6 +17,12 @@ import { toQrDataUrl } from '../lib/qr'
  *
  * Which jars is a field rather than a count, because reprinting three peeled-off labels is
  * as ordinary a job as labelling forty new tins. See `parseJarNumbers`.
+ *
+ * Pressing Print here prints the labels and nothing else. It is the browser's own print, so
+ * without saying otherwise it would take the whole jars screen with it — the night's counts,
+ * the money, the requests inbox — and forty labels would arrive behind three pages of table.
+ * The `printing-sheet` class is how it says otherwise; the rule that reads it lives beside
+ * the rest of the print styles.
  */
 export function JarLabels(): ReactNode {
   const [which, setWhich] = useState('1-40')
@@ -35,6 +41,21 @@ export function JarLabels(): ReactNode {
     [numbers],
   )
 
+  /*
+    Taken off again when the print is done, rather than straight after `window.print()`:
+    Safari returns from that before it has drawn anything, so removing the class there can
+    beat the printer to the page. Left set does no harm — it only means anything on screen —
+    but a screen this app keeps open all day should not carry the last print's state around.
+  */
+  useEffect(() => {
+    const done = (): void => document.body.classList.remove('printing-sheet')
+    window.addEventListener('afterprint', done)
+    return () => {
+      window.removeEventListener('afterprint', done)
+      done()
+    }
+  }, [])
+
   useEffect(() => {
     if (!open) return
     let cancelled = false
@@ -51,13 +72,19 @@ export function JarLabels(): ReactNode {
   }, [items, open])
 
   return (
-    <div className="card">
+    <div className="card print-sheet">
       <div className="row no-print" style={{ justifyContent: 'space-between' }}>
         <h2>Jar labels</h2>
         <div className="row">
           <button onClick={() => setOpen(!open)}>{open ? 'Hide' : 'Make labels'}</button>
           {open && (
-            <button disabled={items.length === 0} onClick={() => window.print()}>
+            <button
+              disabled={items.length === 0}
+              onClick={() => {
+                document.body.classList.add('printing-sheet')
+                window.print()
+              }}
+            >
               Print
             </button>
           )}

@@ -618,8 +618,36 @@ video.scanner { width: 100%; max-width: 24rem; border-radius: var(--radius);
   }
   th, td:first-child { position: static; }
   body { background: #fff; }
-  .qr-card { break-inside: avoid; border-color: #999; }
+  /*
+   * No line to cut along, because a cut that misses one is worse than no line at all.
+   *
+   * These get cut apart with kitchen scissors and taped to forty tins, and a printed box
+   * turns every wobble into a visible mistake — half a border left on one label, a corner
+   * shaved off the next. With only white between them the cut lands wherever it lands and
+   * the label still looks right. The gap in the grid is the room to be wrong in, and the
+   * caption under each code says which jar it is, so nothing is lost with the box.
+   */
+  .qr-card { break-inside: avoid; border: 0; background: none; }
   main { max-width: none; padding: 0; }
+
+  /*
+   * A sheet that asked to be printed is printed on its own.
+   *
+   * The jar labels sit at the foot of the jars screen, under the night's counts, the money
+   * and the requests inbox, and their Print button is the browser's own print — which takes
+   * the whole page. Marking every other card `no-print` would only hold until the next card
+   * is added to that screen and nobody remembers, so the sheet names what to keep instead:
+   * while `printing-sheet` is set, anything that is not the sheet, inside it, or on the way
+   * down to it is left off the paper. Printing the screen itself, from the browser's own
+   * menu, is untouched — the tables still come out.
+   */
+  body.printing-sheet *:not(.print-sheet, :has(.print-sheet), .print-sheet *) {
+    display: none !important;
+  }
+  /* On paper the sheet is the page rather than a card sitting on one. */
+  body.printing-sheet .print-sheet {
+    border: 0; padding: 0; margin: 0; background: none; box-shadow: none;
+  }
 }
 
 @media (max-width: 640px) {
