@@ -238,10 +238,9 @@ export function ImportScreen(): ReactNode {
           )}
           {mapping.parentEmail === undefined && mapping.parentPhone === undefined && (
             <div className="note warning">
-              This file has no email or phone column. That is the gap the 2025 review
-              flagged — without contact details there is no way to reach someone who does
-              not turn up for their shift. Worth adding both as required questions on the
-              form before the next send.
+              This file has no email or phone column. Without contact details there is no
+              way to reach someone who does not turn up for their shift. Worth adding both
+              as questions on the form before the next send.
             </div>
           )}
         </div>

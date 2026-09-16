@@ -203,8 +203,8 @@ export function PublishActions(): ReactNode {
       )}
       {input.support.length === 0 && (
         <div className="note warning">
-          No day-of contacts set. The 2025 review asked for a number on every printout so a
-          parent at a location has someone to call — add one on the Events screen.
+          No day-of contacts set. A parent at a location will have no number to call — add
+          one on the Events screen.
         </div>
       )}
     </div>
