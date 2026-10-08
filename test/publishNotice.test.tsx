@@ -17,7 +17,7 @@ import { forgetRememberedDay } from '../src/lib/dayFilter'
  */
 
 const SLOTS: Slot[] = [
-  { id: 'fri-1700', day: 'fri', startMin: 17 * 60, endMin: 18 * 60, label: '5:00 PM' },
+  { id: 'fri-1700', day: 'fri', startMin: 17 * 60, endMin: 18 * 60, arriveMin: 17 * 60, arriveLabel: '5:00 PM', label: '5:00 PM' },
 ]
 
 let locations: ScheduledLocation[] = [

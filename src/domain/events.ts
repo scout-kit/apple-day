@@ -84,6 +84,15 @@ export function readEvent(id: string, d: Record<string, unknown>): AppleDayEvent
             (typeof d.shiftMinutes === 'number' ? d.shiftMinutes : 60) - 5,
           )
         : DEFAULT_SHAPE.overlapMinutes,
+    /*
+      Absent on every event written before an early check-in could be asked for, and none
+      was: those events put whatever lead they wanted inside the shift length, so reading a
+      lead into them would move times they already published.
+    */
+    checkInMinutes:
+      typeof d.checkInMinutes === 'number' && d.checkInMinutes > 0
+        ? Math.round(d.checkInMinutes)
+        : 0,
     schedule: Object.fromEntries(
       DAYS.flatMap((day) => {
         const window = toWindow(schedule[day])
@@ -190,6 +199,7 @@ export function blankEvent(
     shiftMode: DEFAULT_SHAPE.shiftMode ?? 'shifts',
     shiftMinutes: DEFAULT_SHAPE.shiftMinutes,
     overlapMinutes: DEFAULT_SHAPE.overlapMinutes,
+    checkInMinutes: DEFAULT_SHAPE.checkInMinutes ?? 0,
   }
 }
 

@@ -46,6 +46,7 @@ const EVENT: AppleDayEvent = {
   shiftMode: 'shifts',
   shiftMinutes: 60,
   overlapMinutes: 0,
+  checkInMinutes: 0,
 }
 
 const spec = (over: Partial<AppleDayEvent> = {}) =>

@@ -12,8 +12,8 @@ import type { Assignment, Jar, Location, Person, Slot } from '../src/domain/type
  */
 
 const slots: Slot[] = [
-  { id: 'fri-1700', day: 'fri', startMin: 17 * 60, endMin: 18 * 60, label: '5:00 PM' },
-  { id: 'fri-1800', day: 'fri', startMin: 18 * 60, endMin: 19 * 60, label: '6:00 PM' },
+  { id: 'fri-1700', day: 'fri', startMin: 17 * 60, endMin: 18 * 60, arriveMin: 17 * 60, arriveLabel: '5:00 PM', label: '5:00 PM' },
+  { id: 'fri-1800', day: 'fri', startMin: 18 * 60, endMin: 19 * 60, arriveMin: 18 * 60, arriveLabel: '6:00 PM', label: '6:00 PM' },
 ]
 
 const location = (id: string, name: string): Location => ({

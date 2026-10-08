@@ -1603,6 +1603,7 @@ async function readYear(event: AppleDayEvent): Promise<EventData> {
       shiftMode: event.shiftMode,
       shiftMinutes: event.shiftMinutes,
       overlapMinutes: event.overlapMinutes,
+      checkInMinutes: event.checkInMinutes,
     }),
   }
 }

@@ -32,17 +32,32 @@ export interface SlotShape {
   shiftMode?: 'shifts' | 'wholeDay'
   shiftMinutes: number
   overlapMinutes: number
+  /**
+   * How long before a shift starts people are asked to turn up. Optional, and absent means
+   * none — an event that never asked for an early check-in is unaffected by any of this.
+   */
+  checkInMinutes?: number
 }
 
 export const DEFAULT_SHAPE: SlotShape = {
   shiftMode: 'shifts',
   shiftMinutes: 60,
   overlapMinutes: 0,
+  checkInMinutes: 0,
 }
 
 /** Minutes between one shift starting and the next. Never less than 5. */
 export function stepMinutes(shape: SlotShape): number {
   return Math.max(5, shape.shiftMinutes - shape.overlapMinutes)
+}
+
+/**
+ * The check-in lead, as a number whatever the shape left out.
+ *
+ * Negative is meaningless and would push arrival *after* the start, so it floors at zero.
+ */
+export function leadMinutes(shape: SlotShape): number {
+  return Math.max(0, Math.round(shape.checkInMinutes ?? 0))
 }
 
 /** How early and late a location's opening hours may be set. */
@@ -116,19 +131,12 @@ export function buildSlots(
   if (!window) return []
 
   const { startMin, endMin } = window
+  const lead = leadMinutes(shape)
 
   // One slot for the whole day: people come for the duration, not for an hour of it.
   if (shape.shiftMode === 'wholeDay') {
     if (endMin <= startMin) return []
-    return [
-      {
-        id: slotId(day, startMin),
-        day,
-        startMin,
-        endMin,
-        label: formatSlotLabel(startMin, endMin),
-      },
-    ]
+    return [makeSlot(day, startMin, endMin, lead)]
   }
 
   const length = Math.max(5, shape.shiftMinutes)
@@ -138,27 +146,34 @@ export function buildSlots(
   // A shift has to finish inside the window: a trailing part-shift would send somebody out
   // after the event has packed up.
   for (let t = startMin; t + length <= endMin; t += step) {
-    slots.push({
-      id: slotId(day, t),
-      day,
-      startMin: t,
-      endMin: t + length,
-      label: formatSlotLabel(t, t + length),
-    })
+    slots.push(makeSlot(day, t, t + length, lead))
   }
 
   // A window shorter than one shift still gets a single clipped shift, rather than no way
   // to staff the day at all.
   if (slots.length === 0 && endMin > startMin) {
-    slots.push({
-      id: slotId(day, startMin),
-      day,
-      startMin,
-      endMin,
-      label: formatSlotLabel(startMin, endMin),
-    })
+    slots.push(makeSlot(day, startMin, endMin, lead))
   }
   return slots
+}
+
+/**
+ * One slot, with both the times it has: the shift, and the shift as it is asked for.
+ *
+ * Arrival floors at midnight rather than wrapping, because a shift starting at 00:10 with a
+ * quarter-hour lead would otherwise be asked for at 23:55 the night before.
+ */
+function makeSlot(day: Day, startMin: number, endMin: number, lead: number): Slot {
+  const arriveMin = Math.max(0, startMin - lead)
+  return {
+    id: slotId(day, startMin),
+    day,
+    startMin,
+    endMin,
+    arriveMin,
+    label: formatSlotLabel(startMin, endMin),
+    arriveLabel: formatSlotLabel(arriveMin, endMin),
+  }
 }
 
 export function buildAllSlots(
@@ -417,9 +432,17 @@ export function parseSlotLabel(
     an hour somebody never offered, quietly added to the board.
   */
   const readings = clock.exact ? [hour] : [...new Set([hour, hour + 12, hour - 12])]
+  /*
+    The window opens early by the check-in lead, because that is what people are given.
+
+    A form built from this event offers "4:45 PM – 6:00 PM" for a day that runs from five,
+    and 4:45 is outside the window by the letter of it. Refusing the label would read as
+    availability nobody offered — for the first shift of every day, which is the one most
+    people pick.
+  */
   const candidates = readings
     .map((h) => h * 60 + minute)
-    .filter((t) => t >= windowStart && t < windowEnd)
+    .filter((t) => t >= windowStart - leadMinutes(shape) && t < windowEnd)
 
   if (candidates.length === 0) return { ok: false, reason: 'outsideWindow', input: raw }
   if (candidates.length > 1) return { ok: false, reason: 'ambiguous', input: raw }

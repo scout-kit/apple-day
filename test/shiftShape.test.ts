@@ -258,6 +258,7 @@ describe('an event with no shifts at all', () => {
     shiftMode: 'wholeDay',
     shiftMinutes: 60,
     overlapMinutes: 0,
+    checkInMinutes: 0,
   }
 
   it('gives each day a single slot spanning its window', () => {
@@ -273,6 +274,7 @@ describe('an event with no shifts at all', () => {
       shiftMode: 'wholeDay',
       shiftMinutes: 30,
       overlapMinutes: 25,
+      checkInMinutes: 0,
     })
     expect(withShape).toHaveLength(1)
     expect(withShape[0]!.endMin - withShape[0]!.startMin).toBe(4 * 60)

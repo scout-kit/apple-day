@@ -325,6 +325,7 @@ export function EventProvider({ children }: { children: ReactNode }): ReactNode 
         'shiftMode',
         'shiftMinutes',
         'overlapMinutes',
+        'checkInMinutes',
         'baseLocationId',
         'supportNote',
         'arrivalNote',
@@ -365,6 +366,7 @@ export function EventProvider({ children }: { children: ReactNode }): ReactNode 
             shiftMode: event.shiftMode,
             shiftMinutes: event.shiftMinutes,
             overlapMinutes: event.overlapMinutes,
+            checkInMinutes: event.checkInMinutes,
           })
         : buildAllSlots(),
     [event],

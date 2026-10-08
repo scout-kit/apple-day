@@ -212,6 +212,37 @@ export function EventSettings({
           </div>
         )}
 
+        <div className="small muted" style={{ marginTop: '0.6rem' }}>
+          How early people are asked to turn up. The shift keeps its own hours — this is
+          time in front of it, so a pass, a reminder and the signup form name the earlier
+          time while the board, the money screens and the hours each person is credited
+          with stay on whole shifts.
+        </div>
+        <div className="row" style={{ marginTop: '0.35rem' }}>
+          <label style={{ flex: '0 1 9rem' }}>
+            Check-in lead
+            <select
+              value={draft.checkInMinutes}
+              onChange={(e) =>
+                onChange({ ...draft, checkInMinutes: Number(e.target.value) })
+              }
+            >
+              {[0, 5, 10, 15, 20, 30].map((m) => (
+                <option key={m} value={m}>
+                  {m === 0 ? 'none' : `${m} min`}
+                </option>
+              ))}
+            </select>
+          </label>
+          {draft.checkInMinutes > 0 && activeDays(draft.schedule)[0] && (
+            <span className="small muted">
+              asked for as{' '}
+              {buildSlots(activeDays(draft.schedule)[0]!, draft.schedule, draft)[0]
+                ?.arriveLabel ?? '—'}
+            </span>
+          )}
+        </div>
+
         </>
         )}
 

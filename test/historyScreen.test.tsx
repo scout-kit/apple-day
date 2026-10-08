@@ -70,15 +70,15 @@ let asked: string[] = []
 const { HistoryScreen } = await import('../src/ui/HistoryScreen')
 
 const SLOTS: Slot[] = [
-  { id: 'fri-1700', day: 'fri', startMin: 17 * 60, endMin: 18 * 60, label: '5:00 PM' },
-  { id: 'fri-1800', day: 'fri', startMin: 18 * 60, endMin: 19 * 60, label: '6:00 PM' },
+  { id: 'fri-1700', day: 'fri', startMin: 17 * 60, endMin: 18 * 60, arriveMin: 17 * 60, arriveLabel: '5:00 PM', label: '5:00 PM' },
+  { id: 'fri-1800', day: 'fri', startMin: 18 * 60, endMin: 19 * 60, arriveMin: 18 * 60, arriveLabel: '6:00 PM', label: '6:00 PM' },
 ]
 
 const event = (id: string, year: number): AppleDayEvent => ({
   id, name: `Apple Day ${year}`, slug: '', year,
   fridayDate: `${year}-10-02`, saturdayDate: `${year}-10-03`,
   support: [], supportNote: '', arrivalNote: '', baseLocationId: null, finishedAt: null,
-  shiftMode: 'shifts', shiftMinutes: 60, overlapMinutes: 0,
+  shiftMode: 'shifts', shiftMinutes: 60, overlapMinutes: 0, checkInMinutes: 0,
   schedule: { fri: { startMin: 17 * 60, endMin: 19 * 60 } },
 })
 

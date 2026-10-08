@@ -1,4 +1,4 @@
-import { slotDurationHours } from './slots'
+import { countedHours } from './countedHours'
 import { DEFAULT_SECTIONS, sortSections } from './sections'
 import type { SectionDef } from './sections'
 import { DAYS, isCounted, isNumbered, wasWorked } from './types'
@@ -67,6 +67,17 @@ function slotIndex(slots: Slot[]): Map<string, Slot> {
 }
 
 /**
+ * Did this row staff anything at all?
+ *
+ * A no-show staffed nothing and a swapped row was handed to somebody else, so neither earns
+ * hours — and neither may take part in the overlap maths in `countedHours`, or it would
+ * absorb the credit for the shift that really was worked.
+ */
+function staffed(a: Assignment): boolean {
+  return a.status !== 'noShow' && a.status !== 'swapped'
+}
+
+/**
  * Person-hours per location, summed from assignments and weighted by each slot's real
  * duration. An assignment whose slot is unknown contributes nothing and is reported by
  * {@link findOrphanedRecords} rather than silently counted as an hour.
@@ -96,17 +107,14 @@ export function staffedHoursByLocation(
   assignments: Assignment[],
   slots: Slot[],
 ): Map<string, number> {
-  const bySlot = slotIndex(slots)
   const totals = new Map<string, number>()
+  // A no-show staffed nothing; counting it would understate revenue per hour.
+  const counted = countedHours(assignments.filter(staffed), slots)
 
   for (const a of assignments) {
-    // A no-show staffed nothing; counting it would understate revenue per hour.
-    if (a.status === 'noShow' || a.status === 'swapped') continue
-
-    const slot = bySlot.get(a.slotId)
-    if (!slot) continue
-
-    totals.set(a.locationId, (totals.get(a.locationId) ?? 0) + slotDurationHours(slot))
+    const hours = counted.get(a.id)
+    if (hours === undefined) continue
+    totals.set(a.locationId, (totals.get(a.locationId) ?? 0) + hours)
   }
 
   return totals
@@ -328,7 +336,6 @@ export function revenueBySlot(
   jars: Jar[],
   slots: Slot[],
 ): SlotMoneyReport {
-  const bySlot = slotIndex(slots)
   const attributed = attributeJarRevenue(assignments, jars, slots)
 
   const revenue = new Map<string, number>()
@@ -337,11 +344,11 @@ export function revenueBySlot(
   const hours = new Map<string, number>()
   const unattributed = attributed.unattributed
 
+  const countedBySlot = countedHours(assignments.filter(staffed), slots)
   for (const a of assignments) {
-    if (a.status === 'noShow' || a.status === 'swapped') continue
-    const slot = bySlot.get(a.slotId)
-    if (!slot) continue
-    hours.set(a.slotId, (hours.get(a.slotId) ?? 0) + slotDurationHours(slot))
+    const worked = countedBySlot.get(a.id)
+    if (worked === undefined) continue
+    hours.set(a.slotId, (hours.get(a.slotId) ?? 0) + worked)
   }
 
   for (const share of attributed.shares) {
@@ -541,7 +548,6 @@ export function locationHourGrid(
   jars: Jar[],
   slots: Slot[],
 ): LocationHourGrid {
-  const bySlot = slotIndex(slots)
   const ordered = [...slots].sort(
     (a, b) => DAYS.indexOf(a.day) - DAYS.indexOf(b.day) || a.startMin - b.startMin,
   )
@@ -558,13 +564,13 @@ export function locationHourGrid(
     revenue.set(k, round2((revenue.get(k) ?? 0) + share.amount))
   }
 
+  const countedInGrid = countedHours(assignments.filter(staffed), slots)
   for (const a of assignments) {
-    if (a.status === 'noShow' || a.status === 'swapped') continue
-    const slot = bySlot.get(a.slotId)
-    if (!slot) continue
+    const worked = countedInGrid.get(a.id)
+    if (worked === undefined) continue
     seen.add(a.locationId)
     const k = key(a.locationId, a.slotId)
-    hours.set(k, round2((hours.get(k) ?? 0) + slotDurationHours(slot)))
+    hours.set(k, round2((hours.get(k) ?? 0) + worked))
   }
 
   /*
@@ -647,19 +653,18 @@ export function sectionParticipation(
   /** The group's sections. Defaults to the built-in set when none are configured. */
   sections: SectionDef[] = DEFAULT_SECTIONS,
 ): { rows: SectionParticipation[]; totalHours: number; youthHours: number } {
-  const bySlot = slotIndex(slots)
   const personSection = new Map(people.map((p) => [p.id, p.section]))
 
   const hours = new Map<Section, number>()
   const seen = new Map<Section, Set<string>>()
 
+  const counted = countedHours(assignments.filter(staffed), slots)
   for (const a of assignments) {
-    if (a.status === 'noShow' || a.status === 'swapped') continue
-    const slot = bySlot.get(a.slotId)
+    const worked = counted.get(a.id)
     const section = personSection.get(a.personId)
-    if (!slot || !section) continue
+    if (worked === undefined || !section) continue
 
-    hours.set(section, (hours.get(section) ?? 0) + slotDurationHours(slot))
+    hours.set(section, (hours.get(section) ?? 0) + worked)
     if (!seen.has(section)) seen.set(section, new Set())
     seen.get(section)!.add(a.personId)
   }
@@ -709,7 +714,6 @@ export function personTotals(
   jars: Jar[],
   slots: Slot[],
 ): PersonTotals[] {
-  const bySlot = slotIndex(slots)
   const acc = new Map<string, PersonTotals>()
 
   const ensure = (personId: string): PersonTotals => {
@@ -721,11 +725,11 @@ export function personTotals(
     return row
   }
 
+  const counted = countedHours(assignments.filter(staffed), slots)
   for (const a of assignments) {
-    if (a.status === 'noShow' || a.status === 'swapped') continue
-    const slot = bySlot.get(a.slotId)
-    if (!slot) continue
-    ensure(a.personId).hours += slotDurationHours(slot)
+    const worked = counted.get(a.id)
+    if (worked === undefined) continue
+    ensure(a.personId).hours += worked
   }
 
   for (const jar of jars) {

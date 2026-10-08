@@ -77,9 +77,25 @@ export type PaymentMethod = 'cash' | 'square'
 export interface Slot {
   id: string
   day: Day
+  /** When the shift itself starts — the hour on location, and what the board is built on. */
   startMin: number
   endMin: number
+  /**
+   * When the person is told to turn up, which is `startMin` less the event's check-in lead.
+   *
+   * Equal to `startMin` when the event has no lead, so an event that never asked anybody to
+   * come early reads exactly as it did before.
+   */
+  arriveMin: number
+  /** The shift: "5:00 PM – 6:00 PM". The schedule board, the money screens, settings. */
   label: string
+  /**
+   * The same shift as the person is asked to do it: "4:45 PM – 6:00 PM".
+   *
+   * What a pass, a reminder and the signup form say, because turning up at five for a shift
+   * that starts at five is fifteen minutes late by the time a jar is in their hand.
+   */
+  arriveLabel: string
 }
 
 export interface SiteContact {
@@ -368,6 +384,19 @@ export interface AppleDayEvent {
    * starts every 45.
    */
   overlapMinutes: number
+  /**
+   * How long before a shift starts the person is asked to turn up, in minutes.
+   *
+   * A lead rather than a longer shift. Making the shift 75 minutes to buy a 15 minute
+   * check-in window moves the extra quarter-hour to the *end*, where it collides with the
+   * next shift and is counted twice for anybody doing two in a row — and it pushes the last
+   * shift of the day past closing, so the final hour cannot be staffed at all.
+   *
+   * Here it sits in front of `startMin` instead: the board keeps whole-hour shifts, the
+   * public wording says the earlier time, and the hours a person is credited with count the
+   * stretch once however many shifts it spans. See `domain/countedHours`.
+   */
+  checkInMinutes: number
   /**
    * When the year was closed out, or null while it is still running.
    *

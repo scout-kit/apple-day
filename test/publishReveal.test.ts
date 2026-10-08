@@ -71,7 +71,7 @@ const run = async (assignments: Assignment[]): Promise<void> => {
       },
     ],
     slots: [
-      { id: 'fri-1700', day: 'fri' as const, startMin: 17 * 60, endMin: 18 * 60, label: '5:00 PM' },
+      { id: 'fri-1700', day: 'fri' as const, startMin: 17 * 60, endMin: 18 * 60, arriveMin: 17 * 60, arriveLabel: '5:00 PM', label: '5:00 PM' },
     ],
     support: [],
     supportNote: '',

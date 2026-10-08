@@ -486,6 +486,9 @@ export function EventsScreen(): ReactNode {
                           {e.overlapMinutes > 0 && (
                             <div className="muted">{e.overlapMinutes} min overlap</div>
                           )}
+                          {e.checkInMinutes > 0 && (
+                            <div className="muted">{e.checkInMinutes} min early</div>
+                          )}
                         </>
                       )}
                     </td>

@@ -118,9 +118,9 @@ describe('localDate', () => {
 
 describe('the slot happening now', () => {
   const slots: Slot[] = [
-    { id: 'fri-1700', day: 'fri', startMin: 17 * 60, endMin: 18 * 60, label: '5 PM' },
-    { id: 'fri-1800', day: 'fri', startMin: 18 * 60, endMin: 19 * 60, label: '6 PM' },
-    { id: 'sat-0800', day: 'sat', startMin: 8 * 60, endMin: 9 * 60, label: '8 AM' },
+    { id: 'fri-1700', day: 'fri', startMin: 17 * 60, endMin: 18 * 60, arriveMin: 17 * 60, arriveLabel: '5 PM', label: '5 PM' },
+    { id: 'fri-1800', day: 'fri', startMin: 18 * 60, endMin: 19 * 60, arriveMin: 18 * 60, arriveLabel: '6 PM', label: '6 PM' },
+    { id: 'sat-0800', day: 'sat', startMin: 8 * 60, endMin: 9 * 60, arriveMin: 8 * 60, arriveLabel: '8 AM', label: '8 AM' },
   ]
 
   it('is the one covering the current time', () => {
