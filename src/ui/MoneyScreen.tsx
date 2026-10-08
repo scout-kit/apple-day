@@ -396,12 +396,15 @@ export function MoneyScreen(): ReactNode {
         */}
         {report.base && (report.base.staffedHours > 0 || report.base.revenue > 0) && (
           <p className="small muted" style={{ marginTop: '0.5rem' }}>
+            {/* The unit spelled out. `Hours` prints a bare number, which is right under a
+                column headed "Hours" and reads as nothing at all mid-sentence. */}
             <strong>{report.base.name}</strong> is the base:{' '}
-            <Hours value={report.base.staffedHours} /> and{' '}
-            <Money value={report.base.revenue} /> — apples, donations and the card total land
-            there. Both are counted in the two figures above and in neither rate: nobody
-            collects at base, so its hours are not what the takings came from, and it is not
-            ranked against the shops.
+            <Hours value={report.base.staffedHours} />{' '}
+            {report.base.staffedHours === 1 ? 'person-hour' : 'person-hours'} staffed, and{' '}
+            <Money value={report.base.revenue} /> taken — apples, donations and the card
+            total land there. Both are counted in the two figures above and in neither rate:
+            nobody collects at base, so its hours are not what the takings came from, and it
+            is not ranked against the shops.
           </p>
         )}
       </div>
@@ -697,8 +700,15 @@ export function MoneyScreen(): ReactNode {
         </div>
         <p className="small muted" style={{ marginTop: 0 }}>
           Which hours are worth being out — the breakdown behind the per-hour figure above,
-          which is {byHour.slotsWorked === 0 ? 'no hours' : <Hours value={byHour.clockHours} />}
-          {' '}of Apple Day so far. Revenue reaches an hour through the shift its jar went out
+          which is{' '}
+          {byHour.slotsWorked === 0 ? (
+            'no hours'
+          ) : (
+            <>
+              <Hours value={byHour.clockHours} /> {byHour.clockHours === 1 ? 'hour' : 'hours'}
+            </>
+          )}{' '}
+          of Apple Day so far. Revenue reaches an hour through the shift its jar went out
           on, so money entered by hand against a location has no hour and is listed below the
           table.
         </p>
@@ -904,10 +914,12 @@ export function MoneyScreen(): ReactNode {
           {sections.baseHours > 0 && (
             <>
               {' '}
-              <Hours value={sections.baseHours} /> of the total were at base — check-in,
-              apples, cooking, counting the money. Real hours, and still counted here, but
-              left out of every per-hour figure on this screen: no money comes in against
-              them, so dividing by them makes a well-staffed evening look like a poor one.
+              Of that total, <Hours value={sections.baseHours} />{' '}
+              {sections.baseHours === 1 ? 'person-hour was' : 'person-hours were'} at base —
+              check-in, apples, cooking, counting the money. Real hours, and still counted
+              here, but left out of every per-hour figure on this screen: no money comes in
+              against them, so dividing by them makes a well-staffed evening look like a
+              poor one.
             </>
           )}
         </p>
@@ -970,7 +982,7 @@ export function MoneyScreen(): ReactNode {
                             has no money. */}
                         {row.baseHours > 0 && (
                           <div className="small muted">
-                            <Hours value={row.baseHours} /> at base
+                            <Hours value={row.baseHours} /> h at base
                           </div>
                         )}
                       </td>
