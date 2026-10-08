@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { groupIntoRuns, runTouches } from '../src/domain/shiftRuns'
+import { groupIntoRuns, runStatus, runTouches } from '../src/domain/shiftRuns'
 
 /**
  * Consecutive shifts at one location.
@@ -161,5 +161,31 @@ describe('two stretches running at the same time', () => {
       [H(9), H(11)],
       [H(9), H(11)],
     ])
+  })
+})
+
+describe('a run in one word', () => {
+  /*
+    What the day-of filter matches on. Derived from `runState` rather than read off an
+    assignment, so the word a row is filtered by is the word its own pill is showing —
+    deciding it twice is how a filter hides a row that plainly says what you asked for.
+  */
+  it('names each of the five the figures are kept in', () => {
+    expect(runStatus({ attendance: 'expected', place: 'atTable' })).toBe('expected')
+    expect(runStatus({ attendance: 'arrived', place: 'atTable' })).toBe('here')
+    expect(runStatus({ attendance: 'arrived', place: 'out' })).toBe('out')
+    expect(runStatus({ attendance: 'arrived', place: 'back' })).toBe('back')
+    expect(runStatus({ attendance: 'absent', place: 'atTable' })).toBe('noShow')
+  })
+
+  it('answers for every state a run can be in', () => {
+    // `runState` never reports a place for somebody who has not arrived, but the mapping is
+    // total anyway: a filter that returns undefined for a row shows an empty table and no
+    // reason for it.
+    for (const attendance of ['expected', 'arrived', 'absent'] as const) {
+      for (const place of ['atTable', 'out', 'back'] as const) {
+        expect(runStatus({ attendance, place })).toBeTruthy()
+      }
+    }
   })
 })

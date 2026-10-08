@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { render, screen, within } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import { resetUrl } from './helpers/url'
 import userEvent from '@testing-library/user-event'
 import { useMemo } from 'react'
@@ -509,6 +509,101 @@ describe('the day-of desk works person by person', () => {
     expect(hasRow('Beta Two')).toBe(true)
     expect(hasRow('Alpha One')).toBe(false)
     people.pop()
+  })
+})
+
+describe('narrowing the day-of table', () => {
+  const rowNames = (): string[] =>
+    Array.from(document.querySelectorAll('tbody tr')).map(
+      (r) => r.querySelector('td')?.textContent ?? '',
+    )
+  const statFor = (label: string): string | null => {
+    const found = Array.from(document.querySelectorAll('.stat')).find((s) =>
+      s.textContent?.includes(label),
+    )
+    return found?.querySelector('.value')?.textContent ?? null
+  }
+
+  const KELMONT: ScheduledLocation = {
+    ...locations[0]!, id: 'kelmont', name: 'Kelmont', priority: 2,
+  }
+  const SECOND: Person = {
+    id: 'p-two', firstName: 'Beta', lastName: 'Two', section: 'scouts',
+    parentName: '', parentEmail: '', parentPhone: '', pairWithPersonId: null,
+  }
+
+  /** One at each of two shops, one out collecting and one still at the table. */
+  const twoShops = (): void => {
+    locations.push(KELMONT)
+    people.push(SECOND)
+    assignments = [
+      { ...assignments[0]!, whereabouts: 'out' as const, status: 'checkedIn' as const },
+      {
+        id: 'a2', slotId: SLOT, locationId: 'kelmont', personId: 'p-two',
+        status: 'checkedIn', whereabouts: 'here', checkedInAt: 1, checkedOutAt: null,
+      },
+    ]
+  }
+
+  afterEach(() => {
+    if (locations.at(-1)?.id === 'kelmont') locations.pop()
+    if (people.at(-1)?.id === 'p-two') people.pop()
+  })
+
+  it('no longer counts the jars out, which the jars screen is for', () => {
+    // The same figure on two screens is two figures that can disagree, and this is not the
+    // screen somebody goes to for it.
+    render(<DayOfScreen />)
+    expect(statFor('jars out')).toBeNull()
+  })
+
+  it('filters to one location, figures and all', async () => {
+    // "How many of this shop's are still out" is a real question at the table, so the
+    // location narrows the count as well as the list.
+    twoShops()
+    render(<DayOfScreen />)
+    expect(rowNames()).toHaveLength(2)
+
+    await userEvent.selectOptions(screen.getByLabelText('Location'), 'kelmont')
+    await waitFor(() => expect(rowNames()).toHaveLength(1))
+    expect(rowNames().join()).toContain('Beta Two')
+    expect(rowNames().join()).not.toContain('Alpha One')
+    expect(statFor('out')).toBe('0')
+  })
+
+  it('filters to one status without touching the figures', async () => {
+    /*
+      The other way round, deliberately. The figures are what the filter gets chosen from —
+      reading "out: 1" and then asking to see that one is the whole move — and a count that
+      only ever counts what is already on screen cannot be read that way.
+    */
+    twoShops()
+    render(<DayOfScreen />)
+
+    await userEvent.selectOptions(screen.getByLabelText('Status'), 'out')
+    expect(rowNames().join()).toContain('Alpha One')
+    expect(rowNames().join()).not.toContain('Beta Two')
+    expect(statFor('out')).toBe('1')
+    expect(statFor('here')).toBe('1')
+  })
+
+  it('says it is the filters when they match nothing, not the schedule', async () => {
+    // "Nobody is scheduled" said to somebody who has filtered to no-shows sends them
+    // looking for a bug in the board.
+    twoShops()
+    render(<DayOfScreen />)
+
+    await userEvent.selectOptions(screen.getByLabelText('Status'), 'noShow')
+    expect(screen.getByText('Nobody matches those filters.')).toBeTruthy()
+  })
+
+  it('offers a way back out of them', async () => {
+    twoShops()
+    render(<DayOfScreen />)
+
+    await userEvent.selectOptions(screen.getByLabelText('Status'), 'noShow')
+    await userEvent.click(screen.getAllByRole('button', { name: 'Clear filters' })[0]!)
+    expect(rowNames()).toHaveLength(2)
   })
 })
 

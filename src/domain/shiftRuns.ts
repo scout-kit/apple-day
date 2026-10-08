@@ -195,6 +195,22 @@ export function runState(shifts: ShiftState[]): RunState {
   return { attendance, place }
 }
 
+/** A run in one word — the same five the day-of figures are kept in. */
+export type RunStatus = 'expected' | 'here' | 'out' | 'back' | 'noShow'
+
+/**
+ * Which of the five a run is in.
+ *
+ * Derived from `runState` rather than read off an assignment, so the word a row is filtered
+ * by is the word its own pill is showing. Deciding it twice is how a filter ends up hiding
+ * a row that plainly says what you asked for.
+ */
+export function runStatus({ attendance, place }: RunState): RunStatus {
+  if (attendance === 'absent') return 'noShow'
+  if (attendance === 'expected') return 'expected'
+  return place === 'atTable' ? 'here' : place
+}
+
 export interface RunControls {
   /** Check in, or — once they have — take that back. */
   checkIn: boolean

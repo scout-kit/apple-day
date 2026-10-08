@@ -5,7 +5,13 @@ import type { ReactNode } from 'react'
 import { DAY_LABEL, formatTime } from '../domain/slots'
 import { currentSlot, todaysEventDay } from '../domain/today'
 import { shiftsCoveredBy } from '../domain/jars'
-import { groupIntoRuns, runControls, runState, runTouches } from '../domain/shiftRuns'
+import {
+  groupIntoRuns,
+  runControls,
+  runState,
+  runStatus,
+  runTouches,
+} from '../domain/shiftRuns'
 import type { ShiftRun } from '../domain/shiftRuns'
 import { DAYS, fullName, isNumbered } from '../domain/types'
 import type {
@@ -111,6 +117,15 @@ export function DayOfScreen(): ReactNode {
   const [scopeParam, setScope] = useUrlState('scope', 'day')
   const [slotId, setSlotId] = useUrlState('slot')
   const [search, setSearch] = useUrlState('find')
+  /*
+    Two more lenses on the same table, in the address bar for the same reason as the rest:
+    opening somebody and pressing Back has to land where you were.
+
+    `at` is a location id; `state` is one of the words the stats row above already uses, so
+    the figures double as the legend for it.
+  */
+  const [atLocation, setAtLocation] = useUrlState('at')
+  const [state, setState] = useUrlState('state')
 
   const scope = scopeParam as Scope
   const [issuing, setIssuing] = useState<ShiftRun<RunShift> | null>(null)
@@ -157,6 +172,7 @@ export function DayOfScreen(): ReactNode {
     () => new Map(locations.data.map((l) => [l.id, l])),
     [locations.data],
   )
+
   const slotById = useMemo(() => new Map(daySlots.map((s) => [s.id, s])), [daySlots])
 
   const jarsByAssignment = useMemo(() => {
@@ -174,6 +190,23 @@ export function DayOfScreen(): ReactNode {
     () => jars.data.filter((j) => j.day === day && j.status === 'out'),
     [jars.data, day],
   )
+
+  /*
+    The shops this day staffs, for the filter to offer — in the year's own running order,
+    which is the order every other list on the app is in.
+
+    The whole day's, not the chosen hour's: a location that vanishes from the list when you
+    step to the next shift takes the filter with it, and you are left wondering what you
+    pressed.
+  */
+  const staffedLocations = useMemo(() => {
+    const ids = new Set<string>()
+    for (const a of assignments.data) {
+      // `slotById` holds this day's slots and no others, so this is "is it today".
+      if (slotById.has(a.slotId)) ids.add(a.locationId)
+    }
+    return locations.data.filter((l) => ids.has(l.id))
+  }, [assignments.data, slotById, locations.data])
 
   /** The lowest number not currently out. A counted jar is empty and reusable. */
   const suggestedJarNumber = useMemo(() => {
@@ -224,7 +257,16 @@ export function DayOfScreen(): ReactNode {
         if (query && !fullName(person).toLowerCase().includes(query)) return []
 
         const runs = groupIntoRuns(shifts)
-        const visible = window ? runs.filter((r) => runTouches(r, window)) : runs
+        const inWindow = window ? runs.filter((r) => runTouches(r, window)) : runs
+        /*
+          Location narrows the figures as well as the table, because "how many of this
+          shop's are still out" is a real question at the table. Status does not — filtering
+          to the four people who are out and then reading "out: 4, here: 0" says nothing.
+          So it is applied after the counts, in `shown`.
+        */
+        const visible = atLocation
+          ? inWindow.filter((r) => r.locationId === atLocation)
+          : inWindow
         if (visible.length === 0) return []
 
         return [
@@ -251,7 +293,25 @@ export function DayOfScreen(): ReactNode {
     jarsByAssignment,
     personById,
     search,
+    atLocation,
   ])
+
+  /*
+    The table's own rows: everything above, narrowed to one status.
+
+    After `counts`, deliberately. The figures are what the filter is chosen from — reading
+    "out: 4" and then filtering to those four is the whole move — and a figure that only
+    ever counts what is already on screen cannot be read that way.
+  */
+  const shown = useMemo(() => {
+    if (!state) return rows
+    return rows.flatMap((row) => {
+      const runs = row.runs.filter(
+        (run) => runStatus(runState(run.items.map((i) => i.assignment))) === state,
+      )
+      return runs.length === 0 ? [] : [{ ...row, runs }]
+    })
+  }, [rows, state])
 
   const counts = useMemo(() => {
     const shifts = rows.flatMap((r) => r.runs.flatMap((run) => run.items))
@@ -442,7 +502,6 @@ export function DayOfScreen(): ReactNode {
               value={counts.noShows}
               {...(counts.noShows > 0 ? { tone: 'bad' as const } : {})}
             />
-            <Stat label="jars out" value={jarsOutToday.length} />
           </div>
         </div>
 
@@ -475,6 +534,49 @@ export function DayOfScreen(): ReactNode {
             onChange={(e) => setSearch(e.target.value)}
             style={{ flex: '1 1 10rem', minWidth: '8rem' }}
           />
+        </div>
+
+        {/*
+          Two selects rather than two more rows of buttons. The row above is already a
+          choice of day, a choice of scope and a shift apiece; adding eight locations and
+          five states to it turns the top of the screen into a wall somebody has to read
+          before they can see who is where.
+        */}
+        <div className="row" style={{ marginTop: '0.4rem' }}>
+          <label className="small" style={{ flex: '0 1 13rem' }}>
+            Location
+            <select value={atLocation} onChange={(e) => setAtLocation(e.target.value)}>
+              <option value="">Everywhere</option>
+              {staffedLocations.map((l) => (
+                <option key={l.id} value={l.id}>
+                  {l.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="small" style={{ flex: '0 1 11rem' }}>
+            Status
+            <select value={state} onChange={(e) => setState(e.target.value)}>
+              <option value="">Any status</option>
+              <option value="expected">To come</option>
+              <option value="here">Here</option>
+              <option value="out">Out collecting</option>
+              <option value="back">Back</option>
+              <option value="noShow">No-show</option>
+            </select>
+          </label>
+          {(atLocation || state) && (
+            <button
+              className="tiny"
+              style={{ alignSelf: 'end' }}
+              onClick={() => {
+                setAtLocation('')
+                setState('')
+              }}
+            >
+              Clear filters
+            </button>
+          )}
         </div>
 
         {base && (
@@ -529,15 +631,33 @@ export function DayOfScreen(): ReactNode {
         </div>
       )}
 
-      {rows.length === 0 ? (
+      {shown.length === 0 ? (
         <div className="card">
           <p className="muted">
+            {/*
+              Which of the four reasons the table is empty. "Nobody is scheduled" said to
+              somebody who has filtered to no-shows at one shop is a lie, and the kind that
+              sends an organizer looking for a bug in the schedule.
+            */}
             {search
               ? `Nobody matching “${search}”.`
-              : scope === 'hour'
-                ? 'Nobody is scheduled for this shift.'
-                : `Nobody is scheduled for ${DAY_LABEL[day]}.`}
+              : state || atLocation
+                ? 'Nobody matches those filters.'
+                : scope === 'hour'
+                  ? 'Nobody is scheduled for this shift.'
+                  : `Nobody is scheduled for ${DAY_LABEL[day]}.`}
           </p>
+          {(state || atLocation) && !search && (
+            <button
+              className="tiny"
+              onClick={() => {
+                setAtLocation('')
+                setState('')
+              }}
+            >
+              Clear filters
+            </button>
+          )}
         </div>
       ) : (
         <div className="card">
@@ -554,7 +674,7 @@ export function DayOfScreen(): ReactNode {
                 </tr>
               </thead>
               <tbody>
-                {rows.flatMap((row) =>
+                {shown.flatMap((row) =>
                   row.runs.map((run, i) => {
                     const shifts = run.items
                     const first = shifts[0]!
