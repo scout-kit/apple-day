@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { countedHours, countedWindows } from '../src/domain/countedHours'
+import { groupIntoRuns, runSpan, runWorkSpan } from '../src/domain/shiftRuns'
 import { buildSlots, parseSlotLabel, slotDurationHours } from '../src/domain/slots'
 import { personTotals, staffedHoursByLocation } from '../src/domain/metrics'
 import { buildPassShifts } from '../src/domain/publishing'
@@ -182,6 +183,36 @@ describe('the totals every screen reads', () => {
   it('leaves a no-show out of the counting, and out of the overlap maths', () => {
     const noShow: Assignment = { ...shift('a', 'fri-1645'), status: 'noShow', whereabouts: 'here' }
     expect(personTotals([noShow, worked[1]!], [], slots)[0]!.hours).toBe(1)
+  })
+})
+
+describe('a stretch of shifts, read two ways', () => {
+  const slots = buildSlots('fri', FRI, SHAPE)
+
+  const run = groupIntoRuns(
+    [slots[0]!, slots[1]!].map((s) => ({
+      locationId: 'braemar',
+      startMin: s.startMin,
+      endMin: s.endMin,
+      workStartMin: s.workStartMin,
+    })),
+  )[0]!
+
+  it('gives an organizer the hours worked', () => {
+    // What a person's page and a location's page list, so they agree with the board's own
+    // columns rather than quietly adding a quarter of an hour to the front of the day.
+    expect(runWorkSpan(run, '')).toBe('5:00 PM – 7:00 PM')
+  })
+
+  it('gives a volunteer the block, check-in and all', () => {
+    expect(runSpan(run, '')).toBe('4:45 PM – 7:00 PM')
+  })
+
+  it('falls back to the block when no check-in is configured', () => {
+    const plain = groupIntoRuns([
+      { locationId: 'braemar', startMin: 17 * 60, endMin: 18 * 60 },
+    ])[0]!
+    expect(runWorkSpan(plain, '')).toBe(runSpan(plain, ''))
   })
 })
 

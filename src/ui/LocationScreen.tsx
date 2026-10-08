@@ -13,7 +13,7 @@ import {
 import { eventLabel } from '../domain/events'
 import { mapLink } from '../domain/maps'
 import { locationMetrics } from '../domain/metrics'
-import { groupIntoRuns, runSpan, runState } from '../domain/shiftRuns'
+import { groupIntoRuns, runState, runWorkSpan } from '../domain/shiftRuns'
 import {
   DAY_LABEL,
   DAY_SHORT,
@@ -126,6 +126,7 @@ export function LocationScreen(): ReactNode {
             // matters is the person and the day, which is what the buckets above are.
             locationId: locationId ?? '',
             startMin: row.slot?.startMin ?? null,
+            workStartMin: row.slot?.workStartMin ?? null,
             endMin: row.slot?.endMin ?? null,
           })),
         ),
@@ -609,7 +610,7 @@ export function LocationScreen(): ReactNode {
                       <tr key={assignment.id}>
                         <td className="small nowrap">
                           {slot
-                            ? `${DAY_SHORT[slot.day]} ${runSpan(run, slot.label)}`
+                            ? `${DAY_SHORT[slot.day]} ${runWorkSpan(run, slot.label)}`
                             : assignment.slotId}
                         </td>
                         <td>
