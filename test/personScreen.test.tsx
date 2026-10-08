@@ -161,6 +161,19 @@ describe('this event', () => {
     expect(row.textContent).toContain('back')
   })
 
+  it('colours a finished shift green, and only green', () => {
+    /*
+      The same reading as the day-of table, from the same `runState`, so the two screens
+      cannot disagree about somebody: green for back, and no amber "checked in" beside it
+      arguing that they are still out.
+    */
+    renderFor()
+    const row = screen.getByRole('row', { name: /Friday 5:00 PM/ })
+    expect(within(row).getByText('back', { selector: '.pill' }).className)
+      .toBe('pill tone-green')
+    expect(within(row).queryByText('checked in', { selector: '.pill' })).toBeNull()
+  })
+
   it('shows the jar they carried and what was in it', () => {
     renderFor()
     // The "raised" stat shows the same figure, so read it out of the shift row.
