@@ -4,6 +4,7 @@ import { useUrlState } from '../lib/urlState'
 import type { ReactNode } from 'react'
 import { DAY_LABEL, formatTime } from '../domain/slots'
 import { currentSlot, todaysEventDay } from '../domain/today'
+import { expectedReturns, totalExpected } from '../domain/returns'
 import { shiftsCoveredBy } from '../domain/jars'
 import {
   groupIntoRuns,
@@ -225,12 +226,18 @@ export function DayOfScreen(): ReactNode {
    * reason to show it is to say "this carries on past this hour", and filtering to the hour
    * first would make exactly that invisible.
    */
-  const rows = useMemo((): PersonRow[] => {
-    const window =
-      scope === 'hour' ? daySlots.find((s) => s.id === activeSlotId) ?? null : null
-    const dayIds = new Set(daySlots.map((s) => s.id))
+  /*
+    The day's shifts, grouped by person and narrowed by nothing.
 
+    Shared with the returns counter below, which must not move when somebody filters the
+    table — whoever is cooking is asking about the whole evening, not about the hour the
+    screen happens to be showing. Two copies of this loop is how the table and the counter
+    quietly stop agreeing about who is out.
+  */
+  const shiftsByPerson = useMemo(() => {
+    const dayIds = new Set(daySlots.map((s) => s.id))
     const byPerson = new Map<string, RunShift[]>()
+
     for (const a of assignments.data) {
       if (a.status === 'swapped' || !dayIds.has(a.slotId)) continue
       const slot = slotById.get(a.slotId)
@@ -248,6 +255,31 @@ export function DayOfScreen(): ReactNode {
       if (list) list.push(shift)
       else byPerson.set(a.personId, [shift])
     }
+    return byPerson
+  }, [assignments.data, daySlots, slotById, locationById, jarsByAssignment])
+
+  /**
+   * How many to expect back at base, and when — for whoever is feeding them.
+   *
+   * Over the whole day and past every filter, for the reason above.
+   */
+  const returning = useMemo(
+    () =>
+      expectedReturns(
+        [...shiftsByPerson.values()].flatMap((shifts) =>
+          groupIntoRuns(shifts).map((run) => ({
+            endMin: run.endMin,
+            shifts: run.items.map((i) => i.assignment),
+          })),
+        ),
+      ),
+    [shiftsByPerson],
+  )
+
+  const rows = useMemo((): PersonRow[] => {
+    const window =
+      scope === 'hour' ? daySlots.find((s) => s.id === activeSlotId) ?? null : null
+    const byPerson = shiftsByPerson
 
     const query = search.trim().toLowerCase()
     return [...byPerson.entries()]
@@ -288,9 +320,7 @@ export function DayOfScreen(): ReactNode {
     scope,
     activeSlotId,
     daySlots,
-    slotById,
-    locationById,
-    jarsByAssignment,
+    shiftsByPerson,
     personById,
     search,
     atLocation,
@@ -592,6 +622,34 @@ export function DayOfScreen(): ReactNode {
           </p>
         )}
       </div>
+
+      {/*
+        For whoever is cooking.
+
+        Above the table and outside every filter on it: the question is about the whole
+        evening, and an answer that changed when somebody searched for a name would be worse
+        than no answer. Hidden entirely once nobody is out, rather than sitting there empty —
+        at the end of the night that is the useful thing for it to say.
+      */}
+      {returning.length > 0 && (
+        <div className="card">
+          <div className="row" style={{ justifyContent: 'space-between' }}>
+            <h2 style={{ margin: 0 }}>Expected back at base</h2>
+            <span className="small muted">
+              {totalExpected(returning)} still out or on a shift
+            </span>
+          </div>
+          <p className="small muted" style={{ margin: '0.3rem 0 0.5rem' }}>
+            Counted from who has actually checked in, so it falls as people come back and
+            never promises somebody who never turned up.
+          </p>
+          <div className="stats">
+            {returning.map((bucket) => (
+              <Stat key={bucket.endMin} label={bucket.label} value={bucket.people} />
+            ))}
+          </div>
+        </div>
+      )}
 
       {outWithoutJar.length > 0 && (
         <div className="note warning">

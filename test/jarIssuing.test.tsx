@@ -512,6 +512,62 @@ describe('the day-of desk works person by person', () => {
   })
 })
 
+describe('how many to expect back at base', () => {
+  const panel = (): HTMLElement | null =>
+    Array.from(document.querySelectorAll('.card')).find((c) =>
+      c.querySelector('h2')?.textContent?.includes('Expected back at base'),
+    ) as HTMLElement | null
+
+  it('says nothing while nobody has checked in', () => {
+    /*
+      At the end of the night an empty panel is worse than no panel: it reads as a figure
+      somebody has to interpret.
+
+      The fixture has somebody checked in at the table by default — which does count, since
+      they are at base when their stretch ends and they eat too — so this takes that back.
+    */
+    assignments = [{ ...assignments[0]!, status: 'confirmed' as const }]
+    render(<DayOfScreen />)
+    expect(panel()).toBeFalsy()
+  })
+
+  it('counts somebody checked in at the table, who also eats', () => {
+    // The default fixture: arrived, not out yet, and still a plate at six.
+    render(<DayOfScreen />)
+    expect(panel()!.textContent).toContain('1 still out or on a shift')
+  })
+
+  it('counts somebody out by the hour their shift ends', () => {
+    assignments = [{ ...assignments[0]!, status: 'checkedIn' as const, whereabouts: 'out' as const }]
+    render(<DayOfScreen />)
+
+    const found = panel()!
+    expect(found).toBeTruthy()
+    expect(found.textContent).toContain('6:00 PM')
+    expect(found.textContent).toContain('1 still out or on a shift')
+  })
+
+  it('stops counting them once they are back', () => {
+    assignments = [{ ...assignments[0]!, status: 'checkedIn' as const, whereabouts: 'back' as const }]
+    render(<DayOfScreen />)
+    expect(panel()).toBeFalsy()
+  })
+
+  it('does not move when the table is filtered', async () => {
+    /*
+      The reason it is computed outside the filters. Whoever is cooking is asking about the
+      whole evening, and a number that changed because somebody searched for a name would be
+      worse than no number at all.
+    */
+    assignments = [{ ...assignments[0]!, status: 'checkedIn' as const, whereabouts: 'out' as const }]
+    render(<DayOfScreen />)
+    expect(panel()!.textContent).toContain('1 still out or on a shift')
+
+    await userEvent.selectOptions(screen.getByLabelText('Status'), 'noShow')
+    expect(panel()!.textContent).toContain('1 still out or on a shift')
+  })
+})
+
 describe('narrowing the day-of table', () => {
   const rowNames = (): string[] =>
     Array.from(document.querySelectorAll('tbody tr')).map(
