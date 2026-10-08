@@ -13,9 +13,17 @@ import { scanFromVideo } from '../lib/qr'
 export function QrScanner({
   onDetected,
   onClose,
+  variant = 'inline',
 }: {
   onDetected: (value: string) => void
   onClose: () => void
+  /**
+   * `inline` is the original: a card on the page, for a scanner sitting beside other
+   * controls. `fill` drops the card and the close button and lets the viewfinder take the
+   * whole of whatever it is put in — meant for a `full` dialog, where the caller supplies
+   * the heading and the way out.
+   */
+  variant?: 'inline' | 'fill'
 }): ReactNode {
   const videoRef = useRef<HTMLVideoElement>(null)
   const [error, setError] = useState<string | null>(null)
@@ -34,6 +42,22 @@ export function QrScanner({
     // restart the camera mid-scan.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  if (variant === 'fill') {
+    return (
+      <div className="scanner-fill">
+        <video ref={videoRef} className="scanner-video" muted playsInline />
+        {/*
+          Over the picture rather than above it. A hint in the flow would cost the camera
+          the height it was given this dialog for, and the thing somebody is looking at is
+          the picture — the words are a glance, not a read.
+        */}
+        <div className={`scanner-hint${error ? ' error' : ''}`}>
+          {error ?? 'Point the camera at a jar label.'}
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="card">

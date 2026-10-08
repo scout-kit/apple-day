@@ -22,6 +22,15 @@ import type {
  * out collecting, so the shift must not revert.
  */
 
+/*
+  jsdom has no camera, and the scanner reaches for `navigator.mediaDevices` on mount. What
+  is under test is the dialog around the viewfinder, not the decoding.
+*/
+vi.mock('../src/lib/qr', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../src/lib/qr')>()),
+  scanFromVideo: () => ({ stop: () => {} }),
+}))
+
 const issueJar = vi.fn()
 const unissueJar = vi.fn()
 const setAssignmentStatusMany = vi.fn()
@@ -192,6 +201,34 @@ beforeEach(() => {
   ]
   jars = []
   people = [alpha]
+})
+
+describe('scanning a label to issue a jar', () => {
+  /*
+    The viewfinder used to be a card inside the ordinary dialog, sharing its width with two
+    paragraphs of explanation — which on a phone is not enough picture to line a jar label
+    up in. While the camera is on, the dialog is the camera.
+  */
+  it('hands the camera the whole screen', async () => {
+    render(<DayOfScreen />)
+    await userEvent.click(screen.getByTitle(/Give Alpha One a jar/))
+    await userEvent.click(screen.getByRole('button', { name: 'Scan label' }))
+
+    const dialog = screen.getByRole('dialog', { name: /^Scan a jar label for / })
+    expect(dialog.className).toContain('modal-full')
+    expect(dialog.querySelector('video.scanner-video')).toBeTruthy()
+  })
+
+  it('keeps a way back to typing the number', async () => {
+    // Scanning fails often enough — a creased label, a dark table — that the fallback has
+    // to be on the screen that is failing, not behind a cancel.
+    render(<DayOfScreen />)
+    await userEvent.click(screen.getByTitle(/Give Alpha One a jar/))
+    await userEvent.click(screen.getByRole('button', { name: 'Scan label' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Type the number instead' }))
+
+    expect(screen.getByLabelText('Jar number')).toBeTruthy()
+  })
 })
 
 describe('issuing a jar', () => {

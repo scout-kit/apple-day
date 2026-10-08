@@ -620,6 +620,24 @@ tbody tr:hover { background: var(--surface-2); }
 .qr-card .cap { font-size: 0.8rem; font-weight: 600; margin-top: 0.25rem;
   word-break: break-word; }
 
+/*
+  The viewfinder in a full dialog: everything the dialog body has.
+
+  `object-fit: cover` rather than `contain`, so the picture fills the frame instead of
+  sitting in letterbox bars — a phone camera is portrait and the frame rarely matches it,
+  and the bars were most of what was on screen.
+*/
+.scanner-fill { position: relative; height: 100%; min-height: 0;
+  display: flex; background: #000; border-radius: var(--radius); overflow: hidden; }
+.scanner-video { width: 100%; height: 100%; object-fit: cover; display: block; }
+.scanner-hint {
+  position: absolute; left: 0; right: 0; bottom: 0;
+  padding: 0.6rem 0.9rem; text-align: center;
+  font-size: 0.9rem; color: #fff;
+  background: linear-gradient(to top, rgb(0 0 0 / 70%), rgb(0 0 0 / 0%));
+}
+.scanner-hint.error { background: var(--bad); }
+
 video.scanner { width: 100%; max-width: 24rem; border-radius: var(--radius);
   background: #000; aspect-ratio: 4 / 3; object-fit: cover; }
 
@@ -701,6 +719,13 @@ video.scanner { width: 100%; max-width: 24rem; border-radius: var(--radius);
   max-height: 100%;
   display: flex; flex-direction: column; min-height: 0;
 }
+/*
+  Two bigger dialogs. `wide` for forms with enough fields that 44rem makes a column of
+  cramped pairs; `full` for the camera, which is useless small — a viewfinder has to be
+  looked at, and on a phone that means nearly the whole screen.
+*/
+.modal-wide { max-width: 60rem; }
+.modal-full { max-width: 72rem; height: 100%; }
 .modal-head {
   display: flex; align-items: center; gap: 0.5rem; flex: none;
   padding: 0.75rem 1rem; border-bottom: 1px solid var(--border);
@@ -713,6 +738,13 @@ video.scanner { width: 100%; max-width: 24rem; border-radius: var(--radius);
   flex: 1; min-height: 0; overflow-y: auto;
   /* Reaching the end must not scroll whatever is behind the dialog. */
   overscroll-behavior: contain;
+}
+/*
+  A full dialog's body is a frame for one thing, not a column of prose: no scrolling, and
+  the child takes the height. The only thing asking for `full` is the camera.
+*/
+.modal-full .modal-body {
+  padding: 0.5rem; overflow: hidden; display: flex; flex-direction: column; min-height: 0;
 }
 .modal-foot {
   display: flex; gap: 0.5rem; justify-content: flex-end; flex: none;
@@ -873,6 +905,14 @@ tr.drop-below td { box-shadow: inset 0 -2px 0 var(--accent); }
   /* A phone has no room to spare around a dialog. */
   .modal-backdrop { padding: 0.5rem; }
   .modal { max-width: none; }
+  /*
+    On a phone the gap around a full dialog is wasted screen. The backdrop drops its padding
+    and the dialog loses its corners and border, so the camera gets the whole display —
+    which is the entire point of asking for it.
+  */
+  .modal-backdrop:has(.modal-full) { padding: 0; }
+  .modal-full { height: 100%; border: 0; border-radius: 0; }
+  .modal-full .modal-head { border-radius: 0; }
 }
 
 /* A totals row reads as a summary, not another data row. */

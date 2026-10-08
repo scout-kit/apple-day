@@ -445,7 +445,22 @@ export function JarsScreen(): ReactNode {
         {message && <div className="note info" style={{ marginTop: '0.5rem' }}>{message}</div>}
       </div>
 
-      {scanning && <QrScanner onDetected={onScan} onClose={() => setScanning(false)} />}
+      {/*
+        A dialog rather than a card further down the page. As a card the viewfinder was a
+        band a couple of inches tall under the buttons that opened it, which on a phone is
+        not enough of a picture to line a label up in — and it pushed the lists below it
+        down the page, so the thing you were doing and the thing it affected were never on
+        screen together.
+      */}
+      {scanning && (
+        <Modal title="Scan a jar" size="full" onClose={() => setScanning(false)}>
+          <QrScanner
+            variant="fill"
+            onDetected={onScan}
+            onClose={() => setScanning(false)}
+          />
+        </Modal>
+      )}
 
       {confirming &&
         (() => {
@@ -495,8 +510,19 @@ export function JarsScreen(): ReactNode {
         })()}
 
       {manual && (
-        <div className="card">
-          <h2>Record money by hand</h2>
+        <Modal
+          title="Record money by hand"
+          size="wide"
+          onClose={() => setManual(null)}
+          footer={
+            <>
+              <button onClick={() => setManual(null)}>Cancel</button>
+              <button className="primary" onClick={submitManual}>
+                Record
+              </button>
+            </>
+          }
+        >
           <p className="small muted">
             For a jar that went out without being issued, or money that never went through a
             jar at all — bushel sales, a donation, a tap away from the table.
@@ -592,19 +618,36 @@ export function JarsScreen(): ReactNode {
               />
             </label>
 
-            <div className="row">
-              <button className="primary" onClick={submitManual}>
-                Record
-              </button>
-              <button onClick={() => setManual(null)}>Cancel</button>
-            </div>
           </div>
-        </div>
+        </Modal>
       )}
 
       {counting && (
-        <div className="card">
-          <h2>Jar {counting.jarNumber}</h2>
+        <Modal
+          /*
+            The heading says which of the three jobs this is. Correcting a jar that is
+            already counted is the one people were most often unsure of — the form looked
+            the same whether it was recording a figure for the first time or changing one
+            that is already in every total.
+          */
+          title={
+            counting.status === 'counted'
+              ? `Correct ${isNumbered(counting) ? `jar ${counting.jarNumber}` : 'this money'}`
+              : isNumbered(counting)
+                ? `Count jar ${counting.jarNumber}`
+                : 'Count this money'
+          }
+          size="wide"
+          onClose={() => setCounting(null)}
+          footer={
+            <>
+              <button onClick={() => setCounting(null)}>Cancel</button>
+              <button className="primary" onClick={submit}>
+                {counting.status === 'counted' ? 'Save correction' : 'Record'}
+              </button>
+            </>
+          }
+        >
           <p className="small muted">
             {describe(counting)}
             {counting.status === 'counted' && ' · already counted, this will correct it'}
@@ -691,13 +734,7 @@ export function JarsScreen(): ReactNode {
             </p>
           )}
 
-          <div className="row" style={{ marginTop: '0.5rem' }}>
-            <button className="primary" onClick={submit}>
-              Record {counting.jarNumber}
-            </button>
-            <button onClick={() => setCounting(null)}>Cancel</button>
-          </div>
-        </div>
+        </Modal>
       )}
 
       <div className="card">
