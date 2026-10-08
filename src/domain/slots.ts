@@ -21,11 +21,15 @@ export const DEFAULT_SCHEDULE: Partial<Record<Day, SchedulingWindow>> = {
 }
 
 /**
- * How long a shift is, and how much it overlaps the one before it.
+ * How long a shift is, how much it overlaps the one before it, and how early people come.
  *
  * Overlap is a handover: the next pair arrive while the current ones are still there. It
  * shortens the gap between shift starts without shortening a shift, so 60 minute shifts
  * overlapping by 15 start 45 minutes apart.
+ *
+ * The check-in is a different thing and does not shorten that gap. It is time added to the
+ * front of each shift, so the block somebody is asked for is longer while the shift itself,
+ * and the spacing between shifts, are exactly what they say they are.
  */
 export interface SlotShape {
   /** `wholeDay` collapses each day to one slot spanning its whole window. */
@@ -33,8 +37,10 @@ export interface SlotShape {
   shiftMinutes: number
   overlapMinutes: number
   /**
-   * How long before a shift starts people are asked to turn up. Optional, and absent means
-   * none — an event that never asked for an early check-in is unaffected by any of this.
+   * How long before a shift starts people are asked to turn up, added in front of it.
+   *
+   * Optional, and absent means none — an event that never asked for an early check-in is
+   * unaffected by any of this.
    */
   checkInMinutes?: number
 }
@@ -139,7 +145,15 @@ export function buildSlots(
     return [makeSlot(day, startMin, endMin, lead)]
   }
 
-  const length = Math.max(5, shape.shiftMinutes)
+  /*
+    The block is the check-in plus the shift, and the step is the shift alone.
+
+    So an hour-long shift with a quarter of an hour of checking in occupies 75 minutes of
+    the day but still starts every 60, which is what makes the hours people actually work
+    butt up against each other: 5–6, 6–7, 7–8. Asking for the check-in does not push the
+    next shift down the evening.
+  */
+  const length = Math.max(5, shape.shiftMinutes) + lead
   const step = stepMinutes(shape)
 
   const slots: Slot[] = []

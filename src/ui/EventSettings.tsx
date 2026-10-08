@@ -245,10 +245,11 @@ export function EventSettings({
         )}
 
         <div className="small muted" style={{ marginTop: '0.6rem' }}>
-          How much of the front of each shift is checking in rather than collecting. A pass,
-          a reminder and the signup form still name the whole block, because that is when to
-          turn up; the board, the money screens and the hours each person is credited with
-          count the shift inside it.
+          How early people are asked to turn up. This is added in front of the shift, not
+          taken out of it: shifts keep their length and their spacing, so hour-long ones
+          still run 5–6, 6–7, 7–8. A pass, a reminder and the signup form name the whole
+          block, because that is when to be there; the board, the money screens and the
+          hours each person is credited with count the shift.
         </div>
         <div className="row" style={{ marginTop: '0.35rem' }}>
           <label style={{ flex: '0 1 9rem' }}>
@@ -266,20 +267,22 @@ export function EventSettings({
               ))}
             </select>
           </label>
-          {draft.checkInMinutes > 0 && activeDays(draft.schedule)[0] && (() => {
-            const first = buildSlots(activeDays(draft.schedule)[0]!, draft.schedule, draft)[0]
-            return first ? (
-              <span className="small muted">
-                asked for as {first.arriveLabel}, worked as {first.label}
-              </span>
-            ) : null
-          })()}
+          {draft.checkInMinutes > 0 && (
+            <span className="small muted">
+              {draft.checkInMinutes + draft.shiftMinutes} min block, still{' '}
+              {stepMinutes(draft)} min apart
+            </span>
+          )}
         </div>
-        {draft.shiftMode === 'shifts' && draft.checkInMinutes >= draft.shiftMinutes && (
-          <div className="note error">
-            Check-in has to be shorter than the shift, or there is no shift left to work.
-          </div>
-        )}
+        {draft.checkInMinutes > 0 && activeDays(draft.schedule)[0] && (() => {
+          const first = buildSlots(activeDays(draft.schedule)[0]!, draft.schedule, draft)[0]
+          return first ? (
+            <p className="small muted" style={{ marginTop: '0.35rem' }}>
+              First one: asked for as <strong>{first.arriveLabel}</strong>, worked and
+              counted as <strong>{first.label}</strong>.
+            </p>
+          ) : null
+        })()}
 
         </>
         )}

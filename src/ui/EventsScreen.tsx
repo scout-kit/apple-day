@@ -202,9 +202,6 @@ export function EventsScreen(): ReactNode {
     if (draft.shiftMode === 'shifts' && draft.overlapMinutes >= draft.shiftMinutes) {
       return 'An overlap has to be shorter than the shift.'
     }
-    if (draft.shiftMode === 'shifts' && draft.checkInMinutes >= draft.shiftMinutes) {
-      return 'Check-in has to be shorter than the shift.'
-    }
     return null
   }, [draft, draftId, draftLinkProblem, events])
 
@@ -498,8 +495,7 @@ export function EventsScreen(): ReactNode {
                           )}
                           {e.checkInMinutes > 0 && (
                             <div className="muted">
-                              {e.checkInMinutes} min check-in, {e.shiftMinutes - e.checkInMinutes}{' '}
-                              min worked
+                              + {e.checkInMinutes} min check-in
                             </div>
                           )}
                         </>

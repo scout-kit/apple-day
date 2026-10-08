@@ -20,18 +20,61 @@ import type { Assignment } from '../src/domain/types'
  * does not move, so every shift already recorded still answers to its own name.
  */
 
-/** Production: Friday 4:45 PM to 9:00 PM, 75 minute blocks, 15 minute handover. */
+/** Production: Friday 4:45 PM to 9:00 PM. */
 const FRI = { fri: { startMin: 16 * 60 + 45, endMin: 21 * 60 } }
 const SHAPE = {
   shiftMode: 'shifts' as const,
-  shiftMinutes: 75,
-  overlapMinutes: 15,
+  shiftMinutes: 60,
+  overlapMinutes: 0,
   checkInMinutes: 15,
 }
 
 const shift = (id: string, slotId: string, personId = 'p1', locationId = 'braemar'): Assignment => ({
   id, slotId, locationId, personId,
   status: 'checkedIn', whereabouts: 'back', checkedInAt: 1, checkedOutAt: 2,
+})
+
+describe('asking for the check-in without rearranging the evening', () => {
+  const slots = buildSlots('fri', FRI, SHAPE)
+
+  it('leaves the shifts an hour long and an hour apart', () => {
+    // The check-in is added in front of a shift, not taken out of it and not inserted
+    // between them, so saying "come a quarter of an hour early" does not walk the evening
+    // 15 minutes later with every shift.
+    expect(slots.map((s) => s.endMin - s.workStartMin)).toEqual([60, 60, 60, 60])
+    const starts = slots.map((s) => s.workStartMin)
+    expect(starts).toEqual([17 * 60, 18 * 60, 19 * 60, 20 * 60])
+  })
+
+  it('butts each shift directly against the last', () => {
+    for (let i = 1; i < slots.length; i += 1) {
+      expect(slots[i]!.workStartMin).toBe(slots[i - 1]!.endMin)
+    }
+  })
+
+  it('makes the block the shift plus the check-in', () => {
+    expect(slots[0]!.endMin - slots[0]!.startMin).toBe(75)
+  })
+
+  it('does not change where the shifts fall when the check-in is asked for', () => {
+    // The same grid with and without a check-in: same ids, same worked hours, and the only
+    // difference is how early people are told to turn up.
+    const without = buildSlots('fri', FRI, { ...SHAPE, checkInMinutes: 0 })
+    expect(without.map((s) => s.id)).toEqual(slots.map((s) => s.id))
+  })
+
+  /**
+   * The migration the live event needs: it is configured as 75 minute shifts with a 15
+   * minute handover, which was the only way to buy a check-in window before this existed.
+   */
+  it('keeps every slot id when the live event is reconfigured', () => {
+    const asSetUp = buildSlots('fri', FRI, {
+      shiftMode: 'shifts', shiftMinutes: 75, overlapMinutes: 15, checkInMinutes: 0,
+    })
+    expect(asSetUp.map((s) => s.id)).toEqual(slots.map((s) => s.id))
+    // And what the volunteers were told is unchanged by the move.
+    expect(asSetUp.map((s) => s.label)).toEqual(slots.map((s) => s.arriveLabel))
+  })
 })
 
 describe('a block, and the shift inside it', () => {

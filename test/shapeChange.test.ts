@@ -14,7 +14,7 @@ import type { Assignment } from '../src/domain/types'
  */
 
 const FRI = { fri: { startMin: 16 * 60 + 45, endMin: 21 * 60 } }
-const SHAPE = { shiftMode: 'shifts' as const, shiftMinutes: 75, overlapMinutes: 15, checkInMinutes: 15 }
+const SHAPE = { shiftMode: 'shifts' as const, shiftMinutes: 60, overlapMinutes: 0, checkInMinutes: 15 }
 
 const shift = (id: string, slotId: string, personId: string): Assignment => ({
   id, slotId, personId, locationId: 'braemar',
