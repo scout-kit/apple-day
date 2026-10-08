@@ -200,14 +200,19 @@ export function buildAllSlots(
 }
 
 /**
- * Is a location open for the whole of this slot?
+ * Is a location open for the whole of the shift?
  *
- * The slot must sit entirely inside the opening hours. A shop that opens at 09:30 is not
+ * The shift must sit entirely inside the opening hours. A shop that opens at 09:30 is not
  * staffable for the 09:00 hour, and treating it as available puts a youth at a locked door.
+ *
+ * The shift, not the block: the check-in at the front happens at base, where the jars and
+ * the lists are, and nobody is standing at the shop for it. Measuring from the block start
+ * closed every shop whose doors open exactly on the hour — a shop open from 5:00 read as
+ * shut for the 5:00 shift, because the block began at a quarter to.
  */
 export function isOpenDuring(range: OpenRange | null | undefined, slot: Slot): boolean {
   if (!range) return false
-  return range.openMin <= slot.startMin && range.closeMin >= slot.endMin
+  return range.openMin <= slot.workStartMin && range.closeMin >= slot.endMin
 }
 
 /**

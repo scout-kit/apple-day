@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import { countedHours, countedWindows } from '../src/domain/countedHours'
 import { groupIntoRuns, runSpan, runWorkSpan } from '../src/domain/shiftRuns'
-import { buildSlots, parseSlotLabel, slotDurationHours } from '../src/domain/slots'
+import {
+  buildSlots,
+  isOpenDuring,
+  parseSlotLabel,
+  slotDurationHours,
+} from '../src/domain/slots'
 import { personTotals, staffedHoursByLocation } from '../src/domain/metrics'
 import { buildPassShifts } from '../src/domain/publishing'
 import type { Assignment } from '../src/domain/types'
@@ -213,6 +218,37 @@ describe('a stretch of shifts, read two ways', () => {
       { locationId: 'braemar', startMin: 17 * 60, endMin: 18 * 60 },
     ])[0]!
     expect(runWorkSpan(plain, '')).toBe(runSpan(plain, ''))
+  })
+})
+
+describe('whether a shop is open for a shift', () => {
+  const slots = buildSlots('fri', FRI, SHAPE)
+  const first = slots[0]!
+
+  it('staffs a shop whose doors open exactly when the shift does', () => {
+    /*
+      The reported bug. Canadian Tire opens at 5:00 and the 5:00 shift was reading as
+      closed, because the block in front of it starts at a quarter to and the check-in was
+      being measured against the shop's hours. Nobody is at the shop for the check-in —
+      it happens at base, where the jars are.
+    */
+    expect(isOpenDuring({ openMin: 17 * 60, closeMin: 21 * 60 }, first)).toBe(true)
+  })
+
+  it('still refuses a shop that opens after the shift starts', () => {
+    // The guard this function exists for: a youth at a locked door. A shop opening at
+    // 5:30 cannot take the 5:00 shift, lead or no lead.
+    expect(isOpenDuring({ openMin: 17 * 60 + 30, closeMin: 21 * 60 }, first)).toBe(false)
+  })
+
+  it('still refuses a shop that shuts before the shift ends', () => {
+    expect(isOpenDuring({ openMin: 17 * 60, closeMin: 17 * 60 + 30 }, first)).toBe(false)
+  })
+
+  it('does not ask a shop to be open for the check-in', () => {
+    // Open 5:00 to 6:00 exactly: the shift fits, the block does not, and the shift is what
+    // is being asked about.
+    expect(isOpenDuring({ openMin: 17 * 60, closeMin: 18 * 60 }, first)).toBe(true)
   })
 })
 
