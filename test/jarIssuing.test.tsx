@@ -535,8 +535,42 @@ describe('out collecting without a jar', () => {
     await userEvent.click(buttonFor('Here'))
     expect(setAssignmentStatusMany).toHaveBeenCalledWith('2026', ['a1'], 'confirmed')
     expect(setWhereaboutsMany).not.toHaveBeenCalled()
-    // Still shown as back, because it is still true. (The pill, not the button.)
-    expect(document.querySelector('.pill.tone-blue')!.textContent).toBe('back')
+    /*
+      Still shown as back, because it is still true — and in green, which is the tone
+      kept for the end of the run.
+
+      Pinned by text *and* `.pill`, because neither alone is unique on this screen:
+      `.pill.tone-green` also matches a section pill whose colour is configuration (Cubs,
+      in this fixture), and the bare text also matches the "back" stat label above the
+      table and the "Back" button beside it.
+    */
+    expect(screen.getByText('back', { selector: '.pill' }).className).toBe('pill tone-green')
+  })
+
+  it('drops the amber pill once they are back, leaving only the green one', async () => {
+    /*
+      The bug the colour change left behind: a row that was back showed "checked in" in
+      amber *and* "back" in green, so the thing it most wanted to say — this one is
+      accounted for — was next to a pill saying the opposite in the colour used for
+      everybody still out. Nobody is back without having arrived, so the amber adds no
+      fact and only costs the green its meaning.
+    */
+    assignments = [{ ...assignments[0]!, whereabouts: 'back' as const }]
+    render(<DayOfScreen />)
+
+    expect(screen.getByText('back', { selector: '.pill' }).className).toBe('pill tone-green')
+    expect(screen.queryByText('checked in', { selector: '.pill' })).toBeNull()
+  })
+
+  it('keeps the amber pill while they are only checked in', async () => {
+    // The other half of it: amber is still what "arrived, not yet accounted for" looks
+    // like, and dropping it everywhere would lose that.
+    assignments = [{ ...assignments[0]!, whereabouts: 'here' as const }]
+    render(<DayOfScreen />)
+
+    expect(screen.getByText('checked in', { selector: '.pill' }).className)
+      .toBe('pill tone-amber')
+    expect(screen.queryByText('back', { selector: '.pill' })).toBeNull()
   })
 
   it('offers no attendance button while somebody who has arrived is out', async () => {

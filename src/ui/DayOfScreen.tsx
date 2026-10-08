@@ -435,8 +435,8 @@ export function DayOfScreen(): ReactNode {
           <div className="stats">
             <Stat label="to come" value={counts.expected} />
             <Stat label="here" value={counts.here} />
-            <Stat label="out" value={counts.out} tone="good" />
-            <Stat label="back" value={counts.back} />
+            <Stat label="out" value={counts.out} tone="warn" />
+            <Stat label="back" value={counts.back} tone="good" />
             <Stat
               label="no-shows"
               value={counts.noShows}
@@ -689,12 +689,23 @@ export function DayOfScreen(): ReactNode {
                         </td>
                         <td className="small nowrap">
                           {/* Both facts, side by side. A shift can be checked in *and*
-                              out collecting, and the day-of table has to show both. */}
-                          {arrived && <span className="pill tone-amber">checked in</span>}
+                              out collecting, and the day-of table has to show both.
+
+                              Amber for the two states in the middle — arrived, and away
+                              with a jar — and green only once they are back. The colour
+                              then answers the question actually being asked at the table,
+                              which is who is still unaccounted for, not who has turned up.
+
+                              Except once they are back, where the amber goes. Nobody is
+                              back without having arrived, so "checked in" beside "back" is
+                              a fact nobody needs and an amber pill arguing with a green one
+                              — and the row reads as still-out at a glance, which is the
+                              opposite of what it is saying. */}
+                          {arrived && !done && <span className="pill tone-amber">checked in</span>}
                           {absent && <span className="pill tone-red">no-show</span>}
                           {!arrived && !absent && <span className="muted">expected</span>}
-                          {away && <span className="pill tone-green">out collecting</span>}
-                          {done && <span className="pill tone-blue">back</span>}
+                          {away && <span className="pill tone-amber">out collecting</span>}
+                          {done && <span className="pill tone-green">back</span>}
                         </td>
                         <td>
                           {/*

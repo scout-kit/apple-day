@@ -278,16 +278,19 @@ export function PersonScreen(): ReactNode {
                       <LocationLink name={locationName} locationId={assignment.locationId} />
                     </td>
                     <td className="small nowrap">
-                      {state.attendance === 'arrived' && (
+                      {/* Dropped once they are back: nobody is back without having
+                          arrived, and an amber pill beside the green one makes the row read
+                          as still out. */}
+                      {state.attendance === 'arrived' && state.place !== 'back' && (
                         <span className="pill tone-amber">checked in</span>
                       )}
                       {state.attendance === 'absent' && (
                         <span className="pill tone-red">no-show</span>
                       )}
                       {state.place === 'out' && (
-                        <span className="pill tone-green">out collecting</span>
+                        <span className="pill tone-amber">out collecting</span>
                       )}
-                      {state.place === 'back' && <span className="pill tone-blue">back</span>}
+                      {state.place === 'back' && <span className="pill tone-green">back</span>}
                       {state.attendance === 'expected' && state.place === 'atTable' && (
                         <span className="muted">expected</span>
                       )}

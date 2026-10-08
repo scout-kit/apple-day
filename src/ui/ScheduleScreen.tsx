@@ -9,6 +9,7 @@ import type { Assignment, Person, Slot } from '../domain/types'
 import { validateSchedule } from '../domain/validation'
 import type { ScheduleIssue } from '../domain/validation'
 import { areaOf } from '../domain/areas'
+import { runState } from '../domain/shiftRuns'
 import { useEvent } from '../lib/eventContext'
 import { runsTheEvent, useSession } from '../lib/session'
 import {
@@ -442,10 +443,21 @@ export function ScheduleScreen(): ReactNode {
                       >
                         {placed.map((a) => {
                           const person = personById.get(a.personId)
+                          /*
+                            The same reading as the day-of table and a person's page, from
+                            the same `runState`, so the three screens cannot disagree about
+                            somebody. Per hour rather than per stretch, because the board is
+                            a grid of hours and each cell is one of them.
+
+                            Without this the board knew only whether somebody had arrived,
+                            so a youth who was back at base sat in the same amber as one
+                            still out on the street.
+                          */
+                          const place = runState([a]).place
                           return (
                             <div
                               key={a.id}
-                              className={`chip ${a.status}`}
+                              className={`chip ${a.status}${place === 'back' ? ' back' : ''}`}
                               style={
                                 highlightedAssignments.has(a.id)
                                   ? { outline: '2px solid var(--accent)' }
