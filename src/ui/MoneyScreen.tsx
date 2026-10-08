@@ -145,8 +145,8 @@ export function MoneyScreen(): ReactNode {
   )
 
   const byHour = useMemo(
-    () => revenueBySlot(scoped.counted, scoped.jars, scoped.slots),
-    [scoped],
+    () => revenueBySlot(scoped.counted, scoped.jars, scoped.slots, event?.baseLocationId),
+    [scoped, event?.baseLocationId],
   )
 
   const grid = useMemo(
@@ -180,13 +180,16 @@ export function MoneyScreen(): ReactNode {
   )
 
   const sections = useMemo(
-    () => sectionParticipation(people.data, scoped.counted, scoped.slots, sectionDefs),
-    [people.data, scoped, sectionDefs],
+    () =>
+      sectionParticipation(
+        people.data, scoped.counted, scoped.slots, sectionDefs, event?.baseLocationId,
+      ),
+    [people.data, scoped, sectionDefs, event?.baseLocationId],
   )
 
   const perPerson = useMemo(
-    () => personTotals(scoped.counted, scoped.jars, scoped.slots),
-    [scoped],
+    () => personTotals(scoped.counted, scoped.jars, scoped.slots, event?.baseLocationId),
+    [scoped, event?.baseLocationId],
   )
 
   /**
@@ -871,6 +874,15 @@ export function MoneyScreen(): ReactNode {
           Youth hours: <Hours value={sections.youthHours} /> of{' '}
           <Hours value={sections.totalHours} /> total. Scouters are counted separately, not
           folded in with Scouts.
+          {sections.baseHours > 0 && (
+            <>
+              {' '}
+              <Hours value={sections.baseHours} /> of the total were at base — check-in,
+              apples, cooking, counting the money. Real hours, and still counted here, but
+              left out of every per-hour figure on this screen: no money comes in against
+              them, so dividing by them makes a well-staffed evening look like a poor one.
+            </>
+          )}
         </p>
       </div>
       <div className="card">
@@ -926,6 +938,14 @@ export function MoneyScreen(): ReactNode {
                       </td>
                       <td className="right">
                         <Hours value={row.hours} />
+                        {/* Said on the row rather than only in the total, because this is
+                            the screen where somebody asks why a name with hours against it
+                            has no money. */}
+                        {row.baseHours > 0 && (
+                          <div className="small muted">
+                            <Hours value={row.baseHours} /> at base
+                          </div>
+                        )}
                       </td>
                     </tr>
                   )
