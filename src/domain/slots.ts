@@ -158,21 +158,23 @@ export function buildSlots(
 }
 
 /**
- * One slot, with both the times it has: the shift, and the shift as it is asked for.
+ * One slot, with both the times it has: the block asked for, and the shift inside it.
  *
- * Arrival floors at midnight rather than wrapping, because a shift starting at 00:10 with a
- * quarter-hour lead would otherwise be asked for at 23:55 the night before.
+ * The block keeps the start, so the slot id is unchanged by introducing a lead. That is what
+ * makes a lead something an event can adopt after the fact: every shift already recorded
+ * still answers to its own name.
  */
 function makeSlot(day: Day, startMin: number, endMin: number, lead: number): Slot {
-  const arriveMin = Math.max(0, startMin - lead)
+  // Never past the end: a lead longer than the block would leave a shift of negative length.
+  const workStartMin = Math.min(endMin, startMin + lead)
   return {
     id: slotId(day, startMin),
     day,
     startMin,
     endMin,
-    arriveMin,
-    label: formatSlotLabel(startMin, endMin),
-    arriveLabel: formatSlotLabel(arriveMin, endMin),
+    workStartMin,
+    label: formatSlotLabel(workStartMin, endMin),
+    arriveLabel: formatSlotLabel(startMin, endMin),
   }
 }
 
@@ -307,8 +309,14 @@ export function hourOptions(stepMin = 15): { min: number; label: string }[] {
   return out
 }
 
+/**
+ * The hours a slot is worth: the shift, not the block.
+ *
+ * The check-in at the front is time somebody gave, but it is not time on a doorstep, and the
+ * figures this feeds — revenue per hour above all — are about time spent collecting.
+ */
 export function slotDurationHours(slot: Slot): number {
-  return (slot.endMin - slot.startMin) / 60
+  return (slot.endMin - slot.workStartMin) / 60
 }
 
 export interface SlotParseSuccess {
@@ -432,17 +440,9 @@ export function parseSlotLabel(
     an hour somebody never offered, quietly added to the board.
   */
   const readings = clock.exact ? [hour] : [...new Set([hour, hour + 12, hour - 12])]
-  /*
-    The window opens early by the check-in lead, because that is what people are given.
-
-    A form built from this event offers "4:45 PM – 6:00 PM" for a day that runs from five,
-    and 4:45 is outside the window by the letter of it. Refusing the label would read as
-    availability nobody offered — for the first shift of every day, which is the one most
-    people pick.
-  */
   const candidates = readings
     .map((h) => h * 60 + minute)
-    .filter((t) => t >= windowStart - leadMinutes(shape) && t < windowEnd)
+    .filter((t) => t >= windowStart && t < windowEnd)
 
   if (candidates.length === 0) return { ok: false, reason: 'outsideWindow', input: raw }
   if (candidates.length > 1) return { ok: false, reason: 'ambiguous', input: raw }

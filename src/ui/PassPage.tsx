@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { useParams } from 'react-router-dom'
-import { groupIntoRuns, runArrivalSpan } from '../domain/shiftRuns'
+import { groupIntoRuns, runSpan } from '../domain/shiftRuns'
 import { needsShift, REQUEST_CHOICES } from '../domain/requests'
 import type { RequestKind } from '../domain/requests'
 import { requestSwap } from '../lib/repo'
@@ -55,7 +55,6 @@ export function PassPage(): ReactNode {
           locationId: `${shift.day}|${shift.locationName}|${shift.address}`,
           startMin: shift.startMin ?? null,
           endMin: shift.endMin ?? null,
-          arriveMin: shift.arriveMin ?? null,
         })) ?? [],
       ),
     [pass?.shifts],
@@ -175,9 +174,7 @@ export function PassPage(): ReactNode {
           // Everything shown comes off the run's first shift: they are all the same shop, and
           // the time is the whole stretch.
           const shift = run.items[0]!.shift
-          // The time to turn up, not the time the shift starts. A pass is the thing a youth
-          // and their parents read the night before.
-          const when = runArrivalSpan(run, shift.arriveLabel ?? shift.slotLabel)
+          const when = runSpan(run, shift.slotLabel)
           return (
           <div className="shift" key={i}>
             <div className="when">
@@ -265,7 +262,7 @@ export function PassPage(): ReactNode {
                     const first = run.items[0]!.shift
                     return (
                       <option key={first.slotId} value={first.slotId}>
-                        {first.day} · {runArrivalSpan(run, first.arriveLabel ?? first.slotLabel)}
+                        {first.day} · {runSpan(run, first.slotLabel)}
                       </option>
                     )
                   })}

@@ -35,16 +35,6 @@ export interface PassShift {
    */
   startMin?: number
   endMin?: number
-  /**
-   * When to turn up, and the whole shift written from that time — "4:45 PM – 6:00 PM" for a
-   * five o'clock shift on an event that asks people to check in a quarter of an hour early.
-   *
-   * Absent on a pass published before an early check-in could be asked for. A pass is a
-   * stored copy, so the fallback matters: without these two the pass shows `slotLabel`, the
-   * shift's own hours, which is exactly what it showed when it was published.
-   */
-  arriveMin?: number
-  arriveLabel?: string
   locationName: string
   address: string
   mapsUrl: string
@@ -112,11 +102,11 @@ export function buildPassShifts(
       return [{
         slotId: slot.id,
         day: DAY_LABEL[slot.day],
-        slotLabel: slot.label,
+        // The whole block: a pass tells somebody when to be there, not when the shift
+        // inside it begins.
+        slotLabel: slot.arriveLabel,
         startMin: slot.startMin,
         endMin: slot.endMin,
-        arriveMin: slot.arriveMin,
-        arriveLabel: slot.arriveLabel,
         locationName: location.name,
         address: location.address,
         mapsUrl: mapLink(location),

@@ -77,23 +77,27 @@ export type PaymentMethod = 'cash' | 'square'
 export interface Slot {
   id: string
   day: Day
-  /** When the shift itself starts — the hour on location, and what the board is built on. */
+  /**
+   * When the block starts — which is when the person is asked to turn up, and what the slot
+   * id is built from. `fri-1645` is the block beginning at a quarter to five.
+   */
   startMin: number
   endMin: number
   /**
-   * When the person is told to turn up, which is `startMin` less the event's check-in lead.
+   * When the shift proper starts: `startMin` plus the event's check-in lead.
    *
-   * Equal to `startMin` when the event has no lead, so an event that never asked anybody to
-   * come early reads exactly as it did before.
+   * The front of a block is checking in — queuing for a jar, being marked off a list — and
+   * it is not time on a doorstep. Equal to `startMin` when the event asks for no lead, so an
+   * event without one reads exactly as it did before.
    */
-  arriveMin: number
-  /** The shift: "5:00 PM – 6:00 PM". The schedule board, the money screens, settings. */
+  workStartMin: number
+  /** The shift worked: "5:00 PM – 6:00 PM". The board, the money screens, settings. */
   label: string
   /**
-   * The same shift as the person is asked to do it: "4:45 PM – 6:00 PM".
+   * The whole block, as the person is asked for it: "4:45 PM – 6:00 PM".
    *
-   * What a pass, a reminder and the signup form say, because turning up at five for a shift
-   * that starts at five is fifteen minutes late by the time a jar is in their hand.
+   * What a pass, a reminder and the signup form say, because the time that matters to
+   * somebody turning up is the time to turn up.
    */
   arriveLabel: string
 }

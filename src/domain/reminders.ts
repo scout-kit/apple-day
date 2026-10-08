@@ -1,4 +1,4 @@
-import { groupIntoRuns, runArrivalSpan, runState } from './shiftRuns'
+import { groupIntoRuns, runSpan, runState } from './shiftRuns'
 import { DAY_LABEL } from './slots'
 import { fullName } from './types'
 import type { Assignment, Day, Person, Slot } from './types'
@@ -219,8 +219,8 @@ export function buildAudience(
                 assignmentId: a.id,
                 slotId: slot.id,
                 day: DAY_LABEL[slot.day],
-                // The arrival wording: a reminder is the message that tells somebody when
-                // to be there, so it names the time they have to be there.
+                // The whole block: a reminder is the message that tells somebody when to
+                // be there, so it names the time they have to be there.
                 label: slot.arriveLabel,
                 /*
                   Keyed on the day as well as the shop, because the times are minutes from
@@ -230,7 +230,6 @@ export function buildAudience(
                 locationId: `${slot.day}|${a.locationId}`,
                 startMin: slot.startMin,
                 endMin: slot.endMin,
-                arriveMin: slot.arriveMin,
               }]
             : []
         }),
@@ -242,11 +241,7 @@ export function buildAudience(
       // In the order they happen — a reminder about the Saturday should not list the Friday.
       shifts: runs.map((run) => {
         const first = run.items[0]!
-        return {
-          slotId: first.slotId,
-          day: first.day,
-          slotLabel: runArrivalSpan(run, first.label),
-        }
+        return { slotId: first.slotId, day: first.day, slotLabel: runSpan(run, first.label) }
       }),
       /*
         Every shift the message ends up naming, which is the run rather than the hour that

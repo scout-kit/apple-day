@@ -213,10 +213,10 @@ export function EventSettings({
         )}
 
         <div className="small muted" style={{ marginTop: '0.6rem' }}>
-          How early people are asked to turn up. The shift keeps its own hours — this is
-          time in front of it, so a pass, a reminder and the signup form name the earlier
-          time while the board, the money screens and the hours each person is credited
-          with stay on whole shifts.
+          How much of the front of each shift is checking in rather than collecting. A pass,
+          a reminder and the signup form still name the whole block, because that is when to
+          turn up; the board, the money screens and the hours each person is credited with
+          count the shift inside it.
         </div>
         <div className="row" style={{ marginTop: '0.35rem' }}>
           <label style={{ flex: '0 1 9rem' }}>
@@ -234,14 +234,20 @@ export function EventSettings({
               ))}
             </select>
           </label>
-          {draft.checkInMinutes > 0 && activeDays(draft.schedule)[0] && (
-            <span className="small muted">
-              asked for as{' '}
-              {buildSlots(activeDays(draft.schedule)[0]!, draft.schedule, draft)[0]
-                ?.arriveLabel ?? '—'}
-            </span>
-          )}
+          {draft.checkInMinutes > 0 && activeDays(draft.schedule)[0] && (() => {
+            const first = buildSlots(activeDays(draft.schedule)[0]!, draft.schedule, draft)[0]
+            return first ? (
+              <span className="small muted">
+                asked for as {first.arriveLabel}, worked as {first.label}
+              </span>
+            ) : null
+          })()}
         </div>
+        {draft.shiftMode === 'shifts' && draft.checkInMinutes >= draft.shiftMinutes && (
+          <div className="note error">
+            Check-in has to be shorter than the shift, or there is no shift left to work.
+          </div>
+        )}
 
         </>
         )}

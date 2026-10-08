@@ -404,11 +404,11 @@ export function hourlyTrends(
       Which hours this event ran at all, so an hour it never scheduled reads as absent
       rather than as an hour that earned nothing.
 
-      From arrival, not from the shift's own start: an event whose first shift is at five
-      with a quarter-hour lead was running — and had people standing in it — at a quarter to.
+      The whole block, not just the shift inside it: an event whose first block opens at a
+      quarter to five was running then, whatever those first fifteen minutes were spent on.
     */
     for (const slot of data.slots) {
-      for (const hour of hoursSpanned(slot.arriveMin, slot.endMin)) {
+      for (const hour of hoursSpanned(slot.startMin, slot.endMin)) {
         const key = keyOf(slot.day, hour)
         ran.set(key, (ran.get(key) ?? new Set()).add(eventId))
       }

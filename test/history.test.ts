@@ -29,7 +29,7 @@ const slots = (day: 'fri' | 'sat', hours: number[]): Slot[] =>
     day,
     startMin: h * 60,
     endMin: (h + 1) * 60,
-    arriveMin: h * 60,
+    workStartMin: h * 60,
     label: `${h}:00`,
     arriveLabel: `${h}:00`,
   }))
@@ -271,8 +271,8 @@ describe('takings by clock hour, year over year', () => {
   const overlapped: EventData = {
     event: event('2026'),
     slots: [
-      { id: 'fri-a', day: 'fri', startMin: 17 * 60, endMin: 18 * 60, arriveMin: 17 * 60, arriveLabel: '5:00', label: '5:00' },
-      { id: 'fri-b', day: 'fri', startMin: 17 * 60 + 45, endMin: 18 * 60 + 45, arriveMin: 17 * 60 + 45, arriveLabel: '5:45', label: '5:45' },
+      { id: 'fri-a', day: 'fri', startMin: 17 * 60, endMin: 18 * 60, workStartMin: 17 * 60, arriveLabel: '5:00', label: '5:00' },
+      { id: 'fri-b', day: 'fri', startMin: 17 * 60 + 45, endMin: 18 * 60 + 45, workStartMin: 17 * 60 + 45, arriveLabel: '5:45', label: '5:45' },
     ],
     assignments: [
       shift('c', 'fri-a', 'braemar', 'y01'),
@@ -342,8 +342,8 @@ describe('takings by clock hour, year over year', () => {
     // A year that finished at seven did not earn nothing at eight; it was not there.
     const short: EventData = { ...onTheHour, slots: slots('fri', [17]), assignments: [onTheHour.assignments[0]!], jars: [onTheHour.jars[0]!] }
     const long: EventData = { ...overlapped, slots: [
-      { id: 'fri-a', day: 'fri', startMin: 17 * 60, endMin: 18 * 60, arriveMin: 17 * 60, arriveLabel: '5:00', label: '5:00' },
-      { id: 'fri-c', day: 'fri', startMin: 19 * 60, endMin: 20 * 60, arriveMin: 19 * 60, arriveLabel: '7:00', label: '7:00' },
+      { id: 'fri-a', day: 'fri', startMin: 17 * 60, endMin: 18 * 60, workStartMin: 17 * 60, arriveLabel: '5:00', label: '5:00' },
+      { id: 'fri-c', day: 'fri', startMin: 19 * 60, endMin: 20 * 60, workStartMin: 19 * 60, arriveLabel: '7:00', label: '7:00' },
     ], assignments: [shift('c', 'fri-a', 'braemar', 'y01')], jars: [] }
 
     const result = hourlyTrends([short, long], null)
@@ -355,7 +355,7 @@ describe('takings by clock hour, year over year', () => {
   it('compares the years an hour was actually run, skipping one it was not', () => {
     const withoutFive: EventData = {
       ...overlapped,
-      slots: [{ id: 'fri-c', day: 'fri', startMin: 19 * 60, endMin: 20 * 60, arriveMin: 19 * 60, arriveLabel: '7:00', label: '7:00' }],
+      slots: [{ id: 'fri-c', day: 'fri', startMin: 19 * 60, endMin: 20 * 60, workStartMin: 19 * 60, arriveLabel: '7:00', label: '7:00' }],
       assignments: [],
       jars: [],
     }
@@ -375,7 +375,7 @@ describe('takings by clock hour, year over year', () => {
       ...onTheHour,
       slots: [
         ...slots('fri', [17]),
-        { id: 'sat-0800', day: 'sat', startMin: 8 * 60, endMin: 9 * 60, arriveMin: 8 * 60, arriveLabel: '8:00', label: '8:00' },
+        { id: 'sat-0800', day: 'sat', startMin: 8 * 60, endMin: 9 * 60, workStartMin: 8 * 60, arriveLabel: '8:00', label: '8:00' },
       ],
       assignments: [],
       jars: [],

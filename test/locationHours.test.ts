@@ -11,9 +11,9 @@ import type { Assignment, Jar, ScheduledLocation, Slot } from '../src/domain/typ
  */
 
 const SLOTS: Slot[] = [
-  { id: 'fri-1700', day: 'fri', startMin: 17 * 60, endMin: 18 * 60, arriveMin: 17 * 60, arriveLabel: '5:00 PM', label: '5:00 PM' },
-  { id: 'fri-1800', day: 'fri', startMin: 18 * 60, endMin: 19 * 60, arriveMin: 18 * 60, arriveLabel: '6:00 PM', label: '6:00 PM' },
-  { id: 'sat-0800', day: 'sat', startMin: 8 * 60, endMin: 9 * 60, arriveMin: 8 * 60, arriveLabel: '8:00 AM', label: '8:00 AM' },
+  { id: 'fri-1700', day: 'fri', startMin: 17 * 60, endMin: 18 * 60, workStartMin: 17 * 60, arriveLabel: '5:00 PM', label: '5:00 PM' },
+  { id: 'fri-1800', day: 'fri', startMin: 18 * 60, endMin: 19 * 60, workStartMin: 18 * 60, arriveLabel: '6:00 PM', label: '6:00 PM' },
+  { id: 'sat-0800', day: 'sat', startMin: 8 * 60, endMin: 9 * 60, workStartMin: 8 * 60, arriveLabel: '8:00 AM', label: '8:00 AM' },
 ]
 
 const location = (id: string, name: string): ScheduledLocation => ({

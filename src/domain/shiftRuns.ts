@@ -17,13 +17,6 @@ export interface RunnableShift {
   /** Null when the shift's slot is unknown — a run of one, since it cannot be placed. */
   startMin: number | null
   endMin: number | null
-  /**
-   * When the person was asked to turn up, if the event asks for an early check-in.
-   *
-   * Optional, and absent means the shift's own start — which is what every event that never
-   * asked for one wants, and what a pass published before this existed carries.
-   */
-  arriveMin?: number | null
 }
 
 export interface ShiftRun<T> {
@@ -32,8 +25,6 @@ export interface ShiftRun<T> {
   /** The whole stretch: the first start and the last end. */
   startMin: number | null
   endMin: number | null
-  /** The earliest the person was asked to be there, which is what they are told. */
-  arriveMin: number | null
 }
 
 /**
@@ -62,14 +53,12 @@ export function groupIntoRuns<T extends RunnableShift>(shifts: T[]): ShiftRun<T>
     if (continues) {
       current.items.push(shift)
       current.endMin = Math.max(current.endMin!, shift.endMin!)
-      current.arriveMin = Math.min(current.arriveMin ?? Infinity, arrivalOf(shift))
     } else {
       runs.push({
         items: [shift],
         locationId: shift.locationId,
         startMin: shift.startMin,
         endMin: shift.endMin,
-        arriveMin: arrivalOf(shift),
       })
     }
   }
@@ -82,16 +71,10 @@ export function groupIntoRuns<T extends RunnableShift>(shifts: T[]): ShiftRun<T>
       locationId: shift.locationId,
       startMin: null,
       endMin: null,
-      arriveMin: null,
     })
   }
 
   return runs
-}
-
-/** A shift's arrival time, falling back to its own start when the event asks for no lead. */
-function arrivalOf(shift: RunnableShift): number {
-  return shift.arriveMin ?? shift.startMin!
 }
 
 /** Whether a run covers any part of a given window — used to decide what one hour shows. */
@@ -111,26 +94,6 @@ export function runSpan(
 ): string {
   if (run.startMin === null || run.endMin === null) return fallback
   return formatSlotLabel(run.startMin, run.endMin)
-}
-
-/**
- * A run as the person doing it was asked for it: "4:45 PM – 7:00 PM".
- *
- * The arrival time of the first shift through to the end of the last, so a pass and a
- * reminder name the time somebody has to be standing there — which for the first shift of a
- * stretch is not the time the shift starts.
- *
- * Reporting uses {@link runSpan} instead. The two differ by the check-in lead, and only on
- * the front of the first shift in a run.
- */
-export function runArrivalSpan(
-  run: Pick<ShiftRun<RunnableShift>, 'startMin' | 'endMin' | 'arriveMin'>,
-  fallback: string,
-): string {
-  if (run.endMin === null) return fallback
-  const from = run.arriveMin ?? run.startMin
-  if (from === null) return fallback
-  return formatSlotLabel(from, run.endMin)
 }
 
 export function runTouches(

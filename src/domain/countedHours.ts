@@ -1,22 +1,20 @@
 import type { Assignment, Day, Slot } from './types'
 
 /**
- * How much of the day each shift adds to the person doing it.
+ * How much worked time each shift adds to the person doing it.
  *
- * A shift is two things: the hour on location, and the quarter-hour before it when the
- * person is told to turn up. Both are time they are standing there, so both count — but
- * only once. Somebody doing 5–6 and 6–7 was asked to arrive at 4:45 and goes home at 7:00,
- * which is 2¼ hours, not the 2½ that adding two 1¼-hour shifts gives: the second shift's
- * lead-in is the first shift's last quarter of an hour, and it was being counted twice.
+ * Two things are being taken out of the old figure. A block is a quarter of an hour of
+ * checking in followed by an hour on a doorstep, and only the hour is worked — so a 75
+ * minute block is worth 1 hour, not 1¼. And where blocks overlap, as they do when an event
+ * runs a handover, the shared minutes belong to one of them rather than to both.
  *
- * Counting the stretch rather than the shifts is also what makes the figure survive a
- * change of shape. Before this, an event bought its check-in window by making the shift
- * itself 75 minutes, so every hours figure in the app was 25% high and the error grew with
- * the number of shifts somebody did.
+ * The event this was written for ran four 75 minute blocks from a quarter to five, and every
+ * hours figure in the app was 25% high: four shifts read as 5 hours of work for an evening
+ * that was 4.
  *
- * Each shift is credited with the part of its window that no earlier shift already covered,
- * so the credits still add up: sum them by location, by slot, by section or by person and
- * every total agrees with the person-by-person one.
+ * Each shift is credited with the part of its shift that no earlier shift of that person's
+ * day already covered, so the credits still add up: sum them by location, by slot, by
+ * section or by person and every total agrees with the person-by-person one.
  */
 
 /** The stretch of a day one shift is credited with. Minutes from midnight. */
@@ -64,18 +62,18 @@ export function countedWindows(
 
   for (const shifts of byPersonDay.values()) {
     /*
-      Earliest arrival first, so whatever has already been counted is always a prefix of the
+      Earliest shift first, so whatever has already been counted is always a prefix of the
       day and one number — how far the credit has reached — is enough to carry. The longer
       shift wins a tie, which keeps a short shift sitting inside a long one from taking the
       credit and leaving the long one with the remainder.
     */
     const ordered = [...shifts].sort(
-      (a, b) => a.slot.arriveMin - b.slot.arriveMin || b.slot.endMin - a.slot.endMin,
+      (a, b) => a.slot.workStartMin - b.slot.workStartMin || b.slot.endMin - a.slot.endMin,
     )
 
     let reached = -Infinity
     for (const { id, slot } of ordered) {
-      const from = Math.max(slot.arriveMin, reached)
+      const from = Math.max(slot.workStartMin, reached)
       // Wholly inside a stretch already counted: real, worked, and worth no extra minutes.
       if (slot.endMin <= from) continue
       out.set(id, { day: slot.day, from, to: slot.endMin })

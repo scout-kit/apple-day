@@ -22,10 +22,10 @@ import type { Assignment, Person, Slot } from '../src/domain/types'
  */
 
 const SLOTS: Slot[] = [
-  { id: 'fri-1700', day: 'fri', startMin: 1020, endMin: 1080, arriveMin: 1020, arriveLabel: '5:00 PM', label: '5:00 PM' },
-  { id: 'fri-1800', day: 'fri', startMin: 1080, endMin: 1140, arriveMin: 1080, arriveLabel: '6:00 PM', label: '6:00 PM' },
-  { id: 'sat-0900', day: 'sat', startMin: 540, endMin: 600, arriveMin: 540, arriveLabel: '9:00 AM', label: '9:00 AM' },
-  { id: 'sat-1000', day: 'sat', startMin: 600, endMin: 660, arriveMin: 600, arriveLabel: '10:00 AM', label: '10:00 AM' },
+  { id: 'fri-1700', day: 'fri', startMin: 1020, endMin: 1080, workStartMin: 1020, arriveLabel: '5:00 PM', label: '5:00 PM' },
+  { id: 'fri-1800', day: 'fri', startMin: 1080, endMin: 1140, workStartMin: 1080, arriveLabel: '6:00 PM', label: '6:00 PM' },
+  { id: 'sat-0900', day: 'sat', startMin: 540, endMin: 600, workStartMin: 540, arriveLabel: '9:00 AM', label: '9:00 AM' },
+  { id: 'sat-1000', day: 'sat', startMin: 600, endMin: 660, workStartMin: 600, arriveLabel: '10:00 AM', label: '10:00 AM' },
 ]
 
 const person = (id: string, first: string, over: Partial<Person> = {}): Person => ({
