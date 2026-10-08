@@ -1,5 +1,7 @@
 import { groupIntoRuns, runSpan, runState } from './shiftRuns'
 import { DAY_LABEL } from './slots'
+import { DEFAULT_SECTIONS, sectionFor } from './sections'
+import type { SectionDef } from './sections'
 import { fullName } from './types'
 import type { Assignment, Day, Person, Slot } from './types'
 
@@ -116,6 +118,13 @@ export interface AudienceInput {
   assignments: Assignment[]
   slots: Slot[]
   people: Person[]
+  /**
+   * The group's sections, for telling an adult from a youth. Defaults to the built-in set.
+   *
+   * Only one thing turns on it: who the greeting is addressed to. A youth's address belongs
+   * to a parent, an adult's belongs to them.
+   */
+  sections?: SectionDef[]
   /** Pass tokens by person id. Absent for anybody added since the last publish. */
   tokenByPerson: Map<string, string>
   /** Where the app is served from, for building pass links. */
@@ -129,6 +138,23 @@ export interface AudienceInput {
  * who are the same parent, and sending them both would be the thing this is meant to stop.
  */
 export const normaliseEmail = (email: string): string => email.trim().toLowerCase()
+
+/**
+ * Who to greet at this address.
+ *
+ * A Scouter signs up on the same form as everybody else, and the form asks for a parent —
+ * so an adult leaves it blank, and the greeting fell through to "Hi there" for the people
+ * most likely to be reading every message the group sends.
+ *
+ * Their own name, then, but only for an adult. A youth's address is their parent's, and
+ * falling back to the youth's name there would greet a parent by their child's name — a
+ * worse mistake than the vague one it replaces, and in a message about that child.
+ */
+export function greetingName(person: Person, sections: SectionDef[]): string {
+  const parent = person.parentName.trim()
+  if (parent) return parent
+  return sectionFor(person.section, sections).youth ? '' : fullName(person)
+}
 
 /** Whether a shift falls inside the selection. */
 function covers(selection: Selection, assignment: Assignment, slotById: Map<string, Slot>): boolean {
@@ -152,6 +178,7 @@ export function buildAudience(
   const slotById = new Map(input.slots.map((s) => [s.id, s]))
   const slotOrder = new Map(input.slots.map((s, i) => [s.id, i]))
   const personById = new Map(input.people.map((p) => [p.id, p]))
+  const sections = input.sections ?? DEFAULT_SECTIONS
 
   /*
     Swapped shifts are somebody else's now.
@@ -262,11 +289,11 @@ export function buildAudience(
       already.youths.push(youth)
       // The first youth with a parent named wins, so a blank on one sibling's row does not
       // decide how the greeting reads.
-      if (!already.parentName) already.parentName = person.parentName.trim()
+      if (!already.parentName) already.parentName = greetingName(person, sections)
     } else {
       recipients.set(email, {
         email,
-        parentName: person.parentName.trim(),
+        parentName: greetingName(person, sections),
         youths: [youth],
       })
     }

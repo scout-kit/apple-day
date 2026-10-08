@@ -21,6 +21,10 @@ import type { AppleDayEvent, Day } from './types'
  * which is what keeps those two from disagreeing.
  */
 
+/** The two pages a branching form has. Ids, not titles — they key the jumps. */
+export const PAGE_PARENT = 'parent'
+export const PAGE_REST = 'rest'
+
 export type QuestionKind = 'text' | 'longText' | 'choice' | 'checkboxes'
 
 export interface FormQuestion {
@@ -39,12 +43,39 @@ export interface FormQuestion {
    * form asks for the group's own reasons.
    */
   feeds: string | null
+  /**
+   * Which page of the form this sits on. Absent for the first page, which needs no break
+   * before it.
+   */
+  page?: string
+  /**
+   * Where each answer sends the person, by page id — Google Forms' own branching.
+   *
+   * Only meaningful on a single-choice question that ends its page. Used for exactly one
+   * thing: sending a Scouter past the questions about their parent.
+   */
+  optionGoTo?: Record<string, string>
+}
+
+/**
+ * A page of the form, which is what Google Forms calls a section.
+ *
+ * Pages exist here only so that one can be skipped. A form with nothing to skip stays flat,
+ * because a page break is a "Next" button between somebody and the thing you want them to
+ * fill in.
+ */
+export interface FormPage {
+  id: string
+  title: string
+  help?: string
 }
 
 export interface FormSpec {
   title: string
   description: string
   questions: FormQuestion[]
+  /** In order. Empty when the form needs no branching. */
+  pages: FormPage[]
 }
 
 export interface SignupFormOptions {
@@ -139,6 +170,36 @@ export function buildSignupForm(
   const { contact, attending, notes, pairing } = { ...DEFAULTS, ...options }
   const questions: FormQuestion[] = []
 
+  /*
+    A Scouter fills this in for themselves, so a parent's *name* is not theirs to give —
+    they are the adult. Their address and number very much are wanted: that is how the
+    schedule reaches them and how they are found at ten past nine, same as anybody.
+
+    So only the name is skipped. Google Forms can make a question conditional only by
+    branching, which means pages: ask the section, send the youth sections to a page that
+    asks for a parent, and send everybody else straight past it to the rest of the form.
+    The name can then be required, which is what it should have been all along for the
+    people it is actually for.
+
+    Only when the group has both kinds of section. A page break is a "Next" button between
+    somebody and the form, and a group whose sections are all youth gains nothing for it.
+  */
+  const youth = sections.filter((s) => s.youth)
+  const adults = sections.filter((s) => !s.youth)
+  const branching = youth.length > 0 && adults.length > 0
+  const pages: FormPage[] = branching
+    ? [
+        {
+          id: PAGE_PARENT,
+          title: 'Parent or guardian',
+          help: 'Who we would be speaking to about this youth.',
+        },
+        { id: PAGE_REST, title: 'Contact and availability' },
+      ]
+    : []
+  /** Where a question lives when the form is branching, and nowhere when it is not. */
+  const onPage = (id: string): { page?: string } => (branching ? { page: id } : {})
+
   questions.push({
     title: 'Youth name',
     help: 'First and last name, as you would like it on the schedule.',
@@ -163,22 +224,44 @@ export function buildSignupForm(
     */
     options: sections.map((s) => s.name),
     feeds: 'section',
+    ...(branching
+      ? {
+          optionGoTo: Object.fromEntries(
+            sections.map((s) => [s.name, s.youth ? PAGE_PARENT : PAGE_REST]),
+          ),
+        }
+      : {}),
   })
 
   questions.push({
     title: 'Parent name',
     kind: 'text',
-    required: false,
+    // Required only when a Scouter can skip past it. On a flat form it stays optional,
+    // because there it is also being asked of the adults it does not apply to.
+    required: branching,
     feeds: 'parentName',
+    ...onPage(PAGE_PARENT),
   })
 
   if (contact) {
+    /*
+      Asked of everybody, so named for everybody.
+
+      "Parent email" put to a Scouter is a question about somebody who is not involved.
+      "Contact" is true for both: a parent answering for their youth, and an adult answering
+      for themselves. The importer matches these columns on "email" and "phone" rather than
+      on the whole heading, so the wording can say what it means without the import losing
+      them — and the fields they feed are still `parentEmail` and `parentPhone`, because
+      renaming stored data to match a form's wording is how old people records stop
+      resolving.
+    */
     questions.push({
-      title: 'Parent email',
+      title: 'Contact Email',
       help: 'Where the schedule and any reminders will be sent.',
       kind: 'text',
       required: true,
       feeds: 'parentEmail',
+      ...onPage(PAGE_REST),
     })
     /*
       Asked for, not insisted on.
@@ -190,11 +273,12 @@ export function buildSignupForm(
       it can be chased.
     */
     questions.push({
-      title: 'Parent phone',
+      title: 'Contact Phone Number',
       help: 'For reaching you on the day itself. Not required, but it helps.',
       kind: 'text',
       required: false,
       feeds: 'parentPhone',
+      ...onPage(PAGE_REST),
     })
   }
 
@@ -205,6 +289,10 @@ export function buildSignupForm(
       required: false,
       options: ['Yes', 'No'],
       feeds: 'attending',
+      // A question for a parent about their youth, so it goes on the parent's page and a
+      // Scouter never sees it. Asked of an adult it has no answer: they are not attending
+      // *with* anybody, they are working the shift.
+      ...onPage(PAGE_PARENT),
     })
   }
 
@@ -215,6 +303,7 @@ export function buildSignupForm(
       kind: 'text',
       required: false,
       feeds: 'pairWith',
+      ...onPage(PAGE_REST),
     })
   }
 
@@ -230,6 +319,7 @@ export function buildSignupForm(
       required: false,
       options: shiftOptions(event, day),
       feeds: `day:${day}`,
+      ...onPage(PAGE_REST),
     })
   }
 
@@ -240,6 +330,7 @@ export function buildSignupForm(
       kind: 'longText',
       required: false,
       feeds: 'notes',
+      ...onPage(PAGE_REST),
     })
   }
 
@@ -247,6 +338,7 @@ export function buildSignupForm(
     title: event.name,
     description: describeForm(event),
     questions,
+    pages,
   }
 }
 
@@ -315,8 +407,9 @@ export function formProblems(spec: FormSpec, event: AppleDayEvent): string[] {
 /** The form as text somebody can work through, for building it by hand. */
 export function describeSpec(spec: FormSpec): string {
   const lines: string[] = [spec.title, '', spec.description, '']
+  const pageTitle = new Map(spec.pages.map((p) => [p.id, p.title]))
 
-  spec.questions.forEach((question, index) => {
+  const describe = (question: FormQuestion, index: number): void => {
     const kind = {
       text: 'Short answer',
       longText: 'Paragraph',
@@ -327,9 +420,40 @@ export function describeSpec(spec: FormSpec): string {
     lines.push(`${index + 1}. ${question.title}${question.required ? '  (required)' : ''}`)
     lines.push(`   ${kind}`)
     if (question.help) lines.push(`   ${question.help}`)
-    for (const option of question.options ?? []) lines.push(`   - ${option}`)
+    for (const option of question.options ?? []) {
+      /*
+        The jump spelled out beside the answer it belongs to. Building this by hand is the
+        route for a group that has not set the API up, and branching is the one part of this
+        form somebody cannot infer from a list of questions.
+      */
+      const goTo = question.optionGoTo?.[option]
+      const to = goTo === undefined ? '' : `  → go to “${pageTitle.get(goTo) ?? goTo}”`
+      lines.push(`   - ${option}${to}`)
+    }
     lines.push('')
-  })
+  }
+
+  const onPage = (id: string | undefined): FormQuestion[] =>
+    spec.questions.filter((q) => (q.page ?? undefined) === id)
+
+  let n = 0
+  for (const question of onPage(undefined)) describe(question, n++)
+
+  for (const page of spec.pages) {
+    lines.push(`--- Section: ${page.title} ---`)
+    if (page.help) lines.push(`   ${page.help}`)
+    lines.push('')
+    for (const question of onPage(page.id)) describe(question, n++)
+  }
+
+  if (spec.pages.length > 0) {
+    lines.push(
+      'In Google Forms each “Section” above is “Add section”, and the arrows on the ' +
+        'Section answers are set with “Go to section based on answer” on that question. ' +
+        'That is what lets a Scouter skip the parent questions while everybody else has ' +
+        'to answer them.',
+    )
+  }
 
   return lines.join('\n').trimEnd()
 }
