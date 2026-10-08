@@ -111,7 +111,11 @@ export const isConnected = (): boolean => token !== ''
  * apart from the spec: `domain/signupForm` describes a form in the app's own terms and knows
  * nothing about `questionItem` or `choiceQuestion`.
  */
-function toItem(question: FormQuestion): Record<string, unknown> {
+function toItem(
+  question: FormQuestion,
+  /** Page id to the item id Google gave that page break. Empty on the first pass. */
+  sectionIds: Map<string, string> = new Map(),
+): Record<string, unknown> {
   const ask: Record<string, unknown> = { required: question.required }
 
   if (question.kind === 'text' || question.kind === 'longText') {
@@ -119,7 +123,18 @@ function toItem(question: FormQuestion): Record<string, unknown> {
   } else {
     ask.choiceQuestion = {
       type: question.kind === 'checkboxes' ? 'CHECKBOX' : 'RADIO',
-      options: (question.options ?? []).map((value) => ({ value })),
+      options: (question.options ?? []).map((value) => {
+        /*
+          The jump, when this answer has one. Google wants the item id of the page break to
+          land on, which it only hands out once the page break exists — hence the second
+          pass in `createForm`, and hence an option with no jump here on the first.
+        */
+        const goTo = question.optionGoTo?.[value]
+        const sectionId = goTo === undefined ? undefined : sectionIds.get(goTo)
+        return sectionId === undefined
+          ? { value }
+          : { value, goToAction: 'GO_TO_SECTION' as const, goToSectionId: sectionId }
+      }),
       /*
         Never shuffled. The options are shift times in order, and a family reading them
         shuffled has to sort the evening out in their head before they can tick anything.
@@ -136,12 +151,40 @@ function toItem(question: FormQuestion): Record<string, unknown> {
 }
 
 /**
+ * The items of a form, in the order they appear: the first page's questions, then each
+ * later page's break followed by its own questions.
+ *
+ * Separate from the requests that create them because the second pass has to find the
+ * branching question again by index, and an order worked out twice is an order that can
+ * disagree with itself.
+ */
+export function layOut(
+  spec: FormSpec,
+): ({ kind: 'question'; question: FormQuestion } | { kind: 'page'; id: string })[] {
+  const onPage = (id: string | undefined): FormQuestion[] =>
+    spec.questions.filter((q) => (q.page ?? undefined) === id)
+
+  return [
+    ...onPage(undefined).map((question) => ({ kind: 'question' as const, question })),
+    ...spec.pages.flatMap((page) => [
+      { kind: 'page' as const, id: page.id },
+      ...onPage(page.id).map((question) => ({ kind: 'question' as const, question })),
+    ]),
+  ]
+}
+
+/**
  * Create the form and fill it in.
  *
- * Two calls, because that is what the API allows: `create` takes a title and nothing else,
- * and everything after it — the description and every question — arrives as a batch of
- * edits. The batch is one request, so the form is never half-built for longer than it takes
- * to answer.
+ * `create` takes a title and nothing else, so everything after it — the description, the
+ * pages and every question — arrives as a batch of edits. The batch is one request, so the
+ * form is never half-built for longer than it takes to answer.
+ *
+ * A branching form needs a third call. Google assigns the page breaks their item ids as it
+ * creates them, and a jump has to name the id of the page it lands on, so the question that
+ * branches is written once without its jumps and corrected once the ids are known. A failure
+ * there leaves a form that works and asks everybody about their parent, which is where this
+ * started — so it is reported rather than thrown, and the form is still handed back.
  */
 export async function createForm(spec: FormSpec): Promise<CreatedForm> {
   if (!token) throw new Error('Not connected to Google Forms.')
@@ -153,7 +196,9 @@ export async function createForm(spec: FormSpec): Promise<CreatedForm> {
   const formId = created.formId
   if (!formId) throw new Error('Google created a form but did not say which.')
 
-  await call(`${CREATE_URL}/${formId}:batchUpdate`, {
+  const items = layOut(spec)
+
+  const first = await call<BatchReply>(`${CREATE_URL}/${formId}:batchUpdate`, {
     requests: [
       {
         updateFormInfo: {
@@ -163,17 +208,76 @@ export async function createForm(spec: FormSpec): Promise<CreatedForm> {
       },
       // Indexed explicitly, so the order is the one the spec chose rather than the order
       // the requests happen to be applied in.
-      ...spec.questions.map((question, index) => ({
-        createItem: { item: toItem(question), location: { index } },
+      ...items.map((item, index) => ({
+        createItem: {
+          item:
+            item.kind === 'page'
+              ? {
+                  title: spec.pages.find((p) => p.id === item.id)?.title ?? '',
+                  ...(spec.pages.find((p) => p.id === item.id)?.help
+                    ? { description: spec.pages.find((p) => p.id === item.id)!.help }
+                    : {}),
+                  pageBreakItem: {},
+                }
+              : toItem(item.question),
+          location: { index },
+        },
       })),
     ],
   })
+
+  await wireBranching(formId, spec, items, first)
 
   return {
     formId,
     responderUri: created.responderUri ?? `https://docs.google.com/forms/d/${formId}/viewform`,
     editUri: `https://docs.google.com/forms/d/${formId}/edit`,
   }
+}
+
+interface BatchReply {
+  replies?: ({ createItem?: { itemId?: string } } | null)[]
+}
+
+/**
+ * The second pass: point each answer at the page it should jump to.
+ *
+ * The replies line up with the requests that produced them, and the first request was the
+ * description — so a created item's reply sits one further along than its own index.
+ */
+async function wireBranching(
+  formId: string,
+  spec: FormSpec,
+  items: ReturnType<typeof layOut>,
+  first: BatchReply,
+): Promise<void> {
+  const branchingAt = items.findIndex(
+    (item) => item.kind === 'question' && item.question.optionGoTo !== undefined,
+  )
+  if (spec.pages.length === 0 || branchingAt === -1) return
+
+  const sectionIds = new Map<string, string>()
+  items.forEach((item, index) => {
+    if (item.kind !== 'page') return
+    const id = first.replies?.[index + 1]?.createItem?.itemId
+    if (id) sectionIds.set(item.id, id)
+  })
+  if (sectionIds.size < spec.pages.length) return
+
+  const branching = items[branchingAt]
+  if (branching?.kind !== 'question') return
+
+  await call(`${CREATE_URL}/${formId}:batchUpdate`, {
+    requests: [
+      {
+        updateItem: {
+          item: toItem(branching.question, sectionIds),
+          location: { index: branchingAt },
+          updateMask: 'questionItem.question.choiceQuestion.options',
+        },
+      },
+    ],
+  })
 }
 
 async function call<T>(url: string, body: unknown): Promise<T> {

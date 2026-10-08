@@ -35,6 +35,7 @@ import { DAY_LABEL } from '../domain/slots'
 import { contactLabel } from '../domain/support'
 import type { Day } from '../domain/types'
 import { useEvent } from '../lib/eventContext'
+import { useSections } from '../lib/sections'
 import { deliver } from '../lib/mail'
 import type { MailSender, OutgoingMessage, SendOutcome } from '../lib/mail'
 import {
@@ -202,6 +203,8 @@ export function RemindersScreen(): ReactNode {
     [event, selection, slots, base.data],
   )
 
+  const { sections: sectionDefs } = useSections()
+
   /*
     Everybody the current choices reach.
 
@@ -214,6 +217,9 @@ export function RemindersScreen(): ReactNode {
       people: people.data,
       assignments: assignments.data,
       slots,
+      // So an adult is greeted by their own name rather than as a parent who never
+      // filled the form's parent box in, because they had no reason to.
+      sections: sectionDefs,
       tokenByPerson: new Map(passes.data.map((p) => [p.personId, p.token])),
       origin,
     })

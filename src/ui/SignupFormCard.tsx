@@ -143,6 +143,13 @@ export function SignupFormCard({
             </span>
           </div>
 
+          {spec.pages.length > 0 && (
+            <p className="small muted">
+              In sections, so a Scouter skips the parent questions and everybody else has to
+              answer them.
+            </p>
+          )}
+
           <ol className="stack form-spec">
             {spec.questions.map((question) => (
               <li key={question.title}>
@@ -152,9 +159,19 @@ export function SignupFormCard({
                 {question.help && <div className="small muted">{question.help}</div>}
                 {question.options && (
                   <ul className="small">
-                    {question.options.map((option) => (
-                      <li key={option}>{option}</li>
-                    ))}
+                    {question.options.map((option) => {
+                      // Where this answer sends somebody, when it sends them anywhere. The
+                      // preview is what an organizer checks the form against, and a branch
+                      // that only exists in Google is a branch nobody here can see.
+                      const goTo = question.optionGoTo?.[option]
+                      const page = goTo ? spec.pages.find((p) => p.id === goTo) : undefined
+                      return (
+                        <li key={option}>
+                          {option}
+                          {page && <span className="muted"> → {page.title}</span>}
+                        </li>
+                      )
+                    })}
                   </ul>
                 )}
               </li>
