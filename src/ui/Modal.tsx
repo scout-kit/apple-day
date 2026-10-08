@@ -11,11 +11,21 @@ export function Modal({
   title,
   onClose,
   footer,
+  size = 'default',
   children,
 }: {
   title: string
   onClose: () => void
   footer?: ReactNode
+  /**
+   * How much of the screen to take.
+   *
+   * `wide` is for a form with more than a couple of fields, which on a phone is most of
+   * them. `full` is for something that has to be *looked at* rather than read — the camera
+   * above all, where a viewfinder the size of a postage stamp is the difference between
+   * reading a jar label and guessing at it.
+   */
+  size?: 'default' | 'wide' | 'full'
   children: ReactNode
 }): ReactNode {
   useEffect(() => {
@@ -40,7 +50,7 @@ export function Modal({
       role="presentation"
     >
       <div
-        className="modal"
+        className={`modal${size === 'default' ? '' : ` modal-${size}`}`}
         role="dialog"
         aria-modal="true"
         aria-label={title}

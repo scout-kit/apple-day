@@ -77,6 +77,32 @@ export function IssueJarDialog({
     else setNote(`Jar ${parsed} is already out. Count it in before sending it out again.`)
   }
 
+  /*
+    While the camera is on, the dialog is the camera.
+
+    It used to be a card inside the ordinary dialog, sharing the width with two paragraphs
+    of explanation, which on a phone left a viewfinder too small to line a jar label up in.
+    Scanning is a thing you point and look at, so for as long as it is happening it gets the
+    whole screen, and the way back to typing is the one other control on it.
+  */
+  if (scanning) {
+    return (
+      <Modal
+        title={`Scan a jar label for ${fullName(person)}`}
+        size="full"
+        onClose={onClose}
+        footer={
+          <>
+            <button onClick={onClose}>Cancel</button>
+            <button onClick={() => setScanning(false)}>Type the number instead</button>
+          </>
+        }
+      >
+        <QrScanner variant="fill" onDetected={onScan} onClose={() => setScanning(false)} />
+      </Modal>
+    )
+  }
+
   return (
     <Modal
       title={`Send ${fullName(person)} out`}
@@ -95,32 +121,28 @@ export function IssueJarDialog({
           {locationName} · {slotLabel}. Issuing the jar marks them as out collecting.
         </p>
 
-        {scanning ? (
-          <QrScanner onDetected={onScan} onClose={() => setScanning(false)} />
-        ) : (
-          <div className="row">
-            <label style={{ flex: '1 1 8rem' }}>
-              Jar number
-              <input
-                ref={inputRef}
-                type="number"
-                min="1"
-                inputMode="numeric"
-                value={value}
-                onChange={(e) => {
-                  setValue(e.target.value)
-                  setNote(null)
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') submit()
-                }}
-              />
-            </label>
-            <button style={{ alignSelf: 'end' }} onClick={() => setScanning(true)}>
-              Scan label
-            </button>
-          </div>
-        )}
+        <div className="row">
+          <label style={{ flex: '1 1 8rem' }}>
+            Jar number
+            <input
+              ref={inputRef}
+              type="number"
+              min="1"
+              inputMode="numeric"
+              value={value}
+              onChange={(e) => {
+                setValue(e.target.value)
+                setNote(null)
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') submit()
+              }}
+            />
+          </label>
+          <button style={{ alignSelf: 'end' }} onClick={() => setScanning(true)}>
+            Scan label
+          </button>
+        </div>
 
         {clash && (
           <div className="note error">

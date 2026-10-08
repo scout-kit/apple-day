@@ -51,6 +51,17 @@ const people: Person[] = [
 
 let jars: Jar[] = []
 
+/*
+  jsdom has no camera, and `scanFromVideo` reaches for `navigator.mediaDevices` on mount.
+  Only the dialog around the viewfinder is under test here, so the camera is stubbed to a
+  controller that does nothing. `jarNumberFromScan` is real — it is pure, and the screen
+  depends on it to read a label.
+*/
+vi.mock('../src/lib/qr', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../src/lib/qr')>()),
+  scanFromVideo: () => ({ stop: () => {} }),
+}))
+
 vi.mock('../src/lib/repo', () => ({
   countJar: (...a: unknown[]) => countJar(...a),
   deleteJar: (...a: unknown[]) => deleteJar(...a),
@@ -321,6 +332,13 @@ describe('correcting a jar', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Correct' }))
   }
 
+  /*
+    The save button reads "Save correction" rather than "Record 12": the dialog's own title
+    says which jar this is, so the button is free to say what pressing it does — and
+    correcting a figure already in every total is a different act from recording one for
+    the first time, which is what the form used to be ambiguous about.
+  */
+
   it('opens with everything the jar already says', async () => {
     /*
       An amount and a method alone would mean a jar written against the wrong shop can only be
@@ -338,7 +356,7 @@ describe('correcting a jar', () => {
     await openCorrection()
     await userEvent.click(screen.getByRole('button', { name: 'Location' }))
     await userEvent.click(await screen.findByRole('option', { name: /Kelmont/ }))
-    await userEvent.click(screen.getByRole('button', { name: /^Record 12$/ }))
+    await userEvent.click(screen.getByRole('button', { name: 'Save correction' }))
 
     expect(countJar.mock.calls[0]![2]).toMatchObject({ locationId: 'kelmont' })
   })
@@ -347,7 +365,7 @@ describe('correcting a jar', () => {
     await openCorrection()
     await userEvent.click(screen.getByRole('button', { name: 'Youth' }))
     await userEvent.click(await screen.findByRole('option', { name: /Beta Two/ }))
-    await userEvent.click(screen.getByRole('button', { name: /^Record 12$/ }))
+    await userEvent.click(screen.getByRole('button', { name: 'Save correction' }))
 
     expect(countJar.mock.calls[0]![2]).toMatchObject({ personId: 'p-two' })
   })
@@ -355,7 +373,7 @@ describe('correcting a jar', () => {
   it('takes the youth off a jar that never had one', async () => {
     await openCorrection()
     await userEvent.click(screen.getByRole('button', { name: 'Clear Youth' }))
-    await userEvent.click(screen.getByRole('button', { name: /^Record 12$/ }))
+    await userEvent.click(screen.getByRole('button', { name: 'Save correction' }))
 
     expect(countJar.mock.calls[0]![2]).toMatchObject({ personId: null })
   })
@@ -365,7 +383,7 @@ describe('correcting a jar', () => {
     const note = screen.getByLabelText(/^Note/)
     await userEvent.clear(note)
     await userEvent.type(note, 'bushel sales')
-    await userEvent.click(screen.getByRole('button', { name: /^Record 12$/ }))
+    await userEvent.click(screen.getByRole('button', { name: 'Save correction' }))
 
     expect(countJar.mock.calls[0]![2]).toMatchObject({ note: 'bushel sales' })
   })
@@ -375,7 +393,7 @@ describe('correcting a jar', () => {
     const amount = screen.getByLabelText('Amount')
     await userEvent.clear(amount)
     await userEvent.type(amount, '125.50')
-    await userEvent.click(screen.getByRole('button', { name: /^Record 12$/ }))
+    await userEvent.click(screen.getByRole('button', { name: 'Save correction' }))
 
     expect(countJar.mock.calls[0]![2]).toMatchObject({ amount: 125.5, method: 'cash' })
   })
@@ -532,6 +550,58 @@ describe('the two ways to get money in', () => {
     render(<JarsScreen />)
     expect(screen.getByRole('button', { name: 'Scan a jar…' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Record by hand…' })).toBeTruthy()
+  })
+})
+
+describe('each of the three jobs as its own dialog', () => {
+  /*
+    Reported as confusing: all three — scan, record by hand, correct — were cards further
+    down a long page, so pressing the button that opened one looked like it did nothing,
+    and the form sat among the lists it was about to change. The camera had it worst. As a
+    card its viewfinder was a band under the buttons, which on a phone is not enough
+    picture to line a jar label up in.
+  */
+  it('puts recording by hand in a dialog', async () => {
+    render(<JarsScreen />)
+    await userEvent.click(screen.getByRole('button', { name: 'Record by hand…' }))
+
+    const dialog = screen.getByRole('dialog', { name: 'Record money by hand' })
+    expect(within(dialog).getByRole('button', { name: 'Record' })).toBeTruthy()
+    expect(within(dialog).getByRole('button', { name: 'Cancel' })).toBeTruthy()
+  })
+
+  it('gives the camera the whole screen', async () => {
+    render(<JarsScreen />)
+    await userEvent.click(screen.getByRole('button', { name: 'Scan a jar…' }))
+
+    // The size is the fix, so it is the thing asserted: anything less is the card again.
+    const dialog = screen.getByRole('dialog', { name: 'Scan a jar' })
+    expect(dialog.className).toContain('modal-full')
+    expect(dialog.querySelector('video.scanner-video')).toBeTruthy()
+    // One way out, in the dialog's head. The scanner used to carry its own Close as well,
+    // which inside a dialog is two buttons doing the same thing.
+    expect(within(dialog).getAllByRole('button', { name: 'Close' })).toHaveLength(1)
+  })
+
+  it('says which of counting and correcting is happening', async () => {
+    jars = [
+      counted({
+        id: 'j1', jarNumber: 12, locationId: 'braemar', personId: 'p-one',
+        amount: 100, note: 'first go', assignmentId: null, assignmentIds: [],
+      }),
+    ]
+    render(<JarsScreen />)
+    await userEvent.click(screen.getByRole('button', { name: 'Correct' }))
+    // Already counted, so this changes a figure that is in every total already — a
+    // different act from recording one, and the dialog now says so.
+    expect(screen.getByRole('dialog', { name: 'Correct jar 12' })).toBeTruthy()
+  })
+
+  it('closes on Escape, like every other dialog', async () => {
+    render(<JarsScreen />)
+    await userEvent.click(screen.getByRole('button', { name: 'Record by hand…' }))
+    await userEvent.keyboard('{Escape}')
+    expect(screen.queryByRole('dialog')).toBeNull()
   })
 })
 
