@@ -72,8 +72,8 @@ describe('the form maps itself', () => {
     expect(mapping.youthName).toBe('Youth name')
     expect(mapping.section).toBe('Section')
     expect(mapping.parentName).toBe('Parent name')
-    expect(mapping.parentEmail).toBe('Parent email')
-    expect(mapping.parentPhone).toBe('Parent phone')
+    expect(mapping.parentEmail).toBe('Contact Email')
+    expect(mapping.parentPhone).toBe('Contact Phone Number')
     expect(mapping.attending).toBe('Will you attend with your youth?')
     expect(mapping.notes).toBe('Notes')
     expect(mapping.timestamp).toBe('Timestamp')
@@ -194,8 +194,8 @@ describe('what comes back imports without a correction', () => {
     'Youth name': 'Ada Byron',
     Section: 'Cubs',
     'Parent name': 'Anne Byron',
-    'Parent email': 'anne@example.org',
-    'Parent phone': '555-0100',
+    'Contact Email': 'anne@example.org',
+    'Contact Phone Number': '555-0100',
     'Will you attend with your youth?': 'Yes',
     // Google joins ticked boxes with a comma and a space.
     [FRIDAY]: '5:00 PM – 6:00 PM, 6:00 PM – 7:00 PM',
@@ -342,7 +342,7 @@ describe('written out for building by hand', () => {
 describe('the questions an event can do without', () => {
   it('leaves out contact details when they are not wanted', () => {
     const built = buildSignupForm(EVENT, DEFAULT_SECTIONS, { contact: false })
-    expect(built.questions.some((q) => q.title === 'Parent email')).toBe(false)
+    expect(built.questions.some((q) => q.feeds === 'parentEmail')).toBe(false)
   })
 
   it('leaves out a pairing field by default', () => {
@@ -423,12 +423,12 @@ describe('what the form insists on', () => {
   })
 
   it('insists on an email, because a schedule cannot be sent without one', () => {
-    expect(required()).toContain('Parent email')
+    expect(required()).toContain('Contact Email')
   })
 
   it('asks for a phone without insisting on it', () => {
     // Wanted on the day, not needed to accept the signup. The app marks who is missing one.
-    const phone = spec().questions.find((q) => q.title === 'Parent phone')!
+    const phone = spec().questions.find((q) => q.feeds === 'parentPhone')!
     expect(phone.required).toBe(false)
     expect(phone.help).toMatch(/helps/i)
   })

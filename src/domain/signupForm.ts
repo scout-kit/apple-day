@@ -171,13 +171,15 @@ export function buildSignupForm(
   const questions: FormQuestion[] = []
 
   /*
-    Scouters fill this in for themselves, so the questions about a parent are not theirs to
-    answer — and leaving them required meant an adult either invented a parent or gave up.
+    A Scouter fills this in for themselves, so a parent's *name* is not theirs to give —
+    they are the adult. Their address and number very much are wanted: that is how the
+    schedule reaches them and how they are found at ten past nine, same as anybody.
 
-    Google Forms can only make that conditional by branching, which means pages: ask the
-    section, then send youth to a page about their parent and send everybody else straight
-    past it. The parent questions can then be required, which is what they should have been
-    all along for the people they are actually for.
+    So only the name is skipped. Google Forms can make a question conditional only by
+    branching, which means pages: ask the section, send the youth sections to a page that
+    asks for a parent, and send everybody else straight past it to the rest of the form.
+    The name can then be required, which is what it should have been all along for the
+    people it is actually for.
 
     Only when the group has both kinds of section. A page break is a "Next" button between
     somebody and the form, and a group whose sections are all youth gains nothing for it.
@@ -190,9 +192,9 @@ export function buildSignupForm(
         {
           id: PAGE_PARENT,
           title: 'Parent or guardian',
-          help: 'How we reach the family — this is where the schedule and reminders go.',
+          help: 'Who we would be speaking to about this youth.',
         },
-        { id: PAGE_REST, title: 'When you can help' },
+        { id: PAGE_REST, title: 'Contact and availability' },
       ]
     : []
   /** Where a question lives when the form is branching, and nowhere when it is not. */
@@ -242,13 +244,24 @@ export function buildSignupForm(
   })
 
   if (contact) {
+    /*
+      Asked of everybody, so named for everybody.
+
+      "Parent email" put to a Scouter is a question about somebody who is not involved.
+      "Contact" is true for both: a parent answering for their youth, and an adult answering
+      for themselves. The importer matches these columns on "email" and "phone" rather than
+      on the whole heading, so the wording can say what it means without the import losing
+      them — and the fields they feed are still `parentEmail` and `parentPhone`, because
+      renaming stored data to match a form's wording is how old people records stop
+      resolving.
+    */
     questions.push({
-      title: 'Parent email',
+      title: 'Contact Email',
       help: 'Where the schedule and any reminders will be sent.',
       kind: 'text',
       required: true,
       feeds: 'parentEmail',
-      ...onPage(PAGE_PARENT),
+      ...onPage(PAGE_REST),
     })
     /*
       Asked for, not insisted on.
@@ -260,12 +273,12 @@ export function buildSignupForm(
       it can be chased.
     */
     questions.push({
-      title: 'Parent phone',
+      title: 'Contact Phone Number',
       help: 'For reaching you on the day itself. Not required, but it helps.',
       kind: 'text',
       required: false,
       feeds: 'parentPhone',
-      ...onPage(PAGE_PARENT),
+      ...onPage(PAGE_REST),
     })
   }
 
@@ -276,7 +289,10 @@ export function buildSignupForm(
       required: false,
       options: ['Yes', 'No'],
       feeds: 'attending',
-      ...onPage(PAGE_REST),
+      // A question for a parent about their youth, so it goes on the parent's page and a
+      // Scouter never sees it. Asked of an adult it has no answer: they are not attending
+      // *with* anybody, they are working the shift.
+      ...onPage(PAGE_PARENT),
     })
   }
 

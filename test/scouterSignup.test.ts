@@ -27,12 +27,36 @@ const person = (over: Partial<Person> = {}): Person => ({
 describe('the form stops asking a Scouter about their parent', () => {
   const spec = buildSignupForm(event, DEFAULT_SECTIONS)
 
-  it('puts the parent questions on a page of their own', () => {
+  it('skips only the questions that are about having a parent', () => {
+    /*
+      Two of them: who the parent is, and whether that parent is coming along. Asked of an
+      adult the second has no answer either — they are not attending *with* anybody, they
+      are working the shift.
+
+      Their address and number are wanted exactly as anybody's are, because that is how the
+      schedule reaches them and how they are found at ten past nine, so those stay on the
+      page everybody answers.
+    */
     expect(spec.pages.map((p) => p.id)).toEqual([PAGE_PARENT, PAGE_REST])
-    const parentPage = spec.questions.filter((q) => q.page === PAGE_PARENT)
-    expect(parentPage.map((q) => q.title)).toEqual([
-      'Parent name', 'Parent email', 'Parent phone',
-    ])
+    expect(spec.questions.filter((q) => q.page === PAGE_PARENT).map((q) => q.title))
+      .toEqual(['Parent name', 'Will you attend with your youth?'])
+    const rest = spec.questions.filter((q) => q.page === PAGE_REST).map((q) => q.title)
+    expect(rest.slice(0, 2)).toEqual(['Contact Email', 'Contact Phone Number'])
+  })
+
+  it('names the shared questions for everybody who answers them', () => {
+    // "Parent email" put to a Scouter is a question about somebody not involved.
+    const titles = spec.questions.map((q) => q.title)
+    expect(titles).not.toContain('Parent email')
+    expect(titles).not.toContain('Parent phone')
+  })
+
+  it('still feeds the stored fields, whatever the heading says', () => {
+    // Renaming stored data to match a form's wording is how old people records stop
+    // resolving, so the fields are untouched and only the question moved.
+    const byTitle = new Map(spec.questions.map((q) => [q.title, q]))
+    expect(byTitle.get('Contact Email')!.feeds).toBe('parentEmail')
+    expect(byTitle.get('Contact Phone Number')!.feeds).toBe('parentPhone')
   })
 
   it('sends every youth section to the parent page and the adults past it', () => {
@@ -46,13 +70,13 @@ describe('the form stops asking a Scouter about their parent', () => {
     })
   })
 
-  it('requires the parent questions, now that only a parent is asked them', () => {
+  it('requires the parent name, now that only a parent is asked for it', () => {
     const byTitle = new Map(spec.questions.map((q) => [q.title, q]))
     expect(byTitle.get('Parent name')!.required).toBe(true)
-    expect(byTitle.get('Parent email')!.required).toBe(true)
+    expect(byTitle.get('Contact Email')!.required).toBe(true)
     // Still not required, and for its own reason: a number matters on the day, and a
     // required field is a field people put anything in to get past.
-    expect(byTitle.get('Parent phone')!.required).toBe(false)
+    expect(byTitle.get('Contact Phone Number')!.required).toBe(false)
   })
 
   it('stays a flat form for a group whose sections are all youth', () => {
@@ -68,8 +92,10 @@ describe('the form stops asking a Scouter about their parent', () => {
   it('lays the items out as Google will see them', () => {
     const laid = layOut(spec)
     const names = laid.map((i) => (i.kind === 'page' ? `[${i.id}]` : i.question.title))
-    expect(names.slice(0, 4)).toEqual([
-      'Youth name', 'Section', `[${PAGE_PARENT}]`, 'Parent name',
+    expect(names.slice(0, 7)).toEqual([
+      'Youth name', 'Section',
+      `[${PAGE_PARENT}]`, 'Parent name', 'Will you attend with your youth?',
+      `[${PAGE_REST}]`, 'Contact Email',
     ])
     // The branching question has to be the last thing on its page, or Google ignores it.
     expect(names.indexOf('Section')).toBe(names.indexOf(`[${PAGE_PARENT}]`) - 1)
@@ -78,7 +104,7 @@ describe('the form stops asking a Scouter about their parent', () => {
   it('writes the branching out for somebody building it by hand', () => {
     const text = describeSpec(spec)
     expect(text).toContain('Section: Parent or guardian')
-    expect(text).toContain('Scouters  → go to “When you can help”')
+    expect(text).toContain('Scouters  → go to “Contact and availability”')
     expect(text).toContain('Go to section based on answer')
   })
 })
