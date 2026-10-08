@@ -547,6 +547,32 @@ describe('out collecting without a jar', () => {
     expect(screen.getByText('back', { selector: '.pill' }).className).toBe('pill tone-green')
   })
 
+  it('drops the amber pill once they are back, leaving only the green one', async () => {
+    /*
+      The bug the colour change left behind: a row that was back showed "checked in" in
+      amber *and* "back" in green, so the thing it most wanted to say — this one is
+      accounted for — was next to a pill saying the opposite in the colour used for
+      everybody still out. Nobody is back without having arrived, so the amber adds no
+      fact and only costs the green its meaning.
+    */
+    assignments = [{ ...assignments[0]!, whereabouts: 'back' as const }]
+    render(<DayOfScreen />)
+
+    expect(screen.getByText('back', { selector: '.pill' }).className).toBe('pill tone-green')
+    expect(screen.queryByText('checked in', { selector: '.pill' })).toBeNull()
+  })
+
+  it('keeps the amber pill while they are only checked in', async () => {
+    // The other half of it: amber is still what "arrived, not yet accounted for" looks
+    // like, and dropping it everywhere would lose that.
+    assignments = [{ ...assignments[0]!, whereabouts: 'here' as const }]
+    render(<DayOfScreen />)
+
+    expect(screen.getByText('checked in', { selector: '.pill' }).className)
+      .toBe('pill tone-amber')
+    expect(screen.queryByText('back', { selector: '.pill' })).toBeNull()
+  })
+
   it('offers no attendance button while somebody who has arrived is out', async () => {
     /*
       Written against `checkedIn` + `out`, because `confirmed` + `out` is not a state.
