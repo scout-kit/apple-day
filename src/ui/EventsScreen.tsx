@@ -10,6 +10,7 @@ import {
 } from '../lib/eventContext'
 import {
   copyEventLocations,
+  useAssignments,
   useEventLocations,
   useLocationLibrary,
   removeEvent,
@@ -299,6 +300,12 @@ export function EventsScreen(): ReactNode {
   }
 
   const currentSettings = useEventLocations()
+  /*
+    The shifts of the year currently selected, for the warning about an edit that would take
+    shifts off the board. Only that year's: editing a different one from the list gets no
+    warning rather than one worked out from the wrong schedule.
+  */
+  const currentAssignments = useAssignments()
 
   /**
    * What to call the next one, and which year to start it from.
@@ -859,6 +866,12 @@ export function EventsScreen(): ReactNode {
               eventId={editing.id}
               linkProblem={linkProblem}
               mode="edit"
+              saved={
+                editing.id === event?.id
+                  ? (events.find((e) => e.id === editing.id) ?? null)
+                  : null
+              }
+              assignments={editing.id === event?.id ? currentAssignments.data : undefined}
             />
             <p className="small muted">
               Changing the hours, the shift length or the overlap after people are scheduled

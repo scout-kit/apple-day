@@ -102,6 +102,8 @@ vi.mock('../src/lib/closing', () => ({
 vi.mock('../src/lib/repo', () => ({
   copyEventLocations: vi.fn(),
   useEventLocations: () => ({ data: [], loading: false, error: null }),
+  // No shifts rostered, so no warning about an edit taking any off the board.
+  useAssignments: () => ({ data: [], loading: false, error: null }),
   useLocationLibrary: () => ({ data: [], loading: false, error: null }),
   tallyEvent: async () => tally,
   removeEvent: (...a: unknown[]) => removeEvent(...a),

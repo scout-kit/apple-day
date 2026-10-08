@@ -1,14 +1,17 @@
+import { useMemo } from 'react'
 import type { ReactNode } from 'react'
 import {
   activeDays,
+  buildAllSlots,
   buildSlots,
   DAY_LABEL,
   minutesToTimeValue,
   stepMinutes,
   timeValueToMinutes,
 } from '../domain/slots'
+import { shapeChangeImpact } from '../domain/shapeChange'
 import { DAYS } from '../domain/types'
-import type { AppleDayEvent, Location } from '../domain/types'
+import type { AppleDayEvent, Assignment, Location } from '../domain/types'
 import { sanitiseEventLink } from '../domain/eventLinks'
 import { blankContact, isReachable } from '../domain/support'
 import type { SupportContact } from '../domain/support'
@@ -45,6 +48,16 @@ export interface EventSettingsProps {
   /** Why the typed link cannot be used, or null. */
   linkProblem: string | null
   mode: 'new' | 'edit'
+  /**
+   * The event as it is saved, and the shifts rostered against it — together, what the
+   * warning about breaking the board is worked out from.
+   *
+   * Both optional: a new event has no shifts to break, and the shifts that are loaded
+   * belong to the year currently selected, so editing a different year from the list gets
+   * no warning rather than a wrong one.
+   */
+  saved?: AppleDayEvent | null | undefined
+  assignments?: Assignment[] | undefined
 }
 
 export function EventSettings({
@@ -54,7 +67,26 @@ export function EventSettings({
   eventId,
   linkProblem,
   mode,
+  saved = null,
+  assignments,
 }: EventSettingsProps): ReactNode {
+  /*
+    What this edit would knock off the board.
+
+    Worked out against the saved event rather than against the draft's own previous state,
+    so the warning answers "what happens if I press save" however many dropdowns have been
+    touched on the way here.
+  */
+  const impact = useMemo(() => {
+    if (!saved || !assignments || assignments.length === 0) return null
+    const result = shapeChangeImpact(
+      buildAllSlots(saved.schedule, saved),
+      buildAllSlots(draft.schedule, draft),
+      assignments,
+    )
+    return result.orphaned > 0 ? result : null
+  }, [saved, assignments, draft])
+
   const setContact = (index: number, contact: SupportContact): void => {
     onChange({
       ...draft,
@@ -503,6 +535,42 @@ export function EventSettings({
           does.
         </p>
       </div>
+
+      {/*
+        Last, because it is about everything above it: the shift length, the overlap, the
+        check-in and every day's opening time all move the slot ids, and any of them can
+        take shifts off the board.
+      */}
+      {impact && (
+        <div className="note error" style={{ marginTop: '0.75rem' }}>
+          <strong>
+            Saving this removes {impact.orphaned} rostered shift
+            {impact.orphaned === 1 ? '' : 's'} from the schedule.
+          </strong>
+          <p className="small" style={{ margin: '0.35rem 0' }}>
+            Shifts are stored against the time they start, so changing the shape renames the
+            slots. These no longer exist afterwards, and the shifts on them stop appearing on
+            the board, in anybody's hours and in the takings their jars are counted through:
+          </p>
+          <ul className="small" style={{ margin: '0.35rem 0', paddingLeft: '1.1rem' }}>
+            {impact.lost.map((slot) => (
+              <li key={slot.slotId}>
+                <strong>{slot.label}</strong> ({slot.slotId}) —{' '}
+                {slot.shifts === 0
+                  ? 'nobody on it'
+                  : `${slot.shifts} shift${slot.shifts === 1 ? '' : 's'}, ${
+                      slot.personIds.length
+                    } ${slot.personIds.length === 1 ? 'person' : 'people'}`}
+              </li>
+            ))}
+          </ul>
+          <p className="small" style={{ margin: '0.35rem 0 0' }}>
+            Nothing is deleted from the database. The shifts become orphaned records, and the
+            only places they appear afterwards are the orphan list at the bottom of the Money
+            screen — which can delete them — and this warning, if you set the shape back.
+          </p>
+        </div>
+      )}
     </>
   )
 }
