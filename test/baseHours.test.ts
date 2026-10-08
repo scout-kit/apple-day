@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { personTotals, revenueBySlot, sectionParticipation } from '../src/domain/metrics'
+import {
+  locationMetrics,
+  personTotals,
+  revenueBySlot,
+  sectionParticipation,
+} from '../src/domain/metrics'
 import { eventTotals } from '../src/domain/history'
 import { buildAllSlots } from '../src/domain/slots'
 import { blankEvent } from '../src/domain/events'
@@ -127,5 +132,63 @@ describe('whose hours they were', () => {
     expect(result.rows.find((r) => r.section === 'cubs')!.baseHours).toBe(0)
     // Youth hours are unchanged: this splits where an hour was spent, not who gave it.
     expect(result.youthHours).toBe(1)
+  })
+})
+
+describe('the figures at the top of the money screen', () => {
+  const LOCATIONS = [
+    { id: 'braemar', name: 'Braemar', groupCode: '', priority: 1 },
+    { id: BASE, name: 'Scout Hall', groupCode: '', priority: 2 },
+  ] as never[]
+
+  /** $100 from a doorstep, and $40 of apples sold at the table. */
+  const APPLES: Jar = {
+    ...jar('j2', 40, ''), id: 'j2', jarNumber: null, locationId: BASE,
+    personId: null, assignmentId: null, assignmentIds: [], note: 'apples',
+  } as Jar
+
+  it('divides the per person-hour by the hours out collecting', () => {
+    const report = locationMetrics(LOCATIONS, WORKED, [...JARS, APPLES], SLOTS, BASE)
+
+    // Everything is still in the totals: the apples are revenue, the table is hours.
+    expect(report.totalRevenue).toBe(140)
+    expect(report.totalStaffedHours).toBe(2)
+    // But the rate divides by the one hour somebody was out.
+    expect(report.totalCollectingHours).toBe(1)
+  })
+
+  it('keeps base out of the ranking it would otherwise sit in', () => {
+    const report = locationMetrics(LOCATIONS, WORKED, [...JARS, APPLES], SLOTS, BASE)
+
+    expect(report.ranked.map((r) => r.locationId)).toEqual(['braemar'])
+    // Its own row still carries both, for the line that explains the difference.
+    expect(report.base?.revenue).toBe(40)
+    expect(report.base?.staffedHours).toBe(1)
+    expect(report.base?.revenuePerHour).toBeNull()
+  })
+
+  it('stops warning about base, which is doing neither thing wrong', () => {
+    /*
+      Base takes money with no hours behind it and holds hours that take no money. Both are
+      what it is for, and neither is the data-entry mistake these lists exist to catch.
+    */
+    const report = locationMetrics(LOCATIONS, WORKED, [...JARS, APPLES], SLOTS, BASE)
+    expect(report.revenueWithoutHours.map((r) => r.locationId)).not.toContain(BASE)
+    expect(report.staffedWithoutRevenue.map((r) => r.locationId)).not.toContain(BASE)
+  })
+
+  it('was the bug: base hours dragged the per person-hour down', () => {
+    const report = locationMetrics(LOCATIONS, WORKED, [...JARS, APPLES], SLOTS)
+    // No base set, so $140 is divided by two hours instead of one.
+    expect(report.totalCollectingHours).toBe(2)
+    expect(report.ranked.map((r) => r.locationId)).toContain(BASE)
+  })
+
+  it('does not stretch the clock with an hour that was only ever base', () => {
+    // An hour the table was open and the street was empty is not an hour of Apple Day to
+    // divide the takings across.
+    const onlyBase = revenueBySlot([shift('a-base', 'p-base', BASE)], [], SLOTS, BASE)
+    expect(onlyBase.clockHours).toBe(0)
+    expect(onlyBase.slotsWorked).toBe(0)
   })
 })

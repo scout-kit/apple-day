@@ -140,8 +140,11 @@ export function MoneyScreen(): ReactNode {
   }, [scope, basis, assignments.data, jars.data, allSlots])
 
   const report = useMemo(
-    () => locationMetrics(locations.data, scoped.counted, scoped.jars, scoped.slots),
-    [locations.data, scoped],
+    () =>
+      locationMetrics(
+        locations.data, scoped.counted, scoped.jars, scoped.slots, event?.baseLocationId,
+      ),
+    [locations.data, scoped, event?.baseLocationId],
   )
 
   const byHour = useMemo(
@@ -358,7 +361,12 @@ export function MoneyScreen(): ReactNode {
             {/* Two rates, because they answer different questions. Per hour is what an
                 hour of Apple Day is worth however many people it took — the one to watch
                 on the night. Per person-hour is whether an individual's time was well
-                spent, which is what the location ranking divides by. */}
+                spent, which is what the location ranking divides by.
+
+                Both divide by hours spent out collecting. The hours at base are in the
+                figure beside them and not in either rate: no money arrives because somebody
+                is manning the table, so dividing by those hours makes a well-run evening
+                look like a poor one. */}
             <Stat
               label="per hour"
               value={<Money value={byHour.revenuePerClockHour} />}
@@ -368,8 +376,10 @@ export function MoneyScreen(): ReactNode {
               value={
                 <Money
                   value={
-                    report.totalStaffedHours > 0
-                      ? Math.round((report.totalRevenue / report.totalStaffedHours) * 100) / 100
+                    report.totalCollectingHours > 0
+                      ? Math.round(
+                          (report.totalRevenue / report.totalCollectingHours) * 100,
+                        ) / 100
                       : null
                   }
                 />
@@ -377,6 +387,23 @@ export function MoneyScreen(): ReactNode {
             />
           </div>
         </div>
+        {/*
+          Said plainly, because base is in two of the four figures above and in neither
+          rate, and a reader who cannot see why they disagree will assume one is broken.
+
+          Only when there is something to say: an event with no base, or a base nobody was
+          rostered to, shows nothing.
+        */}
+        {report.base && (report.base.staffedHours > 0 || report.base.revenue > 0) && (
+          <p className="small muted" style={{ marginTop: '0.5rem' }}>
+            <strong>{report.base.name}</strong> is the base:{' '}
+            <Hours value={report.base.staffedHours} /> and{' '}
+            <Money value={report.base.revenue} /> — apples, donations and the card total land
+            there. Both are counted in the two figures above and in neither rate: nobody
+            collects at base, so its hours are not what the takings came from, and it is not
+            ranked against the shops.
+          </p>
+        )}
       </div>
 
       {basis === 'worked' &&
