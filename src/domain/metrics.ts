@@ -39,6 +39,14 @@ export interface LocationMetrics {
   revenuePerHour: number | null
   /** Competition rank over locations with a non-null ratio. Null when unranked. */
   rank: number | null
+  /**
+   * The base of operations, which is not a place anybody collects.
+   *
+   * It keeps its revenue — apples sold, a donation at the door, the Square total all land
+   * against it — and it keeps its hours. It is not ranked against shops and it earns no
+   * rate of its own, because the money there did not come from the hours there.
+   */
+  isBase: boolean
   jarCount: number
   /** Jars handed out here and not yet counted — revenue still unaccounted for. */
   jarsOut: number
@@ -59,7 +67,16 @@ export interface LocationMetricsReport {
    */
   staffedWithoutRevenue: LocationMetrics[]
   totalRevenue: number
+  /** Every person-hour, base included. The figure labelled "staffed hours". */
   totalStaffedHours: number
+  /**
+   * Of those, the ones spent out at a shop.
+   *
+   * What a per-hour rate divides by. See {@link isCollecting} for why the base ones cannot.
+   */
+  totalCollectingHours: number
+  /** The base's own row, when the event has one and anything landed against it. */
+  base: LocationMetrics | null
 }
 
 function slotIndex(slots: Slot[]): Map<string, Slot> {
@@ -75,6 +92,26 @@ function slotIndex(slots: Slot[]): Map<string, Slot> {
  */
 function staffed(a: Assignment): boolean {
   return a.status !== 'noShow' && a.status !== 'swapped'
+}
+
+/**
+ * Was this shift out at a shop, or holding the fort at base?
+ *
+ * Three or four people are on at base all day — check-in, apples, cooking, counting the
+ * money — and those are real hours somebody gave. They are not hours anybody was out
+ * collecting, though, and every rate in this app divides money by hours. Counting them in
+ * the denominator makes a good evening look like a poor one, and the more people a group
+ * puts on the table the worse its apparent rate.
+ *
+ * So the hours are still counted, and still shown. They are kept out of the division.
+ *
+ * An event with no base set has nowhere for this to be true of, and reads exactly as it did.
+ */
+export function isCollecting(
+  a: Pick<Assignment, 'locationId'>,
+  baseLocationId?: string | null,
+): boolean {
+  return !baseLocationId || a.locationId !== baseLocationId
 }
 
 /**
@@ -153,7 +190,14 @@ export interface SlotMoney {
   revenue: number
   /** Person-hours worked in this slot — two siblings for an hour is 2, not 1. */
   staffedHours: number
-  /** Revenue divided by person-hours, or null when nobody was out. */
+  /** Of those, the ones spent at base rather than out at a shop. */
+  baseHours: number
+  /**
+   * Revenue divided by the hours spent collecting, or null when nobody was out.
+   *
+   * `staffedHours` less `baseHours`, because the money came from the doorsteps and not from
+   * the table. See {@link isCollecting}.
+   */
   revenuePerHour: number | null
   jarCount: number
   /** Jars issued in this slot that have not come back, so a low figure can be read right. */
@@ -335,6 +379,7 @@ export function revenueBySlot(
   assignments: Assignment[],
   jars: Jar[],
   slots: Slot[],
+  baseLocationId?: string | null,
 ): SlotMoneyReport {
   const attributed = attributeJarRevenue(assignments, jars, slots)
 
@@ -345,10 +390,14 @@ export function revenueBySlot(
   const unattributed = attributed.unattributed
 
   const countedBySlot = countedHours(assignments.filter(staffed), slots)
+  const atBase = new Map<string, number>()
   for (const a of assignments) {
     const worked = countedBySlot.get(a.id)
     if (worked === undefined) continue
     hours.set(a.slotId, (hours.get(a.slotId) ?? 0) + worked)
+    if (!isCollecting(a, baseLocationId)) {
+      atBase.set(a.slotId, (atBase.get(a.slotId) ?? 0) + worked)
+    }
   }
 
   for (const share of attributed.shares) {
@@ -362,6 +411,8 @@ export function revenueBySlot(
   const rows: SlotMoney[] = slots
     .map((slot) => {
       const staffedHours = round2(hours.get(slot.id) ?? 0)
+      const baseHours = round2(atBase.get(slot.id) ?? 0)
+      const collecting = round2(staffedHours - baseHours)
       const rev = round2(revenue.get(slot.id) ?? 0)
       return {
         slotId: slot.id,
@@ -370,9 +421,14 @@ export function revenueBySlot(
         startMin: slot.startMin,
         revenue: rev,
         staffedHours,
-        // Null rather than falling back to the raw total — the spreadsheet's mistake, which
-        // put a jar with no rostered hours in fourth place.
-        revenuePerHour: staffedHours > 0 ? round2(rev / staffedHours) : null,
+        baseHours,
+        /*
+          Divided by the hours out collecting, not by every hour worked. Null rather than
+          falling back to the raw total — the spreadsheet's mistake, which put a jar with no
+          rostered hours in fourth place — and null too for an hour that was all base, where
+          money came in against nobody who was out.
+        */
+        revenuePerHour: collecting > 0 ? round2(rev / collecting) : null,
         jarCount: jarCounts.get(slot.id) ?? 0,
         jarsOut: outCounts.get(slot.id) ?? 0,
       }
@@ -384,9 +440,17 @@ export function revenueBySlot(
     ? null
     : earning.reduce((top, r) => (r.revenue > top.revenue ? r : top))
 
-  // Only the slots somebody worked: an hour nobody was rostered for is not an hour the
-  // event was running, and counting it would report a rate for time nobody was out.
-  const worked = slots.filter((slot) => (hours.get(slot.id) ?? 0) > 0)
+  /*
+    Only the slots somebody was out for: an hour nobody was rostered for is not an hour the
+    event was running, and counting it would report a rate for time nobody was out.
+
+    Out, specifically — an hour staffed only at base is an hour the table was open and the
+    street was empty, and adding it to the clock stretches the day the takings are divided
+    across.
+  */
+  const worked = slots.filter(
+    (slot) => (hours.get(slot.id) ?? 0) - (atBase.get(slot.id) ?? 0) > 0,
+  )
   const clockMinutes = DAYS.reduce((total, day) => {
     const spans = worked
       .filter((slot) => slot.day === day)
@@ -436,6 +500,7 @@ export function locationMetrics(
   assignments: Assignment[],
   jars: Jar[],
   slots: Slot[],
+  baseLocationId?: string | null,
 ): LocationMetricsReport {
   const hours = staffedHoursByLocation(assignments, slots)
   const revenue = revenueByLocation(jars)
@@ -461,6 +526,7 @@ export function locationMetrics(
     const loc = byId.get(id)
     const staffedHours = round2(hours.get(id) ?? 0)
     const rev = round2(revenue.get(id) ?? 0)
+    const isBase = Boolean(baseLocationId) && id === baseLocationId
     return {
       locationId: id,
       name: loc?.name ?? `(unknown location: ${id})`,
@@ -468,8 +534,14 @@ export function locationMetrics(
       priority: loc?.priority ?? Number.MAX_SAFE_INTEGER,
       revenue: rev,
       staffedHours,
-      revenuePerHour: staffedHours > 0 ? round2(rev / staffedHours) : null,
+      /*
+        No rate for base. Apples sold and a tap at the table are real money, and the hours
+        there are real hours, but the one did not come from the other — a rate over them is
+        a number with no meaning that would sit in a ranking of shops.
+      */
+      revenuePerHour: isBase || staffedHours === 0 ? null : round2(rev / staffedHours),
       rank: null,
+      isBase,
       jarCount: jarCounts.get(id) ?? 0,
       jarsOut: outstanding.get(id) ?? 0,
     }
@@ -492,16 +564,27 @@ export function locationMetrics(
     }
   })
 
+  const base = rows.find((r) => r.isBase) ?? null
+
   return {
     ranked: rankable,
+    /*
+      Base is kept out of both warning lists. It takes money with no hours behind it and
+      holds hours that take no money — which is what it is for, and neither is the
+      data-entry mistake these lists exist to catch.
+    */
     revenueWithoutHours: rows
-      .filter((r) => r.revenuePerHour === null && r.revenue > 0)
+      .filter((r) => !r.isBase && r.revenuePerHour === null && r.revenue > 0)
       .sort((a, b) => b.revenue - a.revenue),
     staffedWithoutRevenue: rows
-      .filter((r) => r.staffedHours > 0 && r.revenue === 0)
+      .filter((r) => !r.isBase && r.staffedHours > 0 && r.revenue === 0)
       .sort((a, b) => b.staffedHours - a.staffedHours),
     totalRevenue: round2(rows.reduce((sum, r) => sum + r.revenue, 0)),
     totalStaffedHours: round2(rows.reduce((sum, r) => sum + r.staffedHours, 0)),
+    totalCollectingHours: round2(
+      rows.filter((r) => !r.isBase).reduce((sum, r) => sum + r.staffedHours, 0),
+    ),
+    base,
   }
 }
 
@@ -633,7 +716,10 @@ export function locationHourGrid(
 export interface SectionParticipation {
   section: Section
   people: number
+  /** Every hour the section gave, base included. */
   hours: number
+  /** Of those, the ones at base rather than out at a shop. */
+  baseHours: number
   /** Share of total staffed hours, 0–1. */
   share: number
 }
@@ -652,10 +738,18 @@ export function sectionParticipation(
   slots: Slot[],
   /** The group's sections. Defaults to the built-in set when none are configured. */
   sections: SectionDef[] = DEFAULT_SECTIONS,
-): { rows: SectionParticipation[]; totalHours: number; youthHours: number } {
+  baseLocationId?: string | null,
+): {
+  rows: SectionParticipation[]
+  totalHours: number
+  youthHours: number
+  /** Of `totalHours`, the ones at base. Shown so the two figures still add up on screen. */
+  baseHours: number
+} {
   const personSection = new Map(people.map((p) => [p.id, p.section]))
 
   const hours = new Map<Section, number>()
+  const baseBySection = new Map<Section, number>()
   const seen = new Map<Section, Set<string>>()
 
   const counted = countedHours(assignments.filter(staffed), slots)
@@ -665,6 +759,9 @@ export function sectionParticipation(
     if (worked === undefined || !section) continue
 
     hours.set(section, (hours.get(section) ?? 0) + worked)
+    if (!isCollecting(a, baseLocationId)) {
+      baseBySection.set(section, (baseBySection.get(section) ?? 0) + worked)
+    }
     if (!seen.has(section)) seen.set(section, new Set())
     seen.get(section)!.add(a.personId)
   }
@@ -689,6 +786,7 @@ export function sectionParticipation(
       section: id,
       people: seen.get(id)?.size ?? 0,
       hours: h,
+      baseHours: round2(baseBySection.get(id) ?? 0),
       share: totalHours > 0 ? h / totalHours : 0,
     }
   })
@@ -698,13 +796,21 @@ export function sectionParticipation(
     rows.filter((r) => youthIds.has(r.section)).reduce((sum, r) => sum + r.hours, 0),
   )
 
-  return { rows, totalHours: round2(totalHours), youthHours }
+  return {
+    rows,
+    totalHours: round2(totalHours),
+    youthHours,
+    baseHours: round2(rows.reduce((sum, r) => sum + r.baseHours, 0)),
+  }
 }
 
 export interface PersonTotals {
   personId: string
   revenue: number
+  /** Every hour they gave, base included. */
   hours: number
+  /** Of those, the ones at base rather than out at a shop. */
+  baseHours: number
   jarCount: number
 }
 
@@ -713,13 +819,14 @@ export function personTotals(
   assignments: Assignment[],
   jars: Jar[],
   slots: Slot[],
+  baseLocationId?: string | null,
 ): PersonTotals[] {
   const acc = new Map<string, PersonTotals>()
 
   const ensure = (personId: string): PersonTotals => {
     let row = acc.get(personId)
     if (!row) {
-      row = { personId, revenue: 0, hours: 0, jarCount: 0 }
+      row = { personId, revenue: 0, hours: 0, baseHours: 0, jarCount: 0 }
       acc.set(personId, row)
     }
     return row
@@ -729,7 +836,9 @@ export function personTotals(
   for (const a of assignments) {
     const worked = counted.get(a.id)
     if (worked === undefined) continue
-    ensure(a.personId).hours += worked
+    const row = ensure(a.personId)
+    row.hours += worked
+    if (!isCollecting(a, baseLocationId)) row.baseHours += worked
   }
 
   for (const jar of jars) {
@@ -740,7 +849,12 @@ export function personTotals(
   }
 
   return [...acc.values()]
-    .map((r) => ({ ...r, revenue: round2(r.revenue), hours: round2(r.hours) }))
+    .map((r) => ({
+      ...r,
+      revenue: round2(r.revenue),
+      hours: round2(r.hours),
+      baseHours: round2(r.baseHours),
+    }))
     .sort((a, b) => b.revenue - a.revenue)
 }
 

@@ -1,4 +1,4 @@
-import { attributeJarRevenue, splitByWeight } from './metrics'
+import { attributeJarRevenue, isCollecting, splitByWeight } from './metrics'
 import { countedWindows } from './countedHours'
 import { DAY_SHORT, formatTime } from './slots'
 import { DAYS, isCounted, wasWorked } from './types'
@@ -22,8 +22,16 @@ export interface EventTotals {
   /** Sort key: the event's own start date, falling back to its year. */
   startedAt: string
   revenue: number
-  /** Person-hours worked. Two siblings for an hour is 2. */
+  /** Person-hours worked. Two siblings for an hour is 2. Base included. */
   staffedHours: number
+  /**
+   * Of those, the ones spent at base — check-in, apples, cooking, counting the money.
+   *
+   * Real hours somebody gave, and reported as such. Kept out of the rate below, because no
+   * money came in against them.
+   */
+  baseHours: number
+  /** Revenue divided by the hours spent out collecting. */
   revenuePerHour: number | null
   /** Distinct people who actually worked a shift. */
   volunteers: number
@@ -49,13 +57,16 @@ export function eventTotals(data: EventData): EventTotals {
   const worked = assignments.filter(wasWorked)
 
   let staffedHours = 0
+  let baseHours = 0
   const volunteers = new Set<string>()
   const counted = countedWindows(worked, slots)
   for (const a of worked) {
     const slot = bySlot.get(a.slotId)
     if (!slot) continue
     const window = counted.get(a.id)
-    staffedHours += window ? (window.to - window.from) / 60 : 0
+    const hours = window ? (window.to - window.from) / 60 : 0
+    staffedHours += hours
+    if (!isCollecting(a, event.baseLocationId)) baseHours += hours
     // A shift whose hours were all covered by the one before it is still somebody's turn
     // out, so they count as a volunteer either way.
     volunteers.add(a.personId)
@@ -78,6 +89,15 @@ export function eventTotals(data: EventData): EventTotals {
   }
 
   staffedHours = round2(staffedHours)
+  baseHours = round2(baseHours)
+  /*
+    The hours the money actually came from.
+
+    A group that puts four people on the table all day adds a working day to the denominator
+    and nothing to the numerator, so its rate falls the better it is staffed. That is the
+    opposite of what the figure is read for.
+  */
+  const collecting = round2(staffedHours - baseHours)
   return {
     eventId: event.id,
     name: event.name,
@@ -85,8 +105,9 @@ export function eventTotals(data: EventData): EventTotals {
     startedAt: event.fridayDate || String(event.year || ''),
     revenue,
     staffedHours,
+    baseHours,
     // Null rather than a fallback to the raw total, as everywhere else.
-    revenuePerHour: staffedHours > 0 ? round2(revenue / staffedHours) : null,
+    revenuePerHour: collecting > 0 ? round2(revenue / collecting) : null,
     volunteers: volunteers.size,
     earningLocations: earning.size,
   }
@@ -276,7 +297,16 @@ export function locationTrends(
     if (!data) continue
     const bySlot = new Map(data.slots.map((s) => [s.id, s]))
 
-    const worked = data.assignments.filter(wasWorked)
+    /*
+      Base is left out of this table entirely.
+
+      It is a comparison of places to send people, and base is not one of them: it has hours
+      every year and takes nothing, so a row for it is a permanent $0/hr at the bottom of a
+      ranking read for where to go next year.
+    */
+    const worked = data.assignments
+      .filter(wasWorked)
+      .filter((a) => isCollecting(a, data.event.baseLocationId))
     const counted = countedWindows(worked, data.slots)
     for (const a of worked) {
       const slot = bySlot.get(a.slotId)
@@ -421,7 +451,14 @@ export function hourlyTrends(
       the quarter of an hour a back-to-back pair share lands in one of them and the column
       totals still add up to the figure on every other screen.
     */
-    const workedHere = data.assignments.filter(wasWorked)
+    /*
+      Collecting hours only, because the measure this feeds is money per hour. Four people
+      at base from nine till three would otherwise add six hours to every column they touch
+      and nothing to the takings beside them.
+    */
+    const workedHere = data.assignments
+      .filter(wasWorked)
+      .filter((a) => isCollecting(a, data.event.baseLocationId))
     const countedHere = countedWindows(workedHere, data.slots)
     for (const a of workedHere) {
       if (wanted !== null && !wanted.has(a.locationId)) continue

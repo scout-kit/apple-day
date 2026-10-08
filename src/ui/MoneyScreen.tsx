@@ -140,13 +140,16 @@ export function MoneyScreen(): ReactNode {
   }, [scope, basis, assignments.data, jars.data, allSlots])
 
   const report = useMemo(
-    () => locationMetrics(locations.data, scoped.counted, scoped.jars, scoped.slots),
-    [locations.data, scoped],
+    () =>
+      locationMetrics(
+        locations.data, scoped.counted, scoped.jars, scoped.slots, event?.baseLocationId,
+      ),
+    [locations.data, scoped, event?.baseLocationId],
   )
 
   const byHour = useMemo(
-    () => revenueBySlot(scoped.counted, scoped.jars, scoped.slots),
-    [scoped],
+    () => revenueBySlot(scoped.counted, scoped.jars, scoped.slots, event?.baseLocationId),
+    [scoped, event?.baseLocationId],
   )
 
   const grid = useMemo(
@@ -180,13 +183,16 @@ export function MoneyScreen(): ReactNode {
   )
 
   const sections = useMemo(
-    () => sectionParticipation(people.data, scoped.counted, scoped.slots, sectionDefs),
-    [people.data, scoped, sectionDefs],
+    () =>
+      sectionParticipation(
+        people.data, scoped.counted, scoped.slots, sectionDefs, event?.baseLocationId,
+      ),
+    [people.data, scoped, sectionDefs, event?.baseLocationId],
   )
 
   const perPerson = useMemo(
-    () => personTotals(scoped.counted, scoped.jars, scoped.slots),
-    [scoped],
+    () => personTotals(scoped.counted, scoped.jars, scoped.slots, event?.baseLocationId),
+    [scoped, event?.baseLocationId],
   )
 
   /**
@@ -355,7 +361,12 @@ export function MoneyScreen(): ReactNode {
             {/* Two rates, because they answer different questions. Per hour is what an
                 hour of Apple Day is worth however many people it took — the one to watch
                 on the night. Per person-hour is whether an individual's time was well
-                spent, which is what the location ranking divides by. */}
+                spent, which is what the location ranking divides by.
+
+                Both divide by hours spent out collecting. The hours at base are in the
+                figure beside them and not in either rate: no money arrives because somebody
+                is manning the table, so dividing by those hours makes a well-run evening
+                look like a poor one. */}
             <Stat
               label="per hour"
               value={<Money value={byHour.revenuePerClockHour} />}
@@ -365,8 +376,10 @@ export function MoneyScreen(): ReactNode {
               value={
                 <Money
                   value={
-                    report.totalStaffedHours > 0
-                      ? Math.round((report.totalRevenue / report.totalStaffedHours) * 100) / 100
+                    report.totalCollectingHours > 0
+                      ? Math.round(
+                          (report.totalRevenue / report.totalCollectingHours) * 100,
+                        ) / 100
                       : null
                   }
                 />
@@ -374,6 +387,26 @@ export function MoneyScreen(): ReactNode {
             />
           </div>
         </div>
+        {/*
+          Said plainly, because base is in two of the four figures above and in neither
+          rate, and a reader who cannot see why they disagree will assume one is broken.
+
+          Only when there is something to say: an event with no base, or a base nobody was
+          rostered to, shows nothing.
+        */}
+        {report.base && (report.base.staffedHours > 0 || report.base.revenue > 0) && (
+          <p className="small muted" style={{ marginTop: '0.5rem' }}>
+            {/* The unit spelled out. `Hours` prints a bare number, which is right under a
+                column headed "Hours" and reads as nothing at all mid-sentence. */}
+            <strong>{report.base.name}</strong> is the base:{' '}
+            <Hours value={report.base.staffedHours} />{' '}
+            {report.base.staffedHours === 1 ? 'person-hour' : 'person-hours'} staffed, and{' '}
+            <Money value={report.base.revenue} /> taken — apples, donations and the card
+            total land there. Both are counted in the two figures above and in neither rate:
+            nobody collects at base, so its hours are not what the takings came from, and it
+            is not ranked against the shops.
+          </p>
+        )}
       </div>
 
       {basis === 'worked' &&
@@ -667,8 +700,15 @@ export function MoneyScreen(): ReactNode {
         </div>
         <p className="small muted" style={{ marginTop: 0 }}>
           Which hours are worth being out — the breakdown behind the per-hour figure above,
-          which is {byHour.slotsWorked === 0 ? 'no hours' : <Hours value={byHour.clockHours} />}
-          {' '}of Apple Day so far. Revenue reaches an hour through the shift its jar went out
+          which is{' '}
+          {byHour.slotsWorked === 0 ? (
+            'no hours'
+          ) : (
+            <>
+              <Hours value={byHour.clockHours} /> {byHour.clockHours === 1 ? 'hour' : 'hours'}
+            </>
+          )}{' '}
+          of Apple Day so far. Revenue reaches an hour through the shift its jar went out
           on, so money entered by hand against a location has no hour and is listed below the
           table.
         </p>
@@ -871,6 +911,17 @@ export function MoneyScreen(): ReactNode {
           Youth hours: <Hours value={sections.youthHours} /> of{' '}
           <Hours value={sections.totalHours} /> total. Scouters are counted separately, not
           folded in with Scouts.
+          {sections.baseHours > 0 && (
+            <>
+              {' '}
+              Of that total, <Hours value={sections.baseHours} />{' '}
+              {sections.baseHours === 1 ? 'person-hour was' : 'person-hours were'} at base —
+              check-in, apples, cooking, counting the money. Real hours, and still counted
+              here, but left out of every per-hour figure on this screen: no money comes in
+              against them, so dividing by them makes a well-staffed evening look like a
+              poor one.
+            </>
+          )}
         </p>
       </div>
       <div className="card">
@@ -926,6 +977,14 @@ export function MoneyScreen(): ReactNode {
                       </td>
                       <td className="right">
                         <Hours value={row.hours} />
+                        {/* Said on the row rather than only in the total, because this is
+                            the screen where somebody asks why a name with hours against it
+                            has no money. */}
+                        {row.baseHours > 0 && (
+                          <div className="small muted">
+                            <Hours value={row.baseHours} /> h at base
+                          </div>
+                        )}
                       </td>
                     </tr>
                   )
