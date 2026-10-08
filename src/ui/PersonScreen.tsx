@@ -285,9 +285,9 @@ export function PersonScreen(): ReactNode {
                         <span className="pill tone-red">no-show</span>
                       )}
                       {state.place === 'out' && (
-                        <span className="pill tone-green">out collecting</span>
+                        <span className="pill tone-amber">out collecting</span>
                       )}
-                      {state.place === 'back' && <span className="pill tone-blue">back</span>}
+                      {state.place === 'back' && <span className="pill tone-green">back</span>}
                       {state.attendance === 'expected' && state.place === 'atTable' && (
                         <span className="muted">expected</span>
                       )}

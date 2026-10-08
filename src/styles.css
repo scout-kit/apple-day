@@ -474,7 +474,12 @@ tbody tr:hover { background: var(--surface-2); }
 .chip .x { flex: none; border: 0; background: transparent; padding: 0 0.25rem; color: var(--muted);
   line-height: 1; font-size: 0.9rem; }
 .chip .x:hover { color: var(--bad); }
-.chip.checkedIn { border-color: var(--good); background: var(--good-soft); }
+/*
+ * Amber, not green: checked in is the middle of the story, not the end of it. Green is
+ * kept for the shift that has come back, so a board scanned from across the table says
+ * who is still out rather than who has arrived.
+ */
+.chip.checkedIn { border-color: var(--warn); background: var(--warn-soft); }
 .chip.noShow { border-color: var(--bad); background: var(--bad-soft);
   text-decoration: line-through; }
 .cell-add { width: 100%; font-size: 0.8rem; padding: 0.15rem; }

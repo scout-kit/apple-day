@@ -535,8 +535,16 @@ describe('out collecting without a jar', () => {
     await userEvent.click(buttonFor('Here'))
     expect(setAssignmentStatusMany).toHaveBeenCalledWith('2026', ['a1'], 'confirmed')
     expect(setWhereaboutsMany).not.toHaveBeenCalled()
-    // Still shown as back, because it is still true. (The pill, not the button.)
-    expect(document.querySelector('.pill.tone-blue')!.textContent).toBe('back')
+    /*
+      Still shown as back, because it is still true — and in green, which is the tone
+      kept for the end of the run.
+
+      Pinned by text *and* `.pill`, because neither alone is unique on this screen:
+      `.pill.tone-green` also matches a section pill whose colour is configuration (Cubs,
+      in this fixture), and the bare text also matches the "back" stat label above the
+      table and the "Back" button beside it.
+    */
+    expect(screen.getByText('back', { selector: '.pill' }).className).toBe('pill tone-green')
   })
 
   it('offers no attendance button while somebody who has arrived is out', async () => {
