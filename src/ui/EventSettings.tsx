@@ -1,14 +1,17 @@
+import { useMemo } from 'react'
 import type { ReactNode } from 'react'
 import {
   activeDays,
+  buildAllSlots,
   buildSlots,
   DAY_LABEL,
   minutesToTimeValue,
   stepMinutes,
   timeValueToMinutes,
 } from '../domain/slots'
+import { shapeChangeImpact } from '../domain/shapeChange'
 import { DAYS } from '../domain/types'
-import type { AppleDayEvent, Location } from '../domain/types'
+import type { AppleDayEvent, Assignment, Location } from '../domain/types'
 import { sanitiseEventLink } from '../domain/eventLinks'
 import { blankContact, isReachable } from '../domain/support'
 import type { SupportContact } from '../domain/support'
@@ -45,6 +48,16 @@ export interface EventSettingsProps {
   /** Why the typed link cannot be used, or null. */
   linkProblem: string | null
   mode: 'new' | 'edit'
+  /**
+   * The event as it is saved, and the shifts rostered against it — together, what the
+   * warning about breaking the board is worked out from.
+   *
+   * Both optional: a new event has no shifts to break, and the shifts that are loaded
+   * belong to the year currently selected, so editing a different year from the list gets
+   * no warning rather than a wrong one.
+   */
+  saved?: AppleDayEvent | null | undefined
+  assignments?: Assignment[] | undefined
 }
 
 export function EventSettings({
@@ -54,7 +67,26 @@ export function EventSettings({
   eventId,
   linkProblem,
   mode,
+  saved = null,
+  assignments,
 }: EventSettingsProps): ReactNode {
+  /*
+    What this edit would knock off the board.
+
+    Worked out against the saved event rather than against the draft's own previous state,
+    so the warning answers "what happens if I press save" however many dropdowns have been
+    touched on the way here.
+  */
+  const impact = useMemo(() => {
+    if (!saved || !assignments || assignments.length === 0) return null
+    const result = shapeChangeImpact(
+      buildAllSlots(saved.schedule, saved),
+      buildAllSlots(draft.schedule, draft),
+      assignments,
+    )
+    return result.orphaned > 0 ? result : null
+  }, [saved, assignments, draft])
+
   const setContact = (index: number, contact: SupportContact): void => {
     onChange({
       ...draft,
@@ -211,6 +243,46 @@ export function EventSettings({
             the same time.
           </div>
         )}
+
+        <div className="small muted" style={{ marginTop: '0.6rem' }}>
+          How early people are asked to turn up. This is added in front of the shift, not
+          taken out of it: shifts keep their length and their spacing, so hour-long ones
+          still run 5–6, 6–7, 7–8. A pass, a reminder and the signup form name the whole
+          block, because that is when to be there; the board, the money screens and the
+          hours each person is credited with count the shift.
+        </div>
+        <div className="row" style={{ marginTop: '0.35rem' }}>
+          <label style={{ flex: '0 1 9rem' }}>
+            Check-in lead
+            <select
+              value={draft.checkInMinutes}
+              onChange={(e) =>
+                onChange({ ...draft, checkInMinutes: Number(e.target.value) })
+              }
+            >
+              {[0, 5, 10, 15, 20, 30].map((m) => (
+                <option key={m} value={m}>
+                  {m === 0 ? 'none' : `${m} min`}
+                </option>
+              ))}
+            </select>
+          </label>
+          {draft.checkInMinutes > 0 && (
+            <span className="small muted">
+              {draft.checkInMinutes + draft.shiftMinutes} min block, still{' '}
+              {stepMinutes(draft)} min apart
+            </span>
+          )}
+        </div>
+        {draft.checkInMinutes > 0 && activeDays(draft.schedule)[0] && (() => {
+          const first = buildSlots(activeDays(draft.schedule)[0]!, draft.schedule, draft)[0]
+          return first ? (
+            <p className="small muted" style={{ marginTop: '0.35rem' }}>
+              First one: asked for as <strong>{first.arriveLabel}</strong>, worked and
+              counted as <strong>{first.label}</strong>.
+            </p>
+          ) : null
+        })()}
 
         </>
         )}
@@ -466,6 +538,42 @@ export function EventSettings({
           does.
         </p>
       </div>
+
+      {/*
+        Last, because it is about everything above it: the shift length, the overlap, the
+        check-in and every day's opening time all move the slot ids, and any of them can
+        take shifts off the board.
+      */}
+      {impact && (
+        <div className="note error" style={{ marginTop: '0.75rem' }}>
+          <strong>
+            Saving this removes {impact.orphaned} rostered shift
+            {impact.orphaned === 1 ? '' : 's'} from the schedule.
+          </strong>
+          <p className="small" style={{ margin: '0.35rem 0' }}>
+            Shifts are stored against the time they start, so changing the shape renames the
+            slots. These no longer exist afterwards, and the shifts on them stop appearing on
+            the board, in anybody's hours and in the takings their jars are counted through:
+          </p>
+          <ul className="small" style={{ margin: '0.35rem 0', paddingLeft: '1.1rem' }}>
+            {impact.lost.map((slot) => (
+              <li key={slot.slotId}>
+                <strong>{slot.label}</strong> ({slot.slotId}) —{' '}
+                {slot.shifts === 0
+                  ? 'nobody on it'
+                  : `${slot.shifts} shift${slot.shifts === 1 ? '' : 's'}, ${
+                      slot.personIds.length
+                    } ${slot.personIds.length === 1 ? 'person' : 'people'}`}
+              </li>
+            ))}
+          </ul>
+          <p className="small" style={{ margin: '0.35rem 0 0' }}>
+            Nothing is deleted from the database. The shifts become orphaned records, and the
+            only places they appear afterwards are the orphan list at the bottom of the Money
+            screen — which can delete them — and this warning, if you set the shape back.
+          </p>
+        </div>
+      )}
     </>
   )
 }

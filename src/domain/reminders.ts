@@ -219,7 +219,9 @@ export function buildAudience(
                 assignmentId: a.id,
                 slotId: slot.id,
                 day: DAY_LABEL[slot.day],
-                label: slot.label,
+                // The whole block: a reminder is the message that tells somebody when to
+                // be there, so it names the time they have to be there.
+                label: slot.arriveLabel,
                 /*
                   Keyed on the day as well as the shop, because the times are minutes from
                   midnight: without it, five o'clock on the Friday and five o'clock on the

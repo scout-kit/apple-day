@@ -66,14 +66,18 @@ const DEFAULTS: Required<SignupFormOptions> = {
 }
 
 /**
- * The shift labels for one day, exactly as the schedule shows them.
+ * The shift labels for one day, as the people answering are asked to do them.
  *
- * The same strings the app writes elsewhere, so an answer comes back as a shift this event
- * really has. Anything else — a tidied-up wording, a rounded time — is an answer the
- * importer has to guess at.
+ * The same strings the app writes on a pass and in a reminder, so an answer comes back as a
+ * shift this event really has. Anything else — a tidied-up wording, a rounded time — is an
+ * answer the importer has to guess at.
+ *
+ * The arrival wording, so somebody picking "4:45 PM – 6:00 PM" off the form is agreeing to
+ * the time they will actually be asked for. `parseSlotLabel` reads these back onto the five
+ * o'clock shift; see the note there about the day's window opening early by the lead.
  */
 export function shiftOptions(event: AppleDayEvent, day: Day): string[] {
-  return buildSlots(day, event.schedule, event).map((slot) => slot.label)
+  return buildSlots(day, event.schedule, event).map((slot) => slot.arriveLabel)
 }
 
 const MONTHS = [

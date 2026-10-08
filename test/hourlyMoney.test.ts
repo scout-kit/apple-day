@@ -15,7 +15,9 @@ const slot = (id: string, day: 'fri' | 'sat', startMin: number): Slot => ({
   day,
   startMin,
   endMin: startMin + 60,
+  workStartMin: startMin,
   label: `${Math.floor(startMin / 60)}:00`,
+  arriveLabel: `${Math.floor(startMin / 60)}:00`,
 })
 
 const SLOTS: Slot[] = [
@@ -248,8 +250,8 @@ describe('what an hour of Apple Day is worth', () => {
     // 60-minute shifts starting every 45. Two of them cover an hour and three quarters,
     // not two hours.
     const overlapping: Slot[] = [
-      { id: 'fri-a', day: 'fri', startMin: 17 * 60, endMin: 18 * 60, label: '5:00' },
-      { id: 'fri-b', day: 'fri', startMin: 17 * 60 + 45, endMin: 18 * 60 + 45, label: '5:45' },
+      { id: 'fri-a', day: 'fri', startMin: 17 * 60, endMin: 18 * 60, workStartMin: 17 * 60, arriveLabel: '5:00', label: '5:00' },
+      { id: 'fri-b', day: 'fri', startMin: 17 * 60 + 45, endMin: 18 * 60 + 45, workStartMin: 17 * 60 + 45, arriveLabel: '5:45', label: '5:45' },
     ]
     const report = revenueBySlot(
       [shift('a1', 'fri-a', 'p1'), shift('a2', 'fri-b', 'p2')],
@@ -262,8 +264,8 @@ describe('what an hour of Apple Day is worth', () => {
 
   it('does not merge the same time on two different days', () => {
     const twoDays: Slot[] = [
-      { id: 'fri-1700', day: 'fri', startMin: 17 * 60, endMin: 18 * 60, label: '5:00' },
-      { id: 'sat-1700', day: 'sat', startMin: 17 * 60, endMin: 18 * 60, label: '5:00' },
+      { id: 'fri-1700', day: 'fri', startMin: 17 * 60, endMin: 18 * 60, workStartMin: 17 * 60, arriveLabel: '5:00', label: '5:00' },
+      { id: 'sat-1700', day: 'sat', startMin: 17 * 60, endMin: 18 * 60, workStartMin: 17 * 60, arriveLabel: '5:00', label: '5:00' },
     ]
     const report = revenueBySlot(
       [shift('a1', 'fri-1700', 'p1'), shift('a2', 'sat-1700', 'p2')],

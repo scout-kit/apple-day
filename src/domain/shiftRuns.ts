@@ -17,6 +17,13 @@ export interface RunnableShift {
   /** Null when the shift's slot is unknown — a run of one, since it cannot be placed. */
   startMin: number | null
   endMin: number | null
+  /**
+   * When the shift proper starts, if the event asks people to check in early.
+   *
+   * Optional, and absent means the block's own start — which is what an event without a
+   * check-in wants, and what a pass published before one existed carries.
+   */
+  workStartMin?: number | null
 }
 
 export interface ShiftRun<T> {
@@ -25,6 +32,8 @@ export interface ShiftRun<T> {
   /** The whole stretch: the first start and the last end. */
   startMin: number | null
   endMin: number | null
+  /** Where the first shift of the stretch actually begins, check-in aside. */
+  workStartMin: number | null
 }
 
 /**
@@ -59,6 +68,7 @@ export function groupIntoRuns<T extends RunnableShift>(shifts: T[]): ShiftRun<T>
         locationId: shift.locationId,
         startMin: shift.startMin,
         endMin: shift.endMin,
+        workStartMin: shift.workStartMin ?? shift.startMin,
       })
     }
   }
@@ -71,6 +81,7 @@ export function groupIntoRuns<T extends RunnableShift>(shifts: T[]): ShiftRun<T>
       locationId: shift.locationId,
       startMin: null,
       endMin: null,
+      workStartMin: null,
     })
   }
 
@@ -94,6 +105,26 @@ export function runSpan(
 ): string {
   if (run.startMin === null || run.endMin === null) return fallback
   return formatSlotLabel(run.startMin, run.endMin)
+}
+
+/**
+ * A run as it is worked: "5:00 PM – 7:00 PM".
+ *
+ * The check-in in front of the first shift is time somebody gave, but it is not an hour on
+ * a doorstep, and the screens an organizer reads are asking about the hours. The board's own
+ * columns already say 5–6 and 6–7, so a person's page listing the same stretch as 4:45–7:00
+ * disagrees with the grid beside it.
+ *
+ * {@link runSpan} is the other one, and the one a volunteer sees: a pass and a reminder name
+ * the block, because the time that matters to somebody turning up is the time to turn up.
+ */
+export function runWorkSpan(
+  run: Pick<ShiftRun<RunnableShift>, 'startMin' | 'endMin' | 'workStartMin'>,
+  fallback: string,
+): string {
+  const from = run.workStartMin ?? run.startMin
+  if (from === null || run.endMin === null) return fallback
+  return formatSlotLabel(from, run.endMin)
 }
 
 export function runTouches(

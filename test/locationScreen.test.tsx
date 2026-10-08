@@ -19,8 +19,8 @@ import type { Assignment, Jar, Location, Person, ScheduledLocation, Slot } from 
  */
 
 const SLOTS: Slot[] = [
-  { id: 'fri-1700', day: 'fri', startMin: 17 * 60, endMin: 18 * 60, label: '5:00 PM' },
-  { id: 'fri-1800', day: 'fri', startMin: 18 * 60, endMin: 19 * 60, label: '6:00 PM' },
+  { id: 'fri-1700', day: 'fri', startMin: 17 * 60, endMin: 18 * 60, workStartMin: 17 * 60, arriveLabel: '5:00 PM', label: '5:00 PM' },
+  { id: 'fri-1800', day: 'fri', startMin: 18 * 60, endMin: 19 * 60, workStartMin: 18 * 60, arriveLabel: '6:00 PM', label: '6:00 PM' },
 ]
 
 const braemar: Location = {
@@ -127,7 +127,7 @@ const twoYears = () => {
     fridayDate: `${year}-10-02`, saturdayDate: `${year}-10-03`,
     support: [], supportNote: '', arrivalNote: '', baseLocationId: null, finishedAt: null,
     status: 'closed' as const, shiftMode: 'shifts' as const, shiftMinutes: 60,
-    overlapMinutes: 0, schedule: { fri: { startMin: 17 * 60, endMin: 19 * 60 } },
+    overlapMinutes: 0, checkInMinutes: 0, schedule: { fri: { startMin: 17 * 60, endMin: 19 * 60 } },
   })
   return [
     {

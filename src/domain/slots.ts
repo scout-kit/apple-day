@@ -21,28 +21,49 @@ export const DEFAULT_SCHEDULE: Partial<Record<Day, SchedulingWindow>> = {
 }
 
 /**
- * How long a shift is, and how much it overlaps the one before it.
+ * How long a shift is, how much it overlaps the one before it, and how early people come.
  *
  * Overlap is a handover: the next pair arrive while the current ones are still there. It
  * shortens the gap between shift starts without shortening a shift, so 60 minute shifts
  * overlapping by 15 start 45 minutes apart.
+ *
+ * The check-in is a different thing and does not shorten that gap. It is time added to the
+ * front of each shift, so the block somebody is asked for is longer while the shift itself,
+ * and the spacing between shifts, are exactly what they say they are.
  */
 export interface SlotShape {
   /** `wholeDay` collapses each day to one slot spanning its whole window. */
   shiftMode?: 'shifts' | 'wholeDay'
   shiftMinutes: number
   overlapMinutes: number
+  /**
+   * How long before a shift starts people are asked to turn up, added in front of it.
+   *
+   * Optional, and absent means none — an event that never asked for an early check-in is
+   * unaffected by any of this.
+   */
+  checkInMinutes?: number
 }
 
 export const DEFAULT_SHAPE: SlotShape = {
   shiftMode: 'shifts',
   shiftMinutes: 60,
   overlapMinutes: 0,
+  checkInMinutes: 0,
 }
 
 /** Minutes between one shift starting and the next. Never less than 5. */
 export function stepMinutes(shape: SlotShape): number {
   return Math.max(5, shape.shiftMinutes - shape.overlapMinutes)
+}
+
+/**
+ * The check-in lead, as a number whatever the shape left out.
+ *
+ * Negative is meaningless and would push arrival *after* the start, so it floors at zero.
+ */
+export function leadMinutes(shape: SlotShape): number {
+  return Math.max(0, Math.round(shape.checkInMinutes ?? 0))
 }
 
 /** How early and late a location's opening hours may be set. */
@@ -116,49 +137,59 @@ export function buildSlots(
   if (!window) return []
 
   const { startMin, endMin } = window
+  const lead = leadMinutes(shape)
 
   // One slot for the whole day: people come for the duration, not for an hour of it.
   if (shape.shiftMode === 'wholeDay') {
     if (endMin <= startMin) return []
-    return [
-      {
-        id: slotId(day, startMin),
-        day,
-        startMin,
-        endMin,
-        label: formatSlotLabel(startMin, endMin),
-      },
-    ]
+    return [makeSlot(day, startMin, endMin, lead)]
   }
 
-  const length = Math.max(5, shape.shiftMinutes)
+  /*
+    The block is the check-in plus the shift, and the step is the shift alone.
+
+    So an hour-long shift with a quarter of an hour of checking in occupies 75 minutes of
+    the day but still starts every 60, which is what makes the hours people actually work
+    butt up against each other: 5–6, 6–7, 7–8. Asking for the check-in does not push the
+    next shift down the evening.
+  */
+  const length = Math.max(5, shape.shiftMinutes) + lead
   const step = stepMinutes(shape)
 
   const slots: Slot[] = []
   // A shift has to finish inside the window: a trailing part-shift would send somebody out
   // after the event has packed up.
   for (let t = startMin; t + length <= endMin; t += step) {
-    slots.push({
-      id: slotId(day, t),
-      day,
-      startMin: t,
-      endMin: t + length,
-      label: formatSlotLabel(t, t + length),
-    })
+    slots.push(makeSlot(day, t, t + length, lead))
   }
 
   // A window shorter than one shift still gets a single clipped shift, rather than no way
   // to staff the day at all.
   if (slots.length === 0 && endMin > startMin) {
-    slots.push({
-      id: slotId(day, startMin),
-      day,
-      startMin,
-      endMin,
-      label: formatSlotLabel(startMin, endMin),
-    })
+    slots.push(makeSlot(day, startMin, endMin, lead))
   }
   return slots
+}
+
+/**
+ * One slot, with both the times it has: the block asked for, and the shift inside it.
+ *
+ * The block keeps the start, so the slot id is unchanged by introducing a lead. That is what
+ * makes a lead something an event can adopt after the fact: every shift already recorded
+ * still answers to its own name.
+ */
+function makeSlot(day: Day, startMin: number, endMin: number, lead: number): Slot {
+  // Never past the end: a lead longer than the block would leave a shift of negative length.
+  const workStartMin = Math.min(endMin, startMin + lead)
+  return {
+    id: slotId(day, startMin),
+    day,
+    startMin,
+    endMin,
+    workStartMin,
+    label: formatSlotLabel(workStartMin, endMin),
+    arriveLabel: formatSlotLabel(startMin, endMin),
+  }
 }
 
 export function buildAllSlots(
@@ -169,14 +200,19 @@ export function buildAllSlots(
 }
 
 /**
- * Is a location open for the whole of this slot?
+ * Is a location open for the whole of the shift?
  *
- * The slot must sit entirely inside the opening hours. A shop that opens at 09:30 is not
+ * The shift must sit entirely inside the opening hours. A shop that opens at 09:30 is not
  * staffable for the 09:00 hour, and treating it as available puts a youth at a locked door.
+ *
+ * The shift, not the block: the check-in at the front happens at base, where the jars and
+ * the lists are, and nobody is standing at the shop for it. Measuring from the block start
+ * closed every shop whose doors open exactly on the hour — a shop open from 5:00 read as
+ * shut for the 5:00 shift, because the block began at a quarter to.
  */
 export function isOpenDuring(range: OpenRange | null | undefined, slot: Slot): boolean {
   if (!range) return false
-  return range.openMin <= slot.startMin && range.closeMin >= slot.endMin
+  return range.openMin <= slot.workStartMin && range.closeMin >= slot.endMin
 }
 
 /**
@@ -292,8 +328,14 @@ export function hourOptions(stepMin = 15): { min: number; label: string }[] {
   return out
 }
 
+/**
+ * The hours a slot is worth: the shift, not the block.
+ *
+ * The check-in at the front is time somebody gave, but it is not time on a doorstep, and the
+ * figures this feeds — revenue per hour above all — are about time spent collecting.
+ */
 export function slotDurationHours(slot: Slot): number {
-  return (slot.endMin - slot.startMin) / 60
+  return (slot.endMin - slot.workStartMin) / 60
 }
 
 export interface SlotParseSuccess {

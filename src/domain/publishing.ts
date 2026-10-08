@@ -102,7 +102,9 @@ export function buildPassShifts(
       return [{
         slotId: slot.id,
         day: DAY_LABEL[slot.day],
-        slotLabel: slot.label,
+        // The whole block: a pass tells somebody when to be there, not when the shift
+        // inside it begins.
+        slotLabel: slot.arriveLabel,
         startMin: slot.startMin,
         endMin: slot.endMin,
         locationName: location.name,

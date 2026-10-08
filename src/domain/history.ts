@@ -1,5 +1,6 @@
 import { attributeJarRevenue, splitByWeight } from './metrics'
-import { DAY_SHORT, formatTime, slotDurationHours } from './slots'
+import { countedWindows } from './countedHours'
+import { DAY_SHORT, formatTime } from './slots'
 import { DAYS, isCounted, wasWorked } from './types'
 import { eventLabel } from './events'
 import type { AppleDayEvent, Assignment, Day, Jar, Slot } from './types'
@@ -49,10 +50,14 @@ export function eventTotals(data: EventData): EventTotals {
 
   let staffedHours = 0
   const volunteers = new Set<string>()
+  const counted = countedWindows(worked, slots)
   for (const a of worked) {
     const slot = bySlot.get(a.slotId)
     if (!slot) continue
-    staffedHours += slotDurationHours(slot)
+    const window = counted.get(a.id)
+    staffedHours += window ? (window.to - window.from) / 60 : 0
+    // A shift whose hours were all covered by the one before it is still somebody's turn
+    // out, so they count as a volunteer either way.
     volunteers.add(a.personId)
   }
 
@@ -271,10 +276,13 @@ export function locationTrends(
     if (!data) continue
     const bySlot = new Map(data.slots.map((s) => [s.id, s]))
 
-    for (const a of data.assignments.filter(wasWorked)) {
+    const worked = data.assignments.filter(wasWorked)
+    const counted = countedWindows(worked, data.slots)
+    for (const a of worked) {
       const slot = bySlot.get(a.slotId)
       if (!slot) continue
-      bump(hours, a.locationId, eventId, slotDurationHours(slot))
+      const window = counted.get(a.id)
+      bump(hours, a.locationId, eventId, window ? (window.to - window.from) / 60 : 0)
       used.set(a.locationId, (used.get(a.locationId) ?? new Set()).add(eventId))
     }
 
@@ -392,8 +400,13 @@ export function hourlyTrends(
     if (!data) continue
     const bySlot = new Map(data.slots.map((s) => [s.id, s]))
 
-    // Which hours this event ran at all, so an hour it never scheduled reads as absent
-    // rather than as an hour that earned nothing.
+    /*
+      Which hours this event ran at all, so an hour it never scheduled reads as absent
+      rather than as an hour that earned nothing.
+
+      The whole block, not just the shift inside it: an event whose first block opens at a
+      quarter to five was running then, whatever those first fifteen minutes were spent on.
+    */
     for (const slot of data.slots) {
       for (const hour of hoursSpanned(slot.startMin, slot.endMin)) {
         const key = keyOf(slot.day, hour)
@@ -401,22 +414,35 @@ export function hourlyTrends(
       }
     }
 
-    // Hours worked at the selected locations, spread over the clock hours each shift covers.
-    for (const a of data.assignments.filter(wasWorked)) {
+    /*
+      Hours worked at the selected locations, spread over the clock hours each shift covers.
+
+      Spread over the stretch the shift is credited with rather than its whole window, so
+      the quarter of an hour a back-to-back pair share lands in one of them and the column
+      totals still add up to the figure on every other screen.
+    */
+    const workedHere = data.assignments.filter(wasWorked)
+    const countedHere = countedWindows(workedHere, data.slots)
+    for (const a of workedHere) {
       if (wanted !== null && !wanted.has(a.locationId)) continue
-      const slot = bySlot.get(a.slotId)
-      if (!slot) continue
-      const spanned = hoursSpanned(slot.startMin, slot.endMin)
-      for (const hour of spanned) {
+      const window = countedHere.get(a.id)
+      if (!window) continue
+      for (const hour of hoursSpanned(window.from, window.to)) {
         bump(
           hours,
-          keyOf(slot.day, hour),
+          keyOf(window.day, hour),
           eventId,
-          overlapMinutes(slot.startMin, slot.endMin, hour * 60, hour * 60 + 60) / 60,
+          overlapMinutes(window.from, window.to, hour * 60, hour * 60 + 60) / 60,
         )
       }
     }
 
+    /*
+      Money spreads over the shift itself, not over the check-in lead in front of it. A jar
+      collects nothing while its holder is queuing at the table for it, and crediting the
+      quarter-hour before five with a share of the evening's takings would invent an earning
+      hour the event never had.
+    */
     for (const share of attributeJarRevenue(data.assignments, data.jars, data.slots).shares) {
       if (wanted !== null && !wanted.has(share.locationId)) continue
       const slot = bySlot.get(share.slotId)

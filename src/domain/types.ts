@@ -77,9 +77,29 @@ export type PaymentMethod = 'cash' | 'square'
 export interface Slot {
   id: string
   day: Day
+  /**
+   * When the block starts — which is when the person is asked to turn up, and what the slot
+   * id is built from. `fri-1645` is the block beginning at a quarter to five.
+   */
   startMin: number
   endMin: number
+  /**
+   * When the shift proper starts: `startMin` plus the event's check-in lead.
+   *
+   * The front of a block is checking in — queuing for a jar, being marked off a list — and
+   * it is not time on a doorstep. Equal to `startMin` when the event asks for no lead, so an
+   * event without one reads exactly as it did before.
+   */
+  workStartMin: number
+  /** The shift worked: "5:00 PM – 6:00 PM". The board, the money screens, settings. */
   label: string
+  /**
+   * The whole block, as the person is asked for it: "4:45 PM – 6:00 PM".
+   *
+   * What a pass, a reminder and the signup form say, because the time that matters to
+   * somebody turning up is the time to turn up.
+   */
+  arriveLabel: string
 }
 
 export interface SiteContact {
@@ -368,6 +388,19 @@ export interface AppleDayEvent {
    * starts every 45.
    */
   overlapMinutes: number
+  /**
+   * How long before a shift starts the person is asked to turn up, in minutes.
+   *
+   * A lead rather than a longer shift. Making the shift 75 minutes to buy a 15 minute
+   * check-in window moves the extra quarter-hour to the *end*, where it collides with the
+   * next shift and is counted twice for anybody doing two in a row — and it pushes the last
+   * shift of the day past closing, so the final hour cannot be staffed at all.
+   *
+   * Here it sits in front of `startMin` instead: the board keeps whole-hour shifts, the
+   * public wording says the earlier time, and the hours a person is credited with count the
+   * stretch once however many shifts it spans. See `domain/countedHours`.
+   */
+  checkInMinutes: number
   /**
    * When the year was closed out, or null while it is still running.
    *

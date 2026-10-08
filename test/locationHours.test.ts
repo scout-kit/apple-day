@@ -11,9 +11,9 @@ import type { Assignment, Jar, ScheduledLocation, Slot } from '../src/domain/typ
  */
 
 const SLOTS: Slot[] = [
-  { id: 'fri-1700', day: 'fri', startMin: 17 * 60, endMin: 18 * 60, label: '5:00 PM' },
-  { id: 'fri-1800', day: 'fri', startMin: 18 * 60, endMin: 19 * 60, label: '6:00 PM' },
-  { id: 'sat-0800', day: 'sat', startMin: 8 * 60, endMin: 9 * 60, label: '8:00 AM' },
+  { id: 'fri-1700', day: 'fri', startMin: 17 * 60, endMin: 18 * 60, workStartMin: 17 * 60, arriveLabel: '5:00 PM', label: '5:00 PM' },
+  { id: 'fri-1800', day: 'fri', startMin: 18 * 60, endMin: 19 * 60, workStartMin: 18 * 60, arriveLabel: '6:00 PM', label: '6:00 PM' },
+  { id: 'sat-0800', day: 'sat', startMin: 8 * 60, endMin: 9 * 60, workStartMin: 8 * 60, arriveLabel: '8:00 AM', label: '8:00 AM' },
 ]
 
 const location = (id: string, name: string): ScheduledLocation => ({
@@ -108,7 +108,16 @@ describe('reading the grid across', () => {
 
 describe('reading the grid down', () => {
   it('totals each hour across every location', () => {
-    const assignments = [shift('a1', 'fri-1700', 'braemar'), shift('b1', 'fri-1700', 'kelmont')]
+    /*
+      Two people, named: hours are counted per person now, and a person standing at two
+      shops in the same hour is credited with the hour once. Leaving both of these as the
+      default `p1` would have made this read as one person doing a single hour, which is
+      not what "across every location" is asking about.
+    */
+    const assignments = [
+      shift('a1', 'fri-1700', 'braemar'),
+      shift('b1', 'fri-1700', 'kelmont', 'p2'),
+    ]
     const grid = locationHourGrid(
       LOCATIONS,
       assignments,

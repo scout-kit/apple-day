@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { useParams } from 'react-router-dom'
 import { requestSummary } from '../domain/requests'
-import { groupIntoRuns, runSpan, runState } from '../domain/shiftRuns'
+import { groupIntoRuns, runState, runWorkSpan } from '../domain/shiftRuns'
 import { DAY_LABEL } from '../domain/slots'
 import { DAYS, fullName, isCounted, isNumbered } from '../domain/types'
 import type { Day } from '../domain/types'
@@ -114,6 +114,7 @@ export function PersonScreen(): ReactNode {
           locationId: `${row.slot?.day ?? '?'}|${row.assignment.locationId}`,
           startMin: row.slot?.startMin ?? null,
           endMin: row.slot?.endMin ?? null,
+          workStartMin: row.slot?.workStartMin ?? null,
         })),
       ),
     [shifts],
@@ -268,7 +269,7 @@ export function PersonScreen(): ReactNode {
                   <tr key={assignment.id}>
                     <td className="small nowrap">
                       {slot
-                        ? `${DAY_LABEL[slot.day]} ${runSpan(run, slot.label)}`
+                        ? `${DAY_LABEL[slot.day]} ${runWorkSpan(run, slot.label)}`
                         : assignment.slotId}
                     </td>
                     {/* Linked, like every other place this app names a shop: this is the

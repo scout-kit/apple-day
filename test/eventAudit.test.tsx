@@ -79,6 +79,7 @@ const EXISTING: Record<string, unknown> = {
   shiftMode: 'shifts',
   shiftMinutes: 60,
   overlapMinutes: 0,
+  checkInMinutes: 0,
   schedule: { fri: { startMin: 1020, endMin: 1140 } },
 }
 
@@ -159,7 +160,7 @@ describe('changing a year', () => {
       fridayDate: '2026-10-02', saturdayDate: '2026-10-03',
       support: [], supportNote: 'Ring base first', arrivalNote: '', baseLocationId: null,
       finishedAt: null,
-      shiftMode: 'shifts', shiftMinutes: 60, overlapMinutes: 0,
+      shiftMode: 'shifts', shiftMinutes: 60, overlapMinutes: 0, checkInMinutes: 0,
       schedule: { fri: { startMin: 1020, endMin: 1140 } },
       ...over,
     }) as Parameters<NonNullable<typeof api>['saveEvent']>[0]
