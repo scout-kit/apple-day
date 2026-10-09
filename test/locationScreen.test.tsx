@@ -425,6 +425,39 @@ describe('the thing this page was worth building for', () => {
     expect(row2026.textContent).toContain('$150.00')
   })
 
+  /**
+   * The year-by-year table said "Per hour" and divided by person-hours, so the same door
+   * read as half as good in a year it was worked by a pair. It now gives both, and the
+   * first of them is the same figure as the "per hour" stat at the top of the page.
+   */
+  it('separates the hours the door was worked from the hours people gave', () => {
+    const [y2025, y2026] = twoYears()
+    history = [
+      y2025!,
+      {
+        // 2026: the same $150 at this door, worked by two rather than by one.
+        ...y2026!,
+        assignments: [
+          ...y2026!.assignments,
+          shift('b2', 'fri-1700', { personId: 'p-two' }),
+        ],
+      },
+    ]
+    renderFor()
+
+    const card = screen.getByRole('heading', { name: 'Year by year' }).closest('.card')!
+    const row2026 = within(card as HTMLElement)
+      .getAllByRole('row')
+      .find((r) => r.textContent?.startsWith('Apple Day 2026'))!
+    const cells = Array.from(row2026.querySelectorAll('td')).map((c) => c.textContent)
+
+    // Revenue, hours of door, per hour, person-hours, per person-hour.
+    expect(cells.slice(1)).toEqual(['$150.00', '1', '$150.00', '2', '$75.00'])
+    // The door is up by half; an hour of somebody's evening there is down by a quarter.
+    expect(card.textContent).toContain('+50%')
+    expect(card.textContent).toContain('-25%')
+  })
+
   it('says it is still adding up while the years are loading', () => {
     historyLoading = true
     renderFor()

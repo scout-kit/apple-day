@@ -1,4 +1,11 @@
-import { attributeJarRevenue, isCollecting, splitByWeight } from './metrics'
+import {
+  attributeJarRevenue,
+  coveredHoursByLocation,
+  coveredSpansByLocation,
+  isCollecting,
+  splitByWeight,
+  unionMinutes,
+} from './metrics'
 import { countedWindows } from './countedHours'
 import { DAY_SHORT, formatTime } from './slots'
 import { DAYS, isCounted, wasWorked } from './types'
@@ -31,8 +38,29 @@ export interface EventTotals {
    * money came in against them.
    */
   baseHours: number
-  /** Revenue divided by the hours spent out collecting. */
+  /**
+   * Clock hours the event was out collecting: the union of the blocks it staffed, per day.
+   *
+   * How long the evening ran, not how much of it people gave — a Friday staffed from five
+   * till nine is four, whether two people were out or twenty. Blocks, not shifts, because
+   * an event whose first block opens at a quarter to five was running then.
+   */
+  clockHours: number
+  /**
+   * Revenue divided by the hours spent out collecting. Per *person*-hour.
+   *
+   * What an hour of somebody's evening was worth, which moves with how thickly the event
+   * was staffed. The money screen's headline calls this "per person-hour"; see
+   * {@link revenuePerClockHour} for the one it calls "per hour".
+   */
   revenuePerHour: number | null
+  /**
+   * Revenue divided by {@link clockHours}: what an hour of the event itself was worth.
+   *
+   * The same figure as the money screen's "per hour" headline for that event, and the one
+   * to read year on year — it does not fall when a year turns out more volunteers.
+   */
+  revenuePerClockHour: number | null
   /** Distinct people who actually worked a shift. */
   volunteers: number
   /** Locations that took money. */
@@ -59,6 +87,9 @@ export function eventTotals(data: EventData): EventTotals {
   let staffedHours = 0
   let baseHours = 0
   const volunteers = new Set<string>()
+  // Which blocks the event actually had somebody out for. An hour staffed only at base is
+  // an hour the table was open and the street was empty, so it is not time spent earning.
+  const outAt = new Set<string>()
   const counted = countedWindows(worked, slots)
   for (const a of worked) {
     const slot = bySlot.get(a.slotId)
@@ -67,6 +98,7 @@ export function eventTotals(data: EventData): EventTotals {
     const hours = window ? (window.to - window.from) / 60 : 0
     staffedHours += hours
     if (!isCollecting(a, event.baseLocationId)) baseHours += hours
+    else if (hours > 0) outAt.add(slot.id)
     // A shift whose hours were all covered by the one before it is still somebody's turn
     // out, so they count as a volunteer either way.
     volunteers.add(a.personId)
@@ -98,6 +130,29 @@ export function eventTotals(data: EventData): EventTotals {
     opposite of what the figure is read for.
   */
   const collecting = round2(staffedHours - baseHours)
+
+  /*
+    How long the evening ran, as the clock saw it.
+
+    The union of the blocks somebody was out for, merged per day — not their sum. Blocks
+    overlap where a year ran a handover, and adding their durations counts the same quarter
+    of an hour twice. Per day, because 5pm Friday and 5pm Saturday are not the same stretch.
+
+    Worked out the same way as the money screen's clock hours, so an event's row here and
+    its own money screen agree about what an hour of it was worth.
+  */
+  const running = slots.filter((s) => outAt.has(s.id))
+  const clockHours = round2(
+    DAYS.reduce(
+      (total, day) =>
+        total +
+        unionMinutes(
+          running.filter((s) => s.day === day).map((s) => [s.startMin, s.endMin] as const),
+        ),
+      0,
+    ) / 60,
+  )
+
   return {
     eventId: event.id,
     name: event.name,
@@ -106,8 +161,10 @@ export function eventTotals(data: EventData): EventTotals {
     revenue,
     staffedHours,
     baseHours,
+    clockHours,
     // Null rather than a fallback to the raw total, as everywhere else.
     revenuePerHour: collecting > 0 ? round2(revenue / collecting) : null,
+    revenuePerClockHour: clockHours > 0 ? round2(revenue / clockHours) : null,
     volunteers: volunteers.size,
     earningLocations: earning.size,
   }
@@ -228,28 +285,49 @@ export function changeFrom(previous: number | null, current: number | null): num
 export interface LocationTrendCell {
   eventId: string
   revenue: number
+  /** Person-hours worked there that year. Two youth on one shift is 2. */
   staffedHours: number
+  /** Clock hours the door was covered that year. Two youth on one shift is 1. */
+  coveredHours: number
+  /** Revenue per person-hour: what an hour of somebody's evening there was worth. */
   revenuePerHour: number | null
+  /** Revenue per hour the door was covered: what the door itself was worth. */
+  revenuePerCoveredHour: number | null
+}
+
+/*
+  What a cell is measuring. Three readings of a row, and each answers a different question.
+
+  Hours itself was once a fourth, and it answered a question about effort rather than about
+  takings: it belongs to the money screen, where an hour is being planned, rather than to a
+  history read to decide where to stand next year.
+
+  The two rates disagree exactly where people doubled up. `perHour` divides by the time the
+  door was covered, so it says what the door was worth whoever was sent to it; `perPersonHour`
+  divides by the time people gave, so it halves when two go instead of one. Sending a pair is
+  a staffing decision, and reading it as a fact about the shop is how a busy door ends up
+  looking like a poor one.
+*/
+export type TrendMeasure = 'revenue' | 'perHour' | 'perPersonHour'
+
+/** The three readings a trend cell can be shown under. */
+export interface TrendValues {
+  revenue: number
+  revenuePerHour: number | null
+  revenuePerCoveredHour: number | null
 }
 
 /**
- * What a cell is measuring.
+ * The number a cell shows under the chosen measure.
  *
- * Three readings of the same row, because they answer different questions and can disagree.
- * Takings up by half sounds like a win until the hours behind them doubled — the location
- * did not get better, it got more people. `perHour` is the one that says whether a location
- * is worth somebody's evening.
+ * One place, because three tables and two charts pick it, and a measure that means the
+ * door's rate in one of them and somebody's evening in another is the defect this whole
+ * split exists to remove.
  */
-/*
-  Two readings of a row, not three.
-
-  Hours was one of them, and it answered a question about effort rather than about takings:
-  it belongs to the money screen, where an hour is being planned, rather than to a history
-  read to decide where to stand next year. Revenue and revenue-per-hour disagree often
-  enough to be worth both — takings up by half is not a win if the hours behind them
-  doubled — and hours on its own was read as neither.
-*/
-export type TrendMeasure = 'revenue' | 'perHour'
+export function trendValue(cell: TrendValues, measure: TrendMeasure): number | null {
+  if (measure === 'revenue') return cell.revenue
+  return measure === 'perHour' ? cell.revenuePerCoveredHour : cell.revenuePerHour
+}
 
 export interface LocationTrendRow {
   locationId: string
@@ -279,6 +357,7 @@ export function locationTrends(
 
   const revenue = new Map<string, Map<string, number>>()
   const hours = new Map<string, Map<string, number>>()
+  const covered = new Map<string, Map<string, number>>()
   const used = new Map<string, Set<string>>()
 
   const bump = (
@@ -316,6 +395,11 @@ export function locationTrends(
       used.set(a.locationId, (used.get(a.locationId) ?? new Set()).add(eventId))
     }
 
+    // The other kind of hour: how long each door was worked, counting a pair once.
+    for (const [locationId, hrs] of coveredHoursByLocation(worked, data.slots)) {
+      bump(covered, locationId, eventId, hrs)
+    }
+
     for (const jar of data.jars) {
       if (!isCounted(jar)) continue
       bump(revenue, jar.locationId, eventId, jar.amount)
@@ -328,11 +412,14 @@ export function locationTrends(
       const cells = order.map((eventId) => {
         const rev = revenue.get(locationId)?.get(eventId) ?? 0
         const hrs = round2(hours.get(locationId)?.get(eventId) ?? 0)
+        const door = round2(covered.get(locationId)?.get(eventId) ?? 0)
         return {
           eventId,
           revenue: rev,
           staffedHours: hrs,
+          coveredHours: door,
           revenuePerHour: hrs > 0 ? round2(rev / hrs) : null,
+          revenuePerCoveredHour: door > 0 ? round2(rev / door) : null,
         }
       })
       // The two most recent events this location was actually used in, so a year off does
@@ -350,7 +437,14 @@ export function locationTrends(
         revenue: round2(cells.reduce((n, c) => n + c.revenue, 0)),
         changes: {
           revenue: changeFrom(before?.revenue ?? null, last?.revenue ?? null),
-          perHour: changeFrom(before?.revenuePerHour ?? null, last?.revenuePerHour ?? null),
+          perHour: changeFrom(
+            before?.revenuePerCoveredHour ?? null,
+            last?.revenuePerCoveredHour ?? null,
+          ),
+          perPersonHour: changeFrom(
+            before?.revenuePerHour ?? null,
+            last?.revenuePerHour ?? null,
+          ),
         },
       }
     })
@@ -379,7 +473,16 @@ export interface HourTrendCell {
   revenue: number
   /** Person-hours worked in this hour, at the locations being counted. */
   staffedHours: number
+  /**
+   * Door-hours covered in this hour: how many of those doors had somebody at them.
+   *
+   * Three shops worked for the whole hour is 3, however many youth were sent to each.
+   */
+  coveredHours: number
+  /** Revenue per person-hour — what an hour of somebody's evening was worth. */
   revenuePerHour: number | null
+  /** Revenue per door-hour — what an hour at one of those doors was worth. */
+  revenuePerCoveredHour: number | null
   /** False when this event did not run at this hour at all — different from earning zero. */
   ran: boolean
 }
@@ -412,6 +515,7 @@ export function hourlyTrends(
 
   const revenue = new Map<string, Map<string, number>>()
   const hours = new Map<string, Map<string, number>>()
+  const covered = new Map<string, Map<string, number>>()
   const ran = new Map<string, Set<string>>()
   const keyOf = (day: Day, hour: number): string => `${day}-${hour}`
   const bump = (
@@ -475,6 +579,29 @@ export function hourlyTrends(
     }
 
     /*
+      The same hours again, counting doors rather than people.
+
+      One stretch per door per day, overlaps already merged, so a shop worked by a pair adds
+      the hour once. Spread across the clock hours it touches the same way the person-hours
+      above are, which is what lets the two rates in a cell be read against each other.
+    */
+    for (const [locationId, byDay] of coveredSpansByLocation(workedHere, data.slots)) {
+      if (wanted !== null && !wanted.has(locationId)) continue
+      for (const [day, spans] of byDay) {
+        for (const [from, to] of spans) {
+          for (const hour of hoursSpanned(from, to)) {
+            bump(
+              covered,
+              keyOf(day, hour),
+              eventId,
+              overlapMinutes(from, to, hour * 60, hour * 60 + 60) / 60,
+            )
+          }
+        }
+      }
+    }
+
+    /*
       Money spreads over the shift itself, not over the check-in lead in front of it. A jar
       collects nothing while its holder is queuing at the table for it, and crediting the
       quarter-hour before five with a share of the evening's takings would invent an earning
@@ -501,11 +628,14 @@ export function hourlyTrends(
       const cells = order.map((eventId) => {
         const rev = round2(revenue.get(key)?.get(eventId) ?? 0)
         const worked = round2(hours.get(key)?.get(eventId) ?? 0)
+        const doors = round2(covered.get(key)?.get(eventId) ?? 0)
         return {
           eventId,
           revenue: rev,
           staffedHours: worked,
+          coveredHours: doors,
           revenuePerHour: worked > 0 ? round2(rev / worked) : null,
+          revenuePerCoveredHour: doors > 0 ? round2(rev / doors) : null,
           ran: ran.get(key)?.has(eventId) ?? false,
         }
       })
@@ -522,7 +652,14 @@ export function hourlyTrends(
         revenue: round2(cells.reduce((n, c) => n + c.revenue, 0)),
         changes: {
           revenue: changeFrom(before?.revenue ?? null, last?.revenue ?? null),
-          perHour: changeFrom(before?.revenuePerHour ?? null, last?.revenuePerHour ?? null),
+          perHour: changeFrom(
+            before?.revenuePerCoveredHour ?? null,
+            last?.revenuePerCoveredHour ?? null,
+          ),
+          perPersonHour: changeFrom(
+            before?.revenuePerHour ?? null,
+            last?.revenuePerHour ?? null,
+          ),
         },
       }
     })
@@ -649,7 +786,9 @@ export function hourlyTrendsSplit(
     eventId,
     revenue: 0,
     staffedHours: 0,
+    coveredHours: 0,
     revenuePerHour: null,
+    revenuePerCoveredHour: null,
     ran: false,
   })
 
@@ -699,10 +838,8 @@ export function stackBands(
   events: { eventId: string }[],
   measure: TrendMeasure,
 ): (number | null)[][] {
-  const value = (cell: HourTrendCell): number | null => {
-    if (!cell.ran) return null
-    return measure === 'perHour' ? cell.revenuePerHour : cell.revenue
-  }
+  const value = (cell: HourTrendCell): number | null =>
+    cell.ran ? trendValue(cell, measure) : null
 
   return events.map((event) =>
     series.flatMap((s, index) =>

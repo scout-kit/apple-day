@@ -23,6 +23,8 @@ import type { AppleDayEvent, Assignment, Jar, Slot } from '../src/domain/types'
  * matching at all.
  */
 
+const round = (n: number): number => Math.round(n * 100) / 100
+
 const slots = (day: 'fri' | 'sat', hours: number[]): Slot[] =>
   hours.map((h) => ({
     id: `${day}-${String(h).padStart(2, '0')}00`,
@@ -119,6 +121,84 @@ describe('one event’s totals', () => {
 
   it('leaves the rate blank rather than reporting the raw total', () => {
     expect(eventTotals({ ...y2025, assignments: [] }).revenuePerHour).toBeNull()
+    expect(eventTotals({ ...y2025, assignments: [] }).revenuePerClockHour).toBeNull()
+  })
+
+  /**
+   * Two rates, because an event's hours are two different things.
+   *
+   * The table said "per hour" and showed revenue over person-hours, so a year that turned
+   * out more volunteers reported a worse hour for the same evening. How long the evening
+   * ran and how much of it people gave are separate facts, and both are kept.
+   */
+  describe('what an hour of the event was worth', () => {
+    it('counts the evening once however many people were out in it', () => {
+      // 2026: three shifts across two blocks, so three person-hours over two hours of event.
+      const t = eventTotals(y2026)
+
+      expect(t.staffedHours).toBe(3)
+      expect(t.clockHours).toBe(2)
+      expect(t.revenuePerHour).toBe(round(200 / 3))
+      expect(t.revenuePerClockHour).toBe(100)
+    })
+
+    it('agrees with itself when one person worked one block', () => {
+      const t = eventTotals(y2025)
+
+      expect(t.clockHours).toBe(1)
+      expect(t.revenuePerClockHour).toBe(100)
+      expect(t.revenuePerHour).toBe(100)
+    })
+
+    it('counts the shared minutes of a handover once', () => {
+      const handover: EventData = {
+        ...y2025,
+        slots: [
+          { id: 'fri-a', day: 'fri', startMin: 17 * 60, endMin: 18 * 60, workStartMin: 17 * 60, label: '5:00', arriveLabel: '5:00' },
+          { id: 'fri-b', day: 'fri', startMin: 17 * 60 + 45, endMin: 18 * 60 + 45, workStartMin: 17 * 60 + 45, label: '5:45', arriveLabel: '5:45' },
+        ],
+        assignments: [
+          shift('a', 'fri-a', 'braemar', 'y01'),
+          shift('b', 'fri-b', 'braemar', 'y02'),
+        ],
+      }
+      const t = eventTotals(handover)
+
+      // Two person-hours, but the evening only ran from five until a quarter to seven.
+      expect(t.staffedHours).toBe(2)
+      expect(t.clockHours).toBe(1.75)
+    })
+
+    it('does not count an hour the event only held the fort at base', () => {
+      const withBase: EventData = {
+        ...y2025,
+        event: event('2025', { baseLocationId: 'hall' }),
+        assignments: [
+          shift('a', 'fri-1700', 'braemar', 'y01'),
+          shift('b', 'fri-1800', 'hall', 'y02'),
+        ],
+      }
+      const t = eventTotals(withBase)
+
+      // The table was open for the six o'clock hour and the street was empty. Those hours
+      // are reported, and they are not hours the takings came from.
+      expect(t.staffedHours).toBe(2)
+      expect(t.baseHours).toBe(1)
+      expect(t.clockHours).toBe(1)
+      expect(t.revenuePerClockHour).toBe(100)
+    })
+
+    it('keeps the days apart rather than merging two evenings into one', () => {
+      const bothDays: EventData = {
+        ...y2025,
+        slots: [...slots('fri', [17]), ...slots('sat', [17])],
+        assignments: [
+          shift('a', 'fri-1700', 'braemar', 'y01'),
+          shift('b', 'sat-1700', 'braemar', 'y01'),
+        ],
+      }
+      expect(eventTotals(bothDays).clockHours).toBe(2)
+    })
   })
 
   it('does not report how many jars an event used', () => {
@@ -370,6 +450,59 @@ describe('takings by clock hour, year over year', () => {
     expect(row(result, 17).changes.revenue).toBe(0.5)
   })
 
+  /**
+   * The hour's other denominator: how many doors were covered in it, not how many people.
+   *
+   * Two youth at one shop is one door being worked, and dividing the hour's takings by two
+   * reports the hour as half as good for a reason that is about the roster.
+   */
+  it('counts the doors covered in an hour as well as the people out in it', () => {
+    const pairs: EventData = {
+      ...onTheHour,
+      assignments: [
+        shift('a', 'fri-1700', 'braemar', 'y01'),
+        shift('a2', 'fri-1700', 'braemar', 'y02'),
+        shift('b', 'fri-1700', 'kelmont', 'y03'),
+      ],
+      jars: [
+        jar({ id: 'j1', locationId: 'braemar', assignmentId: 'a', assignmentIds: ['a'], amount: 100 }),
+        jar({ id: 'j2', locationId: 'kelmont', personId: 'y03', assignmentId: 'b', assignmentIds: ['b'], amount: 60 }),
+      ],
+    }
+    const five = row(hourlyTrends([pairs], null), 17).cells[0]!
+
+    expect(five.revenue).toBe(160)
+    // Three youth out, standing at two doors.
+    expect(five.staffedHours).toBe(3)
+    expect(five.coveredHours).toBe(2)
+    expect(five.revenuePerHour).toBe(53.33)
+    expect(five.revenuePerCoveredHour).toBe(80)
+  })
+
+  it('counts one door once when a year runs a handover', () => {
+    // Shifts at 5:00 and 5:45 at the same shop: the door is covered for the whole 5pm hour,
+    // not for an hour and a quarter of it.
+    const five = row(hourlyTrends([overlapped], null), 17).cells[0]!
+
+    expect(five.coveredHours).toBe(1)
+    expect(five.staffedHours).toBe(1.25)
+  })
+
+  it('counts only the doors it was asked about', () => {
+    const pairs: EventData = {
+      ...onTheHour,
+      assignments: [
+        shift('a', 'fri-1700', 'braemar', 'y01'),
+        shift('b', 'fri-1700', 'kelmont', 'y03'),
+      ],
+      jars: [jar({ id: 'j1', locationId: 'braemar', assignmentId: 'a', assignmentIds: ['a'], amount: 100 })],
+    }
+    const five = row(hourlyTrends([pairs], ['braemar']), 17).cells[0]!
+
+    expect(five.coveredHours).toBe(1)
+    expect(five.revenuePerCoveredHour).toBe(100)
+  })
+
   it('reads Friday before Saturday, and in clock order', () => {
     const saturday: EventData = {
       ...onTheHour,
@@ -408,14 +541,51 @@ describe('hours behind the money, location by location', () => {
     const { rows } = locationTrends([y2025, y2026], names)
     const braemar = rows.find((r) => r.locationId === 'braemar')!
     expect(braemar.changes.revenue).toBe(0.5)
+    // Two consecutive shifts, one youth each: an hour of door and an hour of somebody's
+    // evening are the same hour here, so both rates fell by the same quarter.
     expect(braemar.changes.perHour).toBe(-0.25)
+    expect(braemar.changes.perPersonHour).toBe(-0.25)
     expect(braemar.changes).not.toHaveProperty('hours')
+  })
+
+  /**
+   * The two rates, and the year they part company.
+   *
+   * Sending a second youth to a door doubles the person-hours and covers the door for
+   * exactly as long. Reading only the person-hour rate says the shop halved in value for a
+   * decision that was never about the shop.
+   */
+  it('separates a door worked longer from a door worked by more people', () => {
+    // 2026 again, but both Braemar shifts are the 5pm one: a pair at one door for an hour.
+    const doubled: EventData = {
+      ...y2026,
+      assignments: [
+        shift('b', 'fri-1700', 'braemar', 'y01'),
+        shift('c', 'fri-1700', 'braemar', 'y02'),
+        shift('d', 'fri-1700', 'kelmont', 'y03'),
+      ],
+    }
+    const { rows } = locationTrends([y2025, doubled], names)
+    const braemar = rows.find((r) => r.locationId === 'braemar')!
+
+    expect(braemar.cells.map((c) => c.staffedHours)).toEqual([1, 2])
+    expect(braemar.cells.map((c) => c.coveredHours)).toEqual([1, 1])
+    // $100 over one hour, then $150 over one hour: the door got better by half.
+    expect(braemar.cells.map((c) => c.revenuePerCoveredHour)).toEqual([100, 150])
+    expect(braemar.changes.perHour).toBe(0.5)
+    // The same money over two person-hours instead of one: by that reading it got worse.
+    expect(braemar.cells.map((c) => c.revenuePerHour)).toEqual([100, 75])
+    expect(braemar.changes.perPersonHour).toBe(-0.25)
   })
 
   it('has no comparison on any measure for a location used once', () => {
     const { rows } = locationTrends([y2025, y2026], names)
     const kelmont = rows.find((r) => r.locationId === 'kelmont')!
-    expect(kelmont.changes).toEqual({ revenue: null, perHour: null })
+    expect(kelmont.changes).toEqual({
+      revenue: null,
+      perHour: null,
+      perPersonHour: null,
+    })
   })
 
   it('has no rate to compare when a year had no recorded hours', () => {
@@ -423,6 +593,9 @@ describe('hours behind the money, location by location', () => {
     const noHours: EventData = { ...y2026, assignments: [] }
     const { rows } = locationTrends([y2025, noHours], names)
     const braemar = rows.find((r) => r.locationId === 'braemar')!
+    expect(braemar.cells.map((c) => c.coveredHours)).toEqual([1, 0])
+    expect(braemar.cells[1]!.revenuePerCoveredHour).toBeNull()
+    expect(braemar.changes.perPersonHour).toBeNull()
     expect(braemar.changes.perHour).toBeNull()
     expect(braemar.changes.revenue).toBe(0.5)
   })
@@ -619,11 +792,15 @@ describe('rearranging a split row into stacks', () => {
   ]
   const events = [{ eventId: '2025' }, { eventId: '2026' }]
 
+  // One person at one door for the hour, so every reading of the cell is the same number
+  // and a test about rearranging cells is not also a test about which rate it picked.
   const cell = (revenue: number, ran = true) => ({
     eventId: 'x',
     revenue,
     staffedHours: 1,
+    coveredHours: 1,
     revenuePerHour: revenue,
+    revenuePerCoveredHour: revenue,
     ran,
   })
 
@@ -669,8 +846,21 @@ describe('rearranging a split row into stacks', () => {
   })
 
   it('follows the measure being read', () => {
-    const perHour = { ...row, cells: [cell(100), cell(150), cell(40), cell(60)] }
-    expect(stackTotals(perHour, series, events, 'perHour')).toEqual([140, 210])
+    /*
+      A door worked by a pair: the same money over two person-hours and one hour of door, so
+      the two rates differ and the measure chooses between them.
+    */
+    const doubled = {
+      ...cell(100),
+      staffedHours: 2,
+      revenuePerHour: 50,
+      revenuePerCoveredHour: 100,
+    }
+    const mixed = { ...row, cells: [doubled, cell(150), cell(40), cell(60)] }
+
+    expect(stackTotals(mixed, series, events, 'revenue')).toEqual([140, 210])
+    expect(stackTotals(mixed, series, events, 'perHour')).toEqual([140, 210])
+    expect(stackTotals(mixed, series, events, 'perPersonHour')).toEqual([90, 210])
   })
 
   it('never loses a cent adding a stack up', () => {

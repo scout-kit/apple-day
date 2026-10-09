@@ -127,27 +127,28 @@ function slotIndex(slots: Slot[]): Map<string, Slot> {
  * midnight, so five o'clock on the Friday and five o'clock on the Saturday are the same
  * stretch as far as this is concerned.
  */
-export function unionMinutes(spans: readonly (readonly [number, number])[]): number {
-  const ordered = [...spans].sort((a, b) => a[0] - b[0])
+export function unionMinutes(spans: readonly Span[]): number {
+  return mergeSpans(spans).reduce((total, [from, to]) => total + (to - from), 0)
+}
 
-  let covered = 0
-  let openAt: number | null = null
-  let closeAt = 0
-  for (const [start, end] of ordered) {
-    if (openAt === null) {
-      openAt = start
-      closeAt = end
-    } else if (start <= closeAt) {
-      closeAt = Math.max(closeAt, end)
-    } else {
-      covered += closeAt - openAt
-      openAt = start
-      closeAt = end
-    }
+/** A stretch of one day. Minutes from midnight, half-open. */
+export type Span = readonly [number, number]
+
+/**
+ * The same stretches, overlaps resolved: the fewest spans covering the same minutes.
+ *
+ * What {@link unionMinutes} counts, kept as spans for the callers that need to know *when*
+ * rather than how long — spreading a door's cover across the clock hours it touches, say.
+ * Touching spans join, so back-to-back shifts are one stretch rather than two.
+ */
+export function mergeSpans(spans: readonly Span[]): [number, number][] {
+  const merged: [number, number][] = []
+  for (const [start, end] of [...spans].sort((a, b) => a[0] - b[0])) {
+    const last = merged[merged.length - 1]
+    if (last && start <= last[1]) last[1] = Math.max(last[1], end)
+    else merged.push([start, end])
   }
-  if (openAt !== null) covered += closeAt - openAt
-
-  return covered
+  return merged
 }
 
 /**
@@ -244,9 +245,34 @@ export function coveredHoursByLocation(
   assignments: Assignment[],
   slots: Slot[],
 ): Map<string, number> {
+  const totals = new Map<string, number>()
+  for (const [locationId, byDay] of coveredSpansByLocation(assignments, slots)) {
+    let minutes = 0
+    for (const spans of byDay.values()) {
+      for (const [from, to] of spans) minutes += to - from
+    }
+    totals.set(locationId, minutes / 60)
+  }
+  return totals
+}
+
+/**
+ * The same cover, as the stretches themselves: by location, by day, overlaps merged.
+ *
+ * {@link coveredHoursByLocation} is this added up. The spans are kept for the callers that
+ * need to know when a door was worked and not only for how long — spreading its cover
+ * across the clock hours it touches, which is how a year-on-year "by hour" table counts
+ * doors rather than people.
+ *
+ * Days are separate keys because the numbers are minutes from midnight: without that, five
+ * o'clock on the Friday and five o'clock on the Saturday are the same stretch.
+ */
+export function coveredSpansByLocation(
+  assignments: Assignment[],
+  slots: Slot[],
+): Map<string, Map<Day, [number, number][]>> {
   const bySlot = slotIndex(slots)
-  // Keyed by day as well as location, because the times are minutes from midnight.
-  const spans = new Map<string, { locationId: string; spans: [number, number][] }>()
+  const raw = new Map<string, Map<Day, Span[]>>()
 
   for (const a of assignments) {
     // A no-show covered nothing, and a swapped row was somebody else's shift.
@@ -255,18 +281,19 @@ export function coveredHoursByLocation(
     // No slot, no time to place — reported by `findOrphanedRecords`, not counted as an hour.
     if (!slot) continue
 
-    const key = `${a.locationId}\u0000${slot.day}`
-    const entry = spans.get(key)
-    if (entry) entry.spans.push([slot.workStartMin, slot.endMin])
-    else spans.set(key, { locationId: a.locationId, spans: [[slot.workStartMin, slot.endMin]] })
+    const byDay = raw.get(a.locationId) ?? new Map<Day, Span[]>()
+    byDay.set(slot.day, [...(byDay.get(slot.day) ?? []), [slot.workStartMin, slot.endMin]])
+    raw.set(a.locationId, byDay)
   }
 
-  const totals = new Map<string, number>()
-  for (const { locationId, spans: list } of spans.values()) {
-    totals.set(locationId, (totals.get(locationId) ?? 0) + unionMinutes(list) / 60)
+  const out = new Map<string, Map<Day, [number, number][]>>()
+  for (const [locationId, byDay] of raw) {
+    const merged = new Map<Day, [number, number][]>()
+    for (const [day, spans] of byDay) merged.set(day, mergeSpans(spans))
+    out.set(locationId, merged)
   }
 
-  return totals
+  return out
 }
 
 /**

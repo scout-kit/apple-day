@@ -471,8 +471,21 @@ export function LocationScreen(): ReactNode {
                     <tr>
                       <th>Year</th>
                       <th className="right">Revenue</th>
-                      <th className="right">Hours</th>
+                      {/*
+                        The same two hours as the stats at the top of this page, so the
+                        year-by-year rate and this year's rate are the same question asked
+                        twice. One column of "per hour" over person-hours is how a door
+                        worked by a pair read as half as good as the year it was worked
+                        alone.
+                      */}
+                      <th className="right" title="Hours this door was covered">
+                        Hours
+                      </th>
                       <th className="right">Per hour</th>
+                      <th className="right" title="Hours people gave here">
+                        Person-hours
+                      </th>
+                      <th className="right">Per person-hour</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -484,12 +497,18 @@ export function LocationScreen(): ReactNode {
                             <Money value={cell.revenue} />
                           </td>
                           <td className="right">
-                            <Hours value={cell.staffedHours} />
+                            <Hours value={cell.coveredHours} />
                           </td>
                           <td className="right">
                             <strong>
-                              <Money value={cell.revenuePerHour} />
+                              <Money value={cell.revenuePerCoveredHour} />
                             </strong>
+                          </td>
+                          <td className="right">
+                            <Hours value={cell.staffedHours} />
+                          </td>
+                          <td className="right">
+                            <Money value={cell.revenuePerHour} />
                           </td>
                         </tr>
                       )
@@ -499,7 +518,9 @@ export function LocationScreen(): ReactNode {
               </div>
               <p className="small muted">
                 Latest change: <Change value={trend.row.changes.revenue} /> on takings,{' '}
-                <Change value={trend.row.changes.perHour} /> on what an hour was worth.
+                <Change value={trend.row.changes.perHour} /> on what an hour at this door was
+                worth, <Change value={trend.row.changes.perPersonHour} /> on what an hour of
+                somebody&apos;s evening here was worth.
               </p>
             </div>
           )}
