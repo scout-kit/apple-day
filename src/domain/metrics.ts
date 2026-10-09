@@ -325,7 +325,15 @@ export interface SlotMoney {
   slotId: string
   day: Day
   label: string
+  /** The block, check-in included. What somebody was asked to turn up for. */
   startMin: number
+  /**
+   * When the shift proper starts, which is when money can begin arriving.
+   *
+   * What a chart of takings puts on its axis: a bar labelled "4:45" for the hour that ran
+   * from five says the money came in a quarter of an hour before anybody was at a door.
+   */
+  workStartMin: number
   revenue: number
   /** Person-hours worked in this slot — two siblings for an hour is 2, not 1. */
   staffedHours: number
@@ -558,6 +566,7 @@ export function revenueBySlot(
         day: slot.day,
         label: slot.label,
         startMin: slot.startMin,
+        workStartMin: slot.workStartMin,
         revenue: rev,
         staffedHours,
         baseHours,
@@ -590,13 +599,21 @@ export function revenueBySlot(
   const worked = slots.filter(
     (slot) => (hours.get(slot.id) ?? 0) - (atBase.get(slot.id) ?? 0) > 0,
   )
+  /*
+    The shift, not the block. The quarter of an hour at the front is spent queuing for a jar
+    at base and no money can arrive during it, so counting it stretches the time the takings
+    are divided across and reports a worse hour than the event had.
+
+    It also puts a figure on screen that cannot be read: four hour-long shifts come to four
+    hours, and 4.25 is not a number anybody can account for.
+  */
   const clockMinutes = DAYS.reduce(
     (total, day) =>
       total +
       unionMinutes(
         worked
           .filter((slot) => slot.day === day)
-          .map((slot) => [slot.startMin, slot.endMin] as const),
+          .map((slot) => [slot.workStartMin, slot.endMin] as const),
       ),
     0,
   )

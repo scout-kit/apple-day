@@ -200,8 +200,10 @@ export function MoneyScreen(): ReactNode {
     () =>
       byHour.rows.map((r) => ({
         label: r.label,
-        // Just the start time on the axis; the full range is in the hover readout.
-        axisLabel: formatTime(r.startMin).replace(':00', ''),
+        // Just the start time on the axis; the full range is in the hover readout. The
+        // shift's own start, not the block's: the quarter hour in front of it is check-in
+        // at base, and no money arrives during it.
+        axisLabel: formatTime(r.workStartMin).replace(':00', ''),
         // Only when both days are in view, or the caption says nothing.
         ...(scope === 'all' ? { dayLabel: DAY_LABEL[r.day] } : {}),
         revenue: r.revenue,

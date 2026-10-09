@@ -188,6 +188,37 @@ describe('one event’s totals', () => {
       expect(t.revenuePerClockHour).toBe(100)
     })
 
+    /**
+     * The quarter of an hour at the front of a block is check-in, and it happens at base.
+     *
+     * Counting it put a figure on the history table that the schedule cannot produce: two
+     * Friday shifts and one on the Saturday read as 3.5 hours, which is three hour-long
+     * shifts plus two check-ins. Nobody can account for the half hour, because there is
+     * nothing in the evening it corresponds to.
+     */
+    it('counts the shifts, not the quarters of an hour spent checking in', () => {
+      const withLead: EventData = {
+        ...y2025,
+        // 75-minute blocks: arrive at a quarter to, out on the hour, back an hour later.
+        slots: [
+          { id: 'fri-1645', day: 'fri', startMin: 16 * 60 + 45, endMin: 18 * 60, workStartMin: 17 * 60, label: '5:00', arriveLabel: '4:45' },
+          { id: 'fri-1745', day: 'fri', startMin: 17 * 60 + 45, endMin: 19 * 60, workStartMin: 18 * 60, label: '6:00', arriveLabel: '5:45' },
+          { id: 'sat-0845', day: 'sat', startMin: 8 * 60 + 45, endMin: 10 * 60, workStartMin: 9 * 60, label: '9:00', arriveLabel: '8:45' },
+        ],
+        assignments: [
+          shift('a', 'fri-1645', 'braemar', 'y01'),
+          shift('b', 'fri-1745', 'braemar', 'y02'),
+          shift('c', 'sat-0845', 'braemar', 'y03'),
+        ],
+      }
+      const t = eventTotals(withLead)
+
+      // Three hour-long shifts are three hours. It read 3.5 — the three plus two check-ins.
+      expect(t.clockHours).toBe(3)
+      expect(t.staffedHours).toBe(3)
+      expect(t.revenuePerClockHour).toBe(round(100 / 3))
+    })
+
     it('keeps the days apart rather than merging two evenings into one', () => {
       const bothDays: EventData = {
         ...y2025,
@@ -501,6 +532,31 @@ describe('takings by clock hour, year over year', () => {
 
     expect(five.coveredHours).toBe(1)
     expect(five.revenuePerCoveredHour).toBe(100)
+  })
+
+  /**
+   * The check-in at the front of a block is not an hour the event could earn in.
+   *
+   * A block opening at a quarter to five made a four o'clock row, and the shift's takings
+   * were spread into it by the minute — fifteen minutes' worth of an evening credited to an
+   * hour when everybody was still queuing for a jar at base.
+   */
+  it('does not open an hour for the check-in in front of a shift', () => {
+    const withLead: EventData = {
+      ...onTheHour,
+      slots: [
+        { id: 'fri-1645', day: 'fri', startMin: 16 * 60 + 45, endMin: 18 * 60, workStartMin: 17 * 60, label: '5:00', arriveLabel: '4:45' },
+      ],
+      assignments: [shift('a', 'fri-1645', 'braemar', 'y01')],
+      jars: [jar({ id: 'j1', locationId: 'braemar', assignmentId: 'a', assignmentIds: ['a'], amount: 100 })],
+    }
+    const result = hourlyTrends([withLead], null)
+
+    // No four o'clock row at all, rather than one that could only read as earning nothing.
+    expect(result.rows.map((r) => r.hour)).toEqual([17])
+    // And the whole hundred lands in the hour somebody was actually at the door.
+    expect(result.rows[0]!.cells[0]!.revenue).toBe(100)
+    expect(result.rows[0]!.cells[0]!.coveredHours).toBe(1)
   })
 
   it('reads Friday before Saturday, and in clock order', () => {

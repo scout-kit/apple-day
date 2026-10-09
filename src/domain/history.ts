@@ -138,6 +138,11 @@ export function eventTotals(data: EventData): EventTotals {
     overlap where a year ran a handover, and adding their durations counts the same quarter
     of an hour twice. Per day, because 5pm Friday and 5pm Saturday are not the same stretch.
 
+    The shift, not the block: the quarter of an hour at the front is check-in, which happens
+    at base, so no shop is being covered and no money can arrive during it. Counting it gave
+    an evening of four hour-long shifts as 4.25 hours — a figure the schedule cannot produce
+    and nobody can account for.
+
     Worked out the same way as the money screen's clock hours, so an event's row here and
     its own money screen agree about what an hour of it was worth.
   */
@@ -147,7 +152,9 @@ export function eventTotals(data: EventData): EventTotals {
       (total, day) =>
         total +
         unionMinutes(
-          running.filter((s) => s.day === day).map((s) => [s.startMin, s.endMin] as const),
+          running
+            .filter((s) => s.day === day)
+            .map((s) => [s.workStartMin, s.endMin] as const),
         ),
       0,
     ) / 60,
@@ -535,14 +542,16 @@ export function hourlyTrends(
     const bySlot = new Map(data.slots.map((s) => [s.id, s]))
 
     /*
-      Which hours this event ran at all, so an hour it never scheduled reads as absent
+      Which hours this event could earn in, so an hour it never scheduled reads as absent
       rather than as an hour that earned nothing.
 
-      The whole block, not just the shift inside it: an event whose first block opens at a
-      quarter to five was running then, whatever those first fifteen minutes were spent on.
+      The shift, not the block it sits in. An event whose first block opens at a quarter to
+      five was indeed running then, but those fifteen minutes are check-in at base: no door
+      is being worked and no jar can take anything. Counting the block opened a four o'clock
+      row that could only ever read as an hour the event earned nothing in.
     */
     for (const slot of data.slots) {
-      for (const hour of hoursSpanned(slot.startMin, slot.endMin)) {
+      for (const hour of hoursSpanned(slot.workStartMin, slot.endMin)) {
         const key = keyOf(slot.day, hour)
         ran.set(key, (ran.get(key) ?? new Set()).add(eventId))
       }
@@ -612,9 +621,9 @@ export function hourlyTrends(
       const slot = bySlot.get(share.slotId)
       if (!slot) continue
 
-      const spanned = hoursSpanned(slot.startMin, slot.endMin)
+      const spanned = hoursSpanned(slot.workStartMin, slot.endMin)
       const weights = spanned.map((hour) =>
-        overlapMinutes(slot.startMin, slot.endMin, hour * 60, hour * 60 + 60),
+        overlapMinutes(slot.workStartMin, slot.endMin, hour * 60, hour * 60 + 60),
       )
       const parts = splitByWeight(share.amount, weights)
 
