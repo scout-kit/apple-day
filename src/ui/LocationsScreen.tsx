@@ -62,12 +62,23 @@ export function LocationsScreen(): ReactNode {
     [locations.data, assignments.data, jars.data, slots],
   )
   const metricsById = useMemo(() => {
-    const map = new Map<string, { revenue: number; hours: number; perHour: number | null }>()
+    const map = new Map<
+      string,
+      {
+        revenue: number
+        hours: number
+        covered: number
+        perHour: number | null
+        perPersonHour: number | null
+      }
+    >()
     for (const row of [...metrics.ranked, ...metrics.revenueWithoutHours]) {
       map.set(row.locationId, {
         revenue: row.revenue,
         hours: row.staffedHours,
-        perHour: row.revenuePerHour,
+        covered: row.coveredHours,
+        perHour: row.revenuePerCoveredHour,
+        perPersonHour: row.revenuePerHour,
       })
     }
     return map
@@ -221,8 +232,12 @@ export function LocationsScreen(): ReactNode {
                   <th>Location</th>
                   <th>Open</th>
                   <th className="right">Revenue</th>
-                  <th className="right">Hours</th>
+                  {/* Person-hours, said so: the rate beside it divides by the hours the door
+                      was covered, which is a smaller number wherever a shift was doubled
+                      up. Headed "Hours" they read as one sum and its division. */}
+                  <th className="right">Person-hours</th>
                   <th className="right">Per hour</th>
+                  <th className="right">Per person-hour</th>
                   <th />
                 </tr>
               </thead>
@@ -362,8 +377,14 @@ export function LocationsScreen(): ReactNode {
                       <td className="right">
                         <Hours value={m?.hours ?? 0} />
                       </td>
-                      <td className="right">
+                      <td
+                        className="right"
+                        title={m ? `over ${m.covered} hours of cover` : undefined}
+                      >
                         <Money value={m?.perHour ?? null} />
+                      </td>
+                      <td className="right">
+                        <Money value={m?.perPersonHour ?? null} />
                       </td>
                       <td>
                         {mayEdit && (

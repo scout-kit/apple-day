@@ -262,6 +262,42 @@ describe('what an hour of Apple Day is worth', () => {
     expect(report.revenuePerClockHour).toBe(100)
   })
 
+  /**
+   * The quarter of an hour at the front of a block is check-in, at base, with nobody out.
+   *
+   * It was being counted, so four hour-long shifts came to 4.25 hours and the rate divided
+   * the evening's takings across time no money could arrive in. The figure also cannot be
+   * accounted for by anybody reading it: there is no quarter hour in the schedule.
+   */
+  it('counts the shift, not the quarter hour of checking in before it', () => {
+    // 75-minute blocks starting on the hour: arrive at 4:45, out from 5:00 until 6:00.
+    const withLead: Slot[] = [
+      { id: 'fri-1645', day: 'fri', startMin: 16 * 60 + 45, endMin: 18 * 60, workStartMin: 17 * 60, arriveLabel: '4:45', label: '5:00' },
+      { id: 'fri-1745', day: 'fri', startMin: 17 * 60 + 45, endMin: 19 * 60, workStartMin: 18 * 60, arriveLabel: '5:45', label: '6:00' },
+    ]
+    const report = revenueBySlot(
+      [shift('a1', 'fri-1645', 'p1'), shift('a2', 'fri-1745', 'p2')],
+      [jar({ id: 'j1', assignmentId: 'a1', assignmentIds: ['a1'], amount: 300 })],
+      withLead,
+    )
+
+    // Two hour-long shifts back to back are two hours, not two and a half.
+    expect(report.clockHours).toBe(2)
+    expect(report.revenuePerClockHour).toBe(150)
+  })
+
+  it('gives each hour the time its shift began, not the time people were asked to arrive', () => {
+    // What a chart of takings puts on its axis. "4:45" against the hour that ran from five
+    // says the money came in a quarter of an hour before anybody was at a door.
+    const withLead: Slot[] = [
+      { id: 'fri-1645', day: 'fri', startMin: 16 * 60 + 45, endMin: 18 * 60, workStartMin: 17 * 60, arriveLabel: '4:45', label: '5:00' },
+    ]
+    const report = revenueBySlot([shift('a1', 'fri-1645', 'p1')], [], withLead)
+
+    expect(report.rows[0]!.workStartMin).toBe(17 * 60)
+    expect(report.rows[0]!.startMin).toBe(16 * 60 + 45)
+  })
+
   it('does not merge the same time on two different days', () => {
     const twoDays: Slot[] = [
       { id: 'fri-1700', day: 'fri', startMin: 17 * 60, endMin: 18 * 60, workStartMin: 17 * 60, arriveLabel: '5:00', label: '5:00' },

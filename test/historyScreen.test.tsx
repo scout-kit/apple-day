@@ -164,15 +164,48 @@ describe('every event side by side', () => {
     expect(eventRow('Apple Day 2025').textContent).toContain('—')
   })
 
+  const cellsOf = (name: string): (string | null)[] =>
+    Array.from(eventRow(name).querySelectorAll('td')).map((c) => c.textContent)
+
   it('divides by hours somebody worked, and says so', () => {
     render(<HistoryScreen />)
-    // 2026: $200 over 2 person-hours is $100 an hour. 2025's total is also $100, so read the
-    // rate out of its own row rather than the whole table.
-    const row = eventRow('Apple Day 2026')
-    const cells = Array.from(row.querySelectorAll('td')).map((c) => c.textContent)
+    // 2026: $200 over two hours, worked by two youth an hour each — so an hour of event and
+    // an hour of somebody's evening are the same hour, and both rates are $100. 2025's total
+    // is also $100, so read the rates out of the row rather than the whole table.
+    const cells = cellsOf('Apple Day 2026')
+
+    // Revenue, vs, hours, per hour, vs, person-hours, per person-hour.
     expect(cells[1]).toBe('$200.00')
+    expect(cells[3]).toBe('2')
     expect(cells[4]).toBe('$100.00')
+    expect(cells[6]).toBe('2')
+    expect(cells[7]).toBe('$100.00')
     expect(screen.getByText(/a shift nobody turned up for did not staff an hour/)).toBeTruthy()
+  })
+
+  /**
+   * "Per hour" meant per person-hour, so a year that turned more people out reported a
+   * worse hour for the same evening — the rate fell for a reason that was about turnout.
+   */
+  it('tells how long the evening ran apart from how much of it people gave', () => {
+    const [y2025, y2026] = twoYears()
+    history = [
+      y2025!,
+      {
+        // The same evening and the same $200, but a second youth on the five o'clock shift.
+        ...y2026!,
+        assignments: [...y2026!.assignments, shift('b2', 'fri-1700', 'braemar', 'y03')],
+      },
+    ]
+    render(<HistoryScreen />)
+    const cells = cellsOf('Apple Day 2026')
+
+    // Still a two-hour evening worth $100 an hour...
+    expect(cells[3]).toBe('2')
+    expect(cells[4]).toBe('$100.00')
+    // ...given three person-hours rather than two, which only the second rate reflects.
+    expect(cells[6]).toBe('3')
+    expect(cells[7]).toBe('$66.67')
   })
 
   it('draws a bar per event, without a running total across years', () => {
@@ -317,16 +350,43 @@ describe('what the locations table is measuring', () => {
     expect(cells('Braemar')[1]).toBe('$100.00')
   })
 
-  it('offers takings and what an hour there was worth, and nothing else', () => {
+  it('offers takings and the two rates, and nothing else', () => {
     /*
       There was an Hours button too. It answered a question about effort rather than about
       takings, which belongs to the money screen where an hour is being planned — not to a
       history read to decide where to stand next year.
+
+      The rates are two because they disagree whenever people doubled up: per hour is what
+      the door was worth, per person-hour what an hour of somebody's evening there was.
     */
     render(<HistoryScreen />)
     expect(screen.getByRole('button', { name: 'Revenue' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Per hour' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Per person-hour' })).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Hours' })).toBeNull()
+  })
+
+  it('does not count a door twice because two youth were sent to it', async () => {
+    // 2026: the same $150 at Braemar, but a pair on the one shift instead of one youth.
+    const [y2025, y2026] = twoYears()
+    history = [
+      y2025!,
+      {
+        ...y2026!,
+        assignments: [...y2026!.assignments, shift('b2', 'fri-1700', 'braemar', 'y03')],
+      },
+    ]
+    render(<HistoryScreen />)
+
+    await userEvent.click(screen.getByRole('button', { name: 'Per hour' }))
+    // The door was covered for an hour either year, so it is simply worth half as much again.
+    expect(cells('Braemar')[2]).toBe('$150.00')
+    expect(gridRow('Braemar').textContent).toContain('+50%')
+
+    await userEvent.click(screen.getByRole('button', { name: 'Per person-hour' }))
+    // The same money over two person-hours instead of one.
+    expect(cells('Braemar')[2]).toBe('$75.00')
+    expect(gridRow('Braemar').textContent).toContain('-25%')
   })
 
   it('switches to what an hour there was worth', async () => {
@@ -360,7 +420,11 @@ describe('what the locations table is measuring', () => {
 
   it('says what the chosen measure means', async () => {
     render(<HistoryScreen />)
+
     await userEvent.click(screen.getByRole('button', { name: 'Per hour' }))
+    expect(screen.getByText(/counting a door worked by a pair once/)).toBeTruthy()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Per person-hour' }))
     expect(screen.getByText(/takings up by half is not a win/)).toBeTruthy()
   })
 

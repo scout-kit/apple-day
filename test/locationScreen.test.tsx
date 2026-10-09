@@ -425,6 +425,39 @@ describe('the thing this page was worth building for', () => {
     expect(row2026.textContent).toContain('$150.00')
   })
 
+  /**
+   * The year-by-year table said "Per hour" and divided by person-hours, so the same door
+   * read as half as good in a year it was worked by a pair. It now gives both, and the
+   * first of them is the same figure as the "per hour" stat at the top of the page.
+   */
+  it('separates the hours the door was worked from the hours people gave', () => {
+    const [y2025, y2026] = twoYears()
+    history = [
+      y2025!,
+      {
+        // 2026: the same $150 at this door, worked by two rather than by one.
+        ...y2026!,
+        assignments: [
+          ...y2026!.assignments,
+          shift('b2', 'fri-1700', { personId: 'p-two' }),
+        ],
+      },
+    ]
+    renderFor()
+
+    const card = screen.getByRole('heading', { name: 'Year by year' }).closest('.card')!
+    const row2026 = within(card as HTMLElement)
+      .getAllByRole('row')
+      .find((r) => r.textContent?.startsWith('Apple Day 2026'))!
+    const cells = Array.from(row2026.querySelectorAll('td')).map((c) => c.textContent)
+
+    // Revenue, hours of door, per hour, person-hours, per person-hour.
+    expect(cells.slice(1)).toEqual(['$150.00', '1', '$150.00', '2', '$75.00'])
+    // The door is up by half; an hour of somebody's evening there is down by a quarter.
+    expect(card.textContent).toContain('+50%')
+    expect(card.textContent).toContain('-25%')
+  })
+
   it('says it is still adding up while the years are loading', () => {
     historyLoading = true
     renderFor()
@@ -633,5 +666,33 @@ describe('the map on a location page', () => {
     expect(screen.getByRole('dialog')).toBeTruthy()
     expect(screen.queryByText(/No base of operations/)).toBeNull()
     expect(screen.queryByText(/Directions from/)).toBeNull()
+  })
+})
+
+/**
+ * Two rates, because sending a second person changes one of them and not the other.
+ *
+ * The page showed revenue over person-hours alone, so a shop worked in pairs reported half
+ * the rate of the same shop worked alone — a fact about the staffing, read as a fact about
+ * the shop.
+ */
+describe('what an hour at this location was worth', () => {
+  const stat = (label: string): string | null | undefined =>
+    screen.getByText(label).closest('.stat')?.querySelector('.value')?.textContent
+
+  it('divides the takings by the door and by the people, and shows both', () => {
+    // Two youth on the one shift: an hour of door, two person-hours, $100 in the jar.
+    assignments = [shift('a1', 'fri-1700'), shift('a2', 'fri-1700', { personId: 'p-two' })]
+    renderFor()
+
+    expect(stat('per hour')).toBe('$100.00')
+    expect(stat('per person-hour')).toBe('$50.00')
+  })
+
+  it('agrees with itself where one person worked the shift alone', () => {
+    renderFor()
+
+    expect(stat('per hour')).toBe('$100.00')
+    expect(stat('per person-hour')).toBe('$100.00')
   })
 })

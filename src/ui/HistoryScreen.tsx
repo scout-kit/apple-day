@@ -13,6 +13,7 @@ import {
   previousEvent,
   stackBands,
   stackTotals,
+  trendValue,
 } from '../domain/history'
 import { matchesTerms, searchTerms } from '../domain/search'
 import type { TrendMeasure } from '../domain/history'
@@ -47,10 +48,27 @@ const MEASURES: { id: TrendMeasure; label: string; blurb: string }[] = [
     id: 'perHour',
     label: 'Per hour',
     blurb:
-      'What an hour of somebody’s evening was worth there. The one to plan by: takings ' +
-      'up by half is not a win if the hours behind them doubled.',
+      'What an hour at that door was worth, counting a door worked by a pair once. The ' +
+      'one to choose next year’s locations by: it does not move when more people are sent.',
+  },
+  {
+    id: 'perPersonHour',
+    label: 'Per person-hour',
+    blurb:
+      'What an hour of somebody’s evening was worth there. The one to decide how many to ' +
+      'send by: takings up by half is not a win if the hours behind them doubled.',
   },
 ]
+
+/**
+ * The measure to show, as one of the three that exist.
+ *
+ * It comes out of the address bar, where it may be anything at all — an old link, a typo —
+ * and the blurb beside the buttons is looked up by it. A stale value used to be cast and
+ * trusted, which left nothing selected and nothing to read.
+ */
+const asMeasure = (value: string): TrendMeasure =>
+  MEASURES.find((m) => m.id === value)?.id ?? 'revenue'
 
 /** Currency as text, for axis ticks and readouts inside the chart. */
 const money = (n: number): string =>
@@ -157,7 +175,7 @@ export function HistoryScreen(): ReactNode {
   const setPicked = (ids: string[]): void => setPickedLocations(ids.join(','))
 
   const [measureParam, setMeasure] = useUrlState('measure', 'revenue')
-  const measure = measureParam as TrendMeasure
+  const measure = asMeasure(measureParam)
   const [locationSearch, setLocationSearch] = useUrlState('find')
 
   const names = useMemo(
@@ -297,8 +315,25 @@ export function HistoryScreen(): ReactNode {
                     <th>Event</th>
                     <th className="right">Revenue</th>
                     <th className="right">vs before</th>
-                    <th className="right">Hours</th>
+                    {/*
+                      Two kinds of hour, each with its own rate.
+
+                      "Hours" is how long the evening ran with somebody out — the same
+                      figure as the money screen's headline, so a year's row here and its
+                      own money screen agree. "Person-hours" is how much of it people gave.
+                      A year that turns out twice the volunteers for the same evening moves
+                      the second and not the first, and reading that as a worse hour is
+                      backwards.
+                    */}
+                    <th className="right" title="How long the event ran with somebody out">
+                      Hours
+                    </th>
                     <th className="right">Per hour</th>
+                    <th className="right">vs before</th>
+                    <th className="right" title="Hours people gave, base included">
+                      Person-hours
+                    </th>
+                    <th className="right">Per person-hour</th>
                     <th className="right">vs before</th>
                     <th className="right">Volunteers</th>
                     <th className="right">Locations</th>
@@ -333,12 +368,26 @@ export function HistoryScreen(): ReactNode {
                           <Change value={changeFrom(before?.revenue ?? null, e.revenue)} />
                         </td>
                         <td className="right">
-                          <Hours value={e.staffedHours} />
+                          <Hours value={e.clockHours} />
                         </td>
                         <td className="right">
                           <strong>
-                            <Money value={e.revenuePerHour} />
+                            <Money value={e.revenuePerClockHour} />
                           </strong>
+                        </td>
+                        <td className="right small">
+                          <Change
+                            value={changeFrom(
+                              before?.revenuePerClockHour ?? null,
+                              e.revenuePerClockHour,
+                            )}
+                          />
+                        </td>
+                        <td className="right">
+                          <Hours value={e.staffedHours} />
+                        </td>
+                        <td className="right">
+                          <Money value={e.revenuePerHour} />
                         </td>
                         <td className="right small">
                           <Change
@@ -357,9 +406,13 @@ export function HistoryScreen(): ReactNode {
               </table>
             </div>
             <p className="small muted">
-              Hours are hours somebody worked, as on the money screen — a shift nobody turned
-              up for did not staff an hour. A blank rate means no recorded hours to divide by,
-              which is what a year imported from the workbook looks like.
+              <strong>Hours</strong> is how long the event ran with somebody out collecting,
+              counting an hour once however many were out in it;{' '}
+              <strong>person-hours</strong> is how much of it people gave, so two youth on
+              one shift is two. Either way they are hours somebody worked, as on the money
+              screen — a shift nobody turned up for did not staff an hour. A blank rate means
+              no recorded hours to divide by, which is what a year imported from the workbook
+              looks like.
             </p>
           </div>
 
@@ -423,18 +476,23 @@ export function HistoryScreen(): ReactNode {
                           }`}
                           title={
                             c.staffedHours > 0
-                              ? `${c.staffedHours} person-hours · ${
-                                  c.revenuePerHour === null ? 'no rate' : `$${c.revenuePerHour}/hr`
+                              ? `${c.coveredHours} hours of door, ${c.staffedHours} ` +
+                                `person-hours · ${
+                                  c.revenuePerCoveredHour === null
+                                    ? 'no rate'
+                                    : `$${c.revenuePerCoveredHour}/hr`
+                                } · ${
+                                  c.revenuePerHour === null
+                                    ? 'no rate'
+                                    : `$${c.revenuePerHour}/person-hr`
                                 }`
                               : 'not used that year'
                           }
                         >
                           {c.revenue === 0 && c.staffedHours === 0 ? (
                             '·'
-                          ) : measure === 'perHour' ? (
-                            <Money value={c.revenuePerHour} />
                           ) : (
-                            <Money value={c.revenue} />
+                            <Money value={trendValue(c, measure)} />
                           )}
                         </td>
                       ))}
@@ -512,9 +570,7 @@ export function HistoryScreen(): ReactNode {
                 groups={byHour.rows.map((row) => ({
                   label: formatTime(row.hour * 60),
                   ...(eventDaysShown > 1 ? { sub: DAY_SHORT[row.day] } : {}),
-                  values: row.cells.map((c) =>
-                    !c.ran ? null : measure === 'perHour' ? c.revenuePerHour : c.revenue,
-                  ),
+                  values: row.cells.map((c) => (c.ran ? trendValue(c, measure) : null)),
                 }))}
                 series={events.map((e) => ({ id: e.eventId, label: labelFor(e) }))}
                 format={(v) => money(v)}
@@ -562,13 +618,7 @@ export function HistoryScreen(): ReactNode {
                               className={`hour-cell small${c.ran ? '' : ' hour-quiet'}`}
                             >
                               {/* A door that was shut, rather than one that took nothing. */}
-                              {!c.ran ? (
-                                '·'
-                              ) : measure === 'perHour' ? (
-                                <Money value={c.revenuePerHour} />
-                              ) : (
-                                <Money value={c.revenue} />
-                              )}
+                              {!c.ran ? '·' : <Money value={trendValue(c, measure)} />}
                             </td>
                           ))}
                         </tr>
@@ -607,13 +657,7 @@ export function HistoryScreen(): ReactNode {
                               key={c.eventId}
                               className={`hour-cell small${c.ran ? '' : ' hour-quiet'}`}
                             >
-                              {!c.ran ? (
-                                '·'
-                              ) : measure === 'perHour' ? (
-                                <Money value={c.revenuePerHour} />
-                              ) : (
-                                <Money value={c.revenue} />
-                              )}
+                              {!c.ran ? '·' : <Money value={trendValue(c, measure)} />}
                             </td>
                           ))}
                           <td className="right small">

@@ -9,7 +9,7 @@ import {
   sectionParticipation,
   workedShifts,
 } from '../domain/metrics'
-import type { HoursBasis } from '../domain/metrics'
+import type { HoursBasis, RateBasis } from '../domain/metrics'
 import { findOrphanedRecords } from '../domain/orphans'
 import type { OrphanIssue, OrphanRepair } from '../domain/orphans'
 import { DAY_LABEL, formatTime } from '../domain/slots'
@@ -53,7 +53,9 @@ const VIEWS: { id: View; label: string; blurb: string }[] = [
   {
     id: 'locations',
     label: 'Locations',
-    blurb: 'Where the money came from, ranked by what an hour there was worth.',
+    blurb:
+      'Where the money came from, ranked by what an hour there was worth — ' +
+      'per hour of door, or per hour of somebody\u2019s evening.',
   },
   {
     id: 'hours',
@@ -75,6 +77,21 @@ const cellClass = (
   `hour-cell small${cell.revenue === 0 ? ' hour-quiet' : ''}${
     bestSlotId === cell.slotId ? ' hour-best' : ''
   }`
+
+/** A footer rate: the same division the rows do, and the same null when there is nothing. */
+const perHourOf = (revenue: number, hours: number): number | null =>
+  hours > 0 ? Math.round((revenue / hours) * 100) / 100 : null
+
+/**
+ * One of the two rates in the location table, emphasised when it is the one ranking.
+ *
+ * The rows are in its order, so it is the column the table is making an argument about;
+ * the other is there to be read against it.
+ */
+function Rate({ value, leads }: { value: number | null; leads: boolean }): ReactNode {
+  const money = <Money value={value} />
+  return leads ? <strong>{money}</strong> : money
+}
 
 /**
  * Where the money came from, per staffed hour.
@@ -110,6 +127,14 @@ export function MoneyScreen(): ReactNode {
    * were ever recorded and worked hours are therefore zero everywhere.
    */
   const [basisParam, setBasis] = useUrlState('hours', 'worked')
+  /**
+   * Which of the two rates the location table is ordered on.
+   *
+   * Per person-hour is the default and the long-standing one. Per hour is the same money
+   * over the time the door was actually covered, which is the comparison to make when some
+   * shops were worked in pairs and others alone.
+   */
+  const [rateParam, setRate] = useUrlState('rate', 'personHour')
   const [viewParam, setView] = useUrlState('view', 'locations')
 
   /*
@@ -118,6 +143,7 @@ export function MoneyScreen(): ReactNode {
   */
   const scope = scopeParam as Scope
   const basis = basisParam as HoursBasis
+  const rankBy = rateParam as RateBasis
   const view = viewParam as View
   const [locationSearch, setLocationSearch] = useUrlState('find')
   const [personSearch, setPersonSearch] = useUrlState('who')
@@ -143,8 +169,9 @@ export function MoneyScreen(): ReactNode {
     () =>
       locationMetrics(
         locations.data, scoped.counted, scoped.jars, scoped.slots, event?.baseLocationId,
+        rankBy,
       ),
-    [locations.data, scoped, event?.baseLocationId],
+    [locations.data, scoped, event?.baseLocationId, rankBy],
   )
 
   const byHour = useMemo(
@@ -173,8 +200,10 @@ export function MoneyScreen(): ReactNode {
     () =>
       byHour.rows.map((r) => ({
         label: r.label,
-        // Just the start time on the axis; the full range is in the hover readout.
-        axisLabel: formatTime(r.startMin).replace(':00', ''),
+        // Just the start time on the axis; the full range is in the hover readout. The
+        // shift's own start, not the block's: the quarter hour in front of it is check-in
+        // at base, and no money arrives during it.
+        axisLabel: formatTime(r.workStartMin).replace(':00', ''),
         // Only when both days are in view, or the caption says nothing.
         ...(scope === 'all' ? { dayLabel: DAY_LABEL[r.day] } : {}),
         revenue: r.revenue,
@@ -315,8 +344,12 @@ export function MoneyScreen(): ReactNode {
           Rank: String(r.rank ?? ''),
           Location: r.name,
           Revenue: r.revenue.toFixed(2),
-          'Staffed hours': String(r.staffedHours),
-          'Revenue per hour': r.revenuePerHour === null ? '' : r.revenuePerHour.toFixed(2),
+          'Hours covered': String(r.coveredHours),
+          'Revenue per hour':
+            r.revenuePerCoveredHour === null ? '' : r.revenuePerCoveredHour.toFixed(2),
+          'Person-hours': String(r.staffedHours),
+          'Revenue per person-hour':
+            r.revenuePerHour === null ? '' : r.revenuePerHour.toFixed(2),
           Jars: String(r.jarCount),
         })),
       ),
@@ -594,6 +627,32 @@ export function MoneyScreen(): ReactNode {
             Export CSV
           </button>
         </div>
+        {/*
+          Which rate the table is ranked on.
+
+          Both are always shown; this says which one orders the rows and which one is read
+          as the answer. Per person-hour asks whether the people sent were well spent, so
+          doubling up at a door halves it. Per hour asks what the door itself was worth and
+          does not move when a second person is sent — the comparison to judge next year's
+          list on, where some shops were worked in pairs and others alone.
+        */}
+        <div className="row" style={{ marginBottom: '0.5rem' }}>
+          <span className="muted small">Ranked by</span>
+          <button
+            className={rankBy === 'coveredHour' ? 'primary' : ''}
+            title="Revenue over the hours the door was covered — a pair counts once"
+            onClick={() => setRate('coveredHour')}
+          >
+            Per hour
+          </button>
+          <button
+            className={rankBy === 'personHour' ? 'primary' : ''}
+            title="Revenue over the hours people gave — a pair counts twice"
+            onClick={() => setRate('personHour')}
+          >
+            Per person-hour
+          </button>
+        </div>
         {/* The ranking means a location is never where you last saw it, so finding one by
             reading down the table is the wrong instrument. */}
         <input
@@ -610,8 +669,22 @@ export function MoneyScreen(): ReactNode {
                 <th>#</th>
                 <th>Location</th>
                 <th className="right">Revenue</th>
-                <th className="right">Staffed hours</th>
+                {/*
+                  Two kinds of hour, each with its own rate beside it.
+
+                  They part company exactly where people doubled up: a shop worked by two
+                  siblings for one shift is two person-hours and one hour of door. Reading
+                  one without the other is how a well-staffed shop came to look like a poor
+                  one.
+                */}
+                <th className="right" title="Hours the door was covered, however many people were there">
+                  Hours
+                </th>
                 <th className="right">Per hour</th>
+                <th className="right" title="Hours people gave — two for a shift worked by a pair">
+                  Person-hours
+                </th>
+                <th className="right">Per person-hour</th>
               </tr>
             </thead>
             <tbody>
@@ -627,12 +700,19 @@ export function MoneyScreen(): ReactNode {
                     <Money value={r.revenue} />
                   </td>
                   <td className="right">
+                    <Hours value={r.coveredHours} />
+                  </td>
+                  <td className="right">
+                    <Rate
+                      value={r.revenuePerCoveredHour}
+                      leads={rankBy === 'coveredHour'}
+                    />
+                  </td>
+                  <td className="right">
                     <Hours value={r.staffedHours} />
                   </td>
                   <td className="right">
-                    <strong>
-                      <Money value={r.revenuePerHour} />
-                    </strong>
+                    <Rate value={r.revenuePerHour} leads={rankBy === 'personHour'} />
                   </td>
                 </tr>
               ))}
@@ -645,18 +725,16 @@ export function MoneyScreen(): ReactNode {
                   <Money value={report.totalRevenue} />
                 </th>
                 <th className="right">
+                  <Hours value={report.totalCoveredHours} />
+                </th>
+                <th className="right">
+                  <Money value={perHourOf(report.totalRevenue, report.totalCoveredHours)} />
+                </th>
+                <th className="right">
                   <Hours value={report.totalStaffedHours} />
                 </th>
                 <th className="right">
-                  <Money
-                    value={
-                      report.totalStaffedHours > 0
-                        ? Math.round(
-                            (report.totalRevenue / report.totalStaffedHours) * 100,
-                          ) / 100
-                        : null
-                    }
-                  />
+                  <Money value={perHourOf(report.totalRevenue, report.totalStaffedHours)} />
                 </th>
               </tr>
             </tfoot>

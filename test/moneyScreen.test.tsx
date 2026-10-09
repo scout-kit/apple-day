@@ -161,8 +161,14 @@ describe('every location that saw money is listed', () => {
     // short by whatever had no hours.
     expect(totals.getByText('$186.55')).toBeDefined()
     expect(totals.getByText('Total')).toBeDefined()
-    // And the overall rate divides by the hours actually staffed, not by the rows.
-    expect(totals.getByText('$93.28')).toBeDefined()
+    /*
+      And the overall rates divide by the hours actually staffed, not by the rows.
+
+      Nobody doubled up in this fixture, so the two kinds of hour — and the two rates over
+      them — agree. Read by column rather than by value, because they do.
+    */
+    const cells = Array.from(table.querySelectorAll('tfoot th')).map((c) => c.textContent)
+    expect(cells).toEqual(['', 'Total', '$186.55', '2', '$93.28', '2', '$93.28'])
   })
 
   it('ranks only what can be ranked', () => {
@@ -172,6 +178,68 @@ describe('every location that saw money is listed', () => {
     // Ranked rows first, unrankable at the end.
     expect(rows[0]!.textContent).toContain('Braemar')
     expect(rows[1]!.textContent).toContain('Staff lounge')
+  })
+})
+
+/**
+ * Sending two people to one door does not make the door twice as expensive to be at.
+ *
+ * Every rate here divided money by person-hours, so a shop worked by a pair reported half
+ * the rate of the same shop worked alone and fell down the ranking for a staffing decision
+ * rather than for anything about the shop. Both figures are shown now, and either may rank.
+ */
+describe('a door covered by two people at once', () => {
+  const cellsOf = (name: string): (string | null)[] => {
+    const row = within(byLocationTable()).getByText(name).closest('tr')!
+    return Array.from(row.querySelectorAll('td')).map((c) => c.textContent)
+  }
+
+  const ranking = (): (string | null)[] =>
+    Array.from(byLocationTable().querySelectorAll('tbody tr')).map(
+      (r) => r.querySelectorAll('td')[1]!.textContent,
+    )
+
+  beforeEach(() => {
+    // Braemar worked by a pair for one shift and taking $150; the lounge worked by one
+    // person for one shift and taking $100.
+    assignments = [
+      worked({ id: 'a1', slotId: 'fri-1700' }),
+      worked({ id: 'a2', slotId: 'fri-1700', personId: 'p-two' }),
+      // A third person: the same person cannot cover two doors at once, and person-hours
+      // would credit that hour to only one of them.
+      worked({ id: 'a3', slotId: 'fri-1700', locationId: 'lounge', personId: 'p-three' }),
+    ]
+    jars = [
+      jar({ id: 'j1', amount: 150 }),
+      jar({
+        id: 'j2', jarNumber: 2, locationId: 'lounge',
+        assignmentId: 'a3', assignmentIds: ['a3'], amount: 100,
+      }),
+    ]
+  })
+
+  it('counts the hours twice over and the hour of door once', () => {
+    render(<MoneyScreen />)
+
+    // Revenue, hours covered, per hour, person-hours, per person-hour.
+    expect(cellsOf('Braemar').slice(2)).toEqual(['$150.00', '1', '$150.00', '2', '$75.00'])
+    // Worked alone, so the two readings of the same money agree.
+    expect(cellsOf('Staff lounge').slice(2)).toEqual([
+      '$100.00', '1', '$100.00', '1', '$100.00',
+    ])
+  })
+
+  it('ranks by person-hour until asked for the other one', async () => {
+    render(<MoneyScreen />)
+
+    // $100 for an hour of somebody's evening beats $75.
+    expect(ranking()).toEqual(['Staff lounge', 'Braemar'])
+
+    await showTab('Locations')
+    await userEvent.click(screen.getByRole('button', { name: 'Per hour' }))
+
+    // $150 at the door beats $100: the second person no longer counts against Braemar.
+    expect(ranking()).toEqual(['Braemar', 'Staff lounge'])
   })
 })
 
