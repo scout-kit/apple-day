@@ -291,12 +291,13 @@ describe('pairing', () => {
   })
 
   /**
-   * A pair is split when both of them are out and not in the same place.
+   * The hour decides it, and availability answers for the hour.
    *
-   * The partner missing from a shift is not the same thing as the partner being somewhere
-   * else — the usual reason is that they never offered the hour — and every shift the
-   * sibling who was free got carried a line naming the one who wasn’t. On a board that
-   * was correct those lines were most of what it showed.
+   * A pair is split when both are out in one hour in different places, or when one is out
+   * and the other said they were free for it and has been left off. The partner simply
+   * missing from a shift is neither: most often they never offered the hour, and a warning
+   * against every shift the sibling who *was* free had been given buried the warnings worth
+   * reading on a board that was correct.
    */
   describe('when the partner is not on this shift', () => {
     /** A real youth who is simply not on the fixture's Friday board at all. */
@@ -326,7 +327,8 @@ describe('pairing', () => {
       /*
         Said in the data rather than inferred from the board: the partner signed up for the
         six o'clock hour and nothing else, and is paired with somebody working seven. There
-        is no arrangement of the board that would satisfy a warning about it.
+        is no arrangement of the board that would satisfy a warning about it — the hour is
+        not one of theirs to work.
       */
       const { here } = sameHour('fri-1900')
       const partner = fridayAssignments2025.find((a) => a.slotId === 'fri-1800')!.personId
@@ -392,11 +394,15 @@ describe('pairing', () => {
       expect(split[0]!.personIds).toEqual(expect.arrayContaining([here.personId, ABSENT]))
     })
 
-    it('leaves the warning that is actually about a missing shift alone', () => {
+    it('speaks up once the partner says they are free then', () => {
       /*
-        Silencing this one must not silence that one. Somebody who offered hours and was
-        given none is named by `noShifts` — once, about the person, rather than once per
-        shift about their sibling.
+        The hour is the question, and availability is how it is answered. The same board as
+        the test above, plus a signup putting the partner's name against the hour their
+        sibling works: they could be standing beside them and are not, which is something an
+        organizer can act on.
+
+        It does not replace `noShifts`. That one says this volunteer is going unused; this
+        one says where to use them.
       */
       const signups = [
         {
@@ -406,11 +412,60 @@ describe('pairing', () => {
         },
       ]
       const issues = run({ people: withPartner('y01', ABSENT), signups })
+      const split = issues.filter((i) => i.code === 'splitPair')
 
-      expect(codes(issues)).not.toContain('splitPair')
-      expect(codes(issues)).toContain('noShifts')
-      // Once, about them, rather than once per shift about their sibling.
+      expect(split).toHaveLength(1)
+      expect(split[0]!.message).toContain('is free during')
+      expect(split[0]!.personIds).toEqual(expect.arrayContaining(['y01', ABSENT]))
+      // And the other warning is still its own: once, about them, by name.
       expect(issues.filter((i) => i.code === 'noShifts')).toHaveLength(1)
+    })
+
+    it('speaks up for a partner who is working elsewhere that evening', () => {
+      /*
+        The case this was reported from, the other way round. The partner is on the board —
+        just not in this hour — and has said they are free for it. Being busy at six is no
+        reason not to be put beside their sibling at seven.
+      */
+      const { here } = sameHour('fri-1900')
+      const partner = fridayAssignments2025.find((a) => a.slotId === 'fri-1800')!.personId
+      const signups = [
+        {
+          id: 'su-partner', personId: partner,
+          availability: { fri: ['fri-1800', 'fri-1900'], sat: [] },
+          attendingWithYouth: true, notes: '', sourceRow: 1, importedAt: 0,
+        },
+      ]
+      const split = splits({ people: withPartner(here.personId, partner), signups })
+
+      // The seven o'clock hour they both could work, and not the six they do not share.
+      expect(split).toHaveLength(1)
+      expect(split[0]!.message).toContain('7:00 PM')
+      expect(split[0]!.message).toContain('is free during')
+    })
+
+    it('reads availability from either end of the pairing', () => {
+      // The check works the pair from the lower id, so without this the warning would
+      // appear or not according to how two ids happen to sort.
+      const { here } = sameHour('fri-1900')
+      const partner = fridayAssignments2025.find((a) => a.slotId === 'fri-1800')!.personId
+      const signups = [
+        {
+          id: 'su-partner', personId: partner,
+          availability: { fri: ['fri-1900'], sat: [] },
+          attendingWithYouth: true, notes: '', sourceRow: 1, importedAt: 0,
+        },
+      ]
+
+      for (const [holder, other] of [
+        [here.personId, partner],
+        [partner, here.personId],
+      ] as const) {
+        expect(
+          splits({ people: withPartner(holder, other), signups }),
+          `${holder} -> ${other}`,
+        ).toHaveLength(1)
+      }
     })
 
     it('counts a shift somebody did not turn up for as being out', () => {

@@ -135,9 +135,6 @@ export function validateSchedule(input: ValidateInput): ScheduleIssue[] {
   // Encoded as `(w/ Boyan please)` inside the name field in past years; now a real
   // reference, so it can actually be checked.
   //
-  // Split up means out at the same hour in different places. A pair with only one of them
-  // on a shift is not split up — the other is not out at all, which is a different thing.
-  //
   // Treated as undirected: a pairing recorded on only one person is still a pairing. An
   // earlier version reported each pair from the lower id and skipped the higher one, which
   // meant a one-sided pairing was checked or ignored purely according to how the two ids
@@ -150,37 +147,52 @@ export function validateSchedule(input: ValidateInput): ScheduleIssue[] {
     pairs.set(`${first}::${second}`, second)
   }
 
+  /** Did they say they could work this hour? Nothing stated is not a yes. */
+  const offeredSlot = (personId: string, slot: Slot): boolean =>
+    (availabilityBySignup.get(personId)?.[slot.day] ?? []).includes(slot.id)
+
   for (const key of pairs.keys()) {
     const [firstId] = key.split('::') as [string, string]
-    const person = personById.get(firstId)
     const partnerId = pairs.get(key)!
-    if (!person) continue
+    if (!personById.has(firstId)) continue
 
-    const partnerShifts = live.filter((x) => x.personId === partnerId)
+    const shiftsOf = new Map<string, Assignment[]>()
+    for (const id of [firstId, partnerId]) {
+      shiftsOf.set(id, live.filter((x) => x.personId === id))
+    }
 
-    for (const a of live.filter((x) => x.personId === person.id)) {
-      const slot = slotById.get(a.slotId)
+    /*
+      The hours either of them is out in, and only those.
+
+      A pairing is a request about the hours they work: put them together. An hour neither
+      of them is out in has nothing to put right, and an hour only one of them could ever
+      have worked has nothing either — the usual reason the other is missing from a shift is
+      that they never offered it, and asking an organizer to fix an hour somebody is not
+      available for is asking for nothing. Reporting it anyway put a line against every
+      shift the sibling who was free had been given, naming the one who was not, and there
+      were enough of those to bury the warnings worth reading.
+    */
+    const slotIds = new Set(
+      [...shiftsOf.get(firstId)!, ...shiftsOf.get(partnerId)!].map((x) => x.slotId),
+    )
+
+    for (const slotId of slotIds) {
+      const slot = slotById.get(slotId)
+      const when = slot?.label ?? slotId
 
       /*
-        Both of them have to be out in this hour for there to be a split.
+        Read from whichever of them is out, so the warning is about a shift on the board.
 
-        A pairing is a request about the hours they are both working: put them together. The
-        partner not being on this shift is not the same thing as being somewhere else — the
-        usual reason is that they never offered the hour, and asking an organizer to fix an
-        hour one of them is not available for is asking for nothing. Every shift the sibling
-        who was free got carried a line naming the one who wasn't, and there were enough of
-        them to bury the warnings worth reading.
-
-        Nothing is lost by the silence. A pair rostered at different hours is reported the
-        moment they share one; somebody who offered hours and got none is named by
-        `noShifts`, once, under their own name.
-
-        Checking only the hours this one works is also what makes reading the pair from one
-        end enough: an hour they are both out in is an hour that appears on both their
-        boards, so no split can hide on the other side of the pairing.
+        The lower id first when they both are, which keeps one split to one warning rather
+        than one from each end. When only one of them is out, that one is the subject and
+        the question is whether the other could have been beside them.
       */
-      const together = partnerShifts.filter((x) => x.slotId === a.slotId)
-      if (together.length === 0) continue
+      const [subjectId, otherId] = shiftsOf.get(firstId)!.some((x) => x.slotId === slotId)
+        ? [firstId, partnerId]
+        : [partnerId, firstId]
+
+      const mine = shiftsOf.get(subjectId)!.filter((x) => x.slotId === slotId)
+      const theirs = shiftsOf.get(otherId)!.filter((x) => x.slotId === slotId)
 
       /*
         Together, not identical.
@@ -191,24 +203,37 @@ export function validateSchedule(input: ValidateInput): ScheduleIssue[] {
         point of sending two. So a shared area counts, and the warning is for a pair actually
         split across the town.
       */
-      const partnerHere = together.some((x) =>
-        sameArea(x.locationId, a.locationId, locationById),
-      )
-      if (!partnerHere) {
-        const area = areaOf(locationById.get(a.locationId))
-        issues.push({
-          code: 'splitPair',
-          severity: 'warning',
-          // Named by the area when there is one: "not at Linden Plaza" is the thing to fix,
-          // and it says that any shop in it will do.
-          message: `${nameOf(person.id)} is paired with ${nameOf(partnerId)}, who is not ${
-            area ? `at ${area}` : `at ${placeOf(a.locationId)}`
-          } during ${slot?.label ?? a.slotId}`,
-          assignmentIds: [a.id],
-          personIds: [person.id, partnerId],
-          locationIds: [a.locationId],
-        })
+      if (theirs.some((x) => mine.some((y) => sameArea(x.locationId, y.locationId, locationById)))) {
+        continue
       }
+
+      /*
+        Not out this hour, and free to have been: a pairing waiting to be honoured.
+
+        Said in the data rather than guessed from the board — they put their name against
+        this hour and have been left off it, which is something an organizer can act on by
+        giving them the shift beside their sibling. Somebody who never offered the hour is
+        the case above, and stays quiet.
+      */
+      const freeToJoin = theirs.length === 0 && slot !== undefined && offeredSlot(otherId, slot)
+      if (theirs.length === 0 && !freeToJoin) continue
+
+      const here = mine[0]!
+      const area = areaOf(locationById.get(here.locationId))
+      // Named by the area when there is one: "not at Linden Plaza" is the thing to fix,
+      // and it says that any shop in it will do.
+      const where = area ? `at ${area}` : `at ${placeOf(here.locationId)}`
+
+      issues.push({
+        code: 'splitPair',
+        severity: 'warning',
+        message: freeToJoin
+          ? `${nameOf(subjectId)} is paired with ${nameOf(otherId)}, who is free during ${when} and has no shift ${where}`
+          : `${nameOf(subjectId)} is paired with ${nameOf(otherId)}, who is not ${where} during ${when}`,
+        assignmentIds: mine.map((x) => x.id),
+        personIds: [subjectId, otherId],
+        locationIds: [here.locationId],
+      })
     }
   }
 
