@@ -135,8 +135,8 @@ export function validateSchedule(input: ValidateInput): ScheduleIssue[] {
   // Encoded as `(w/ Boyan please)` inside the name field in past years; now a real
   // reference, so it can actually be checked.
   //
-  // About two people who are both out. A pair with only one of them on the board is not
-  // split up, it is half absent, and that is somebody else's warning — see below.
+  // Split up means out at the same hour in different places. A pair with only one of them
+  // on a shift is not split up — the other is not out at all, which is a different thing.
   //
   // Treated as undirected: a pairing recorded on only one person is still a pairing. An
   // earlier version reported each pair from the lower id and skipped the higher one, which
@@ -156,24 +156,32 @@ export function validateSchedule(input: ValidateInput): ScheduleIssue[] {
     const partnerId = pairs.get(key)!
     if (!person) continue
 
-    /*
-      Both of them have to be on the board for there to be a split.
-
-      A pairing is a request about two people who are both out: put them together. When only
-      one of them has a shift, the other is not somewhere else — they are not out at all,
-      which is a different thing and not this warning's business. Reporting it anyway put a
-      line against every shift the one who did sign up was given, for a sibling who was
-      never coming, and those lines were most of what the board showed.
-
-      Somebody who meant to be out and was missed is already covered: `noShifts` names
-      anyone who offered hours and got none. This one would say it again, once per shift,
-      about people who offered nothing.
-    */
     const partnerShifts = live.filter((x) => x.personId === partnerId)
-    if (partnerShifts.length === 0) continue
 
     for (const a of live.filter((x) => x.personId === person.id)) {
       const slot = slotById.get(a.slotId)
+
+      /*
+        Both of them have to be out in this hour for there to be a split.
+
+        A pairing is a request about the hours they are both working: put them together. The
+        partner not being on this shift is not the same thing as being somewhere else — the
+        usual reason is that they never offered the hour, and asking an organizer to fix an
+        hour one of them is not available for is asking for nothing. Every shift the sibling
+        who was free got carried a line naming the one who wasn't, and there were enough of
+        them to bury the warnings worth reading.
+
+        Nothing is lost by the silence. A pair rostered at different hours is reported the
+        moment they share one; somebody who offered hours and got none is named by
+        `noShifts`, once, under their own name.
+
+        Checking only the hours this one works is also what makes reading the pair from one
+        end enough: an hour they are both out in is an hour that appears on both their
+        boards, so no split can hide on the other side of the pairing.
+      */
+      const together = partnerShifts.filter((x) => x.slotId === a.slotId)
+      if (together.length === 0) continue
+
       /*
         Together, not identical.
 
@@ -183,8 +191,8 @@ export function validateSchedule(input: ValidateInput): ScheduleIssue[] {
         point of sending two. So a shared area counts, and the warning is for a pair actually
         split across the town.
       */
-      const partnerHere = partnerShifts.some(
-        (x) => x.slotId === a.slotId && sameArea(x.locationId, a.locationId, locationById),
+      const partnerHere = together.some((x) =>
+        sameArea(x.locationId, a.locationId, locationById),
       )
       if (!partnerHere) {
         const area = areaOf(locationById.get(a.locationId))

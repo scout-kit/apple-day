@@ -145,44 +145,67 @@ describe('stated availability', () => {
 })
 
 describe('pairing', () => {
-  it('warns once when a pair is split, naming both', () => {
-    // 2024 encoded this as "(w/ Boyan please)" inside the youth's name field.
-    const people = people2025.map((p) => {
-      if (p.id === 'y01') return { ...p, pairWithPersonId: 'y09' }
-      if (p.id === 'y09') return { ...p, pairWithPersonId: 'y01' }
+  /**
+   * Two shifts in one hour at two different shops.
+   *
+   * What a split actually is, so every test below is about a pair who really are out at
+   * the same time in different places. Asserted rather than skipped: a test that quietly
+   * does nothing when the fixture changes shape is a test that passes for the wrong reason.
+   */
+  const sameHour = (slotId = 'fri-1800') => {
+    const inHour = fridayAssignments2025.filter((a) => a.slotId === slotId)
+    const here = inHour[0]
+    const there = inHour.find((a) => here && a.locationId !== here.locationId)
+    if (!here || !there) throw new Error(`the fixture no longer staffs two shops at ${slotId}`)
+    return { here, there }
+  }
+
+  /** The pairing recorded on one of them, on both, or on neither. */
+  const pairUp = (a: string, b: string, both = true) =>
+    people2025.map((p) => {
+      if (p.id === a) return { ...p, pairWithPersonId: b }
+      if (both && p.id === b) return { ...p, pairWithPersonId: a }
       return p
     })
-    const split = run({ people }).filter((i) => i.code === 'splitPair')
+
+  it('warns once when a pair is split, naming both', () => {
+    // 2024 encoded this as "(w/ Boyan please)" inside the youth's name field.
+    const { here, there } = sameHour()
+    const split = run({ people: pairUp(here.personId, there.personId) }).filter(
+      (i) => i.code === 'splitPair',
+    )
 
     expect(split).toHaveLength(1)
-    expect(split[0]!.personIds).toEqual(['y01', 'y09'])
+    expect(split[0]!.personIds).toEqual(
+      [here.personId, there.personId].sort(),
+    )
   })
 
   it('checks a pairing recorded on only one of them', () => {
     // Whichever way round the ids sort. An earlier version reported each pair from the
     // lower id and skipped the higher, so a one-sided pairing was checked or ignored purely
     // by how the two ids happened to compare.
+    const { here, there } = sameHour()
     for (const [holder, partner] of [
-      ['y01', 'y09'],
-      ['y09', 'y01'],
+      [here.personId, there.personId],
+      [there.personId, here.personId],
     ] as const) {
-      const people = people2025.map((p) =>
-        p.id === holder ? { ...p, pairWithPersonId: partner } : p,
+      const split = run({ people: pairUp(holder, partner, false) }).filter(
+        (i) => i.code === 'splitPair',
       )
-      const split = run({ people }).filter((i) => i.code === 'splitPair')
       expect(split.length, `${holder} -> ${partner}`).toBeGreaterThan(0)
       expect(split[0]!.personIds).toEqual(expect.arrayContaining([holder, partner]))
     }
   })
 
   it('does not warn twice for a pairing recorded on both', () => {
-    const people = people2025.map((p) => {
-      if (p.id === 'y01') return { ...p, pairWithPersonId: 'y09' }
-      if (p.id === 'y09') return { ...p, pairWithPersonId: 'y01' }
-      return p
-    })
+    const { here, there } = sameHour()
     // One pair, one warning, even though both sides point at each other.
-    expect(run({ people }).filter((i) => i.code === 'splitPair')).toHaveLength(1)
+    expect(
+      run({ people: pairUp(here.personId, there.personId) }).filter(
+        (i) => i.code === 'splitPair',
+      ),
+    ).toHaveLength(1)
   })
 
   it('ignores a person paired with themselves', () => {
@@ -227,20 +250,16 @@ describe('pairing', () => {
   })
 
   it('still warns when the two areas are different', () => {
-    const byLocation = new Map(fridayAssignments2025.map((a) => [a.locationId, a]))
-    const [first, second] = [...byLocation.keys()]
+    const { here, there } = sameHour()
     const locations = locations2025.map((l) =>
-      l.id === first ? { ...l, groupCode: 'LINDEN' }
-      : l.id === second ? { ...l, groupCode: 'FARMERS' }
+      l.id === here.locationId ? { ...l, groupCode: 'LINDEN' }
+      : l.id === there.locationId ? { ...l, groupCode: 'FARMERS' }
       : l,
     )
-    const here = byLocation.get(first!)!
-    const there = byLocation.get(second!)!
 
-    const people = people2025.map((p) =>
-      p.id === here.personId ? { ...p, pairWithPersonId: there.personId } : p,
-    )
-    expect(codes(run({ people, locations }))).toContain('splitPair')
+    expect(
+      codes(run({ people: pairUp(here.personId, there.personId, false), locations })),
+    ).toContain('splitPair')
   })
 
   it('does not treat two shops with no area as one', () => {
@@ -250,61 +269,80 @@ describe('pairing', () => {
       of town would report nothing at all — the exact warning this is meant to keep.
     */
     const blank = locations2025.map((l) => ({ ...l, groupCode: '' }))
-    const byLocation = new Map(fridayAssignments2025.map((a) => [a.locationId, a]))
-    const [first, second] = [...byLocation.keys()]
-    const here = byLocation.get(first!)!
-    const there = byLocation.get(second!)!
+    const { here, there } = sameHour()
 
-    const people = people2025.map((p) =>
-      p.id === here.personId ? { ...p, pairWithPersonId: there.personId } : p,
-    )
-    expect(codes(run({ people, locations: blank }))).toContain('splitPair')
+    expect(
+      codes(run({ people: pairUp(here.personId, there.personId, false), locations: blank })),
+    ).toContain('splitPair')
   })
 
   it('names the area to fix rather than the one shop', () => {
     // "not at Linden Plaza" says any door in it will do; naming one shop reads as an order.
-    const byLocation = new Map(fridayAssignments2025.map((a) => [a.locationId, a]))
-    const [first, second] = [...byLocation.keys()]
+    const { here, there } = sameHour()
     const locations = locations2025.map((l) =>
-      l.id === first ? { ...l, groupCode: 'LINDEN' } : l,
+      l.id === here.locationId ? { ...l, groupCode: 'LINDEN' } : l,
     )
-    const here = byLocation.get(first!)!
-    const there = byLocation.get(second!)!
 
-    const people = people2025.map((p) =>
-      p.id === here.personId ? { ...p, pairWithPersonId: there.personId } : p,
-    )
-    const split = run({ people, locations }).filter((i) => i.code === 'splitPair')
+    const split = run({
+      people: pairUp(here.personId, there.personId, false),
+      locations,
+    }).filter((i) => i.code === 'splitPair')
     expect(split[0]!.message).toContain('LINDEN')
   })
 
   /**
-   * A pair is only split when both of them are out.
+   * A pair is split when both of them are out and not in the same place.
    *
-   * Only one of a pair signing up is the ordinary case — one sibling is free on the Friday
-   * and the other is not — and every shift the one who did sign up was given carried a
-   * warning about the one who did not. It read as an error on a board that was correct,
-   * and there were enough of them to bury the warnings worth reading.
+   * The partner missing from a shift is not the same thing as the partner being somewhere
+   * else — the usual reason is that they never offered the hour — and every shift the
+   * sibling who was free got carried a line naming the one who wasn’t. On a board that
+   * was correct those lines were most of what it showed.
    */
-  describe('when only one of them is on the board', () => {
-    /**
-     * A real youth who is simply not on the fixture's Friday board.
-     *
-     * A made-up id would work for the silence and prove nothing: it would also be an
-     * unknown reference, and a check that stays quiet about somebody who does not exist
-     * says nothing about a sibling who does.
-     */
+  describe('when the partner is not on this shift', () => {
+    /** A real youth who is simply not on the fixture's Friday board at all. */
     const ABSENT = 'y30'
 
     const withPartner = (holder: string, partner: string) =>
       people2025.map((p) => (p.id === holder ? { ...p, pairWithPersonId: partner } : p))
 
+    const splits = (...args: Parameters<typeof run>) =>
+      run(...args).filter((i) => i.code === 'splitPair')
+
+    it('says nothing when the partner is out in a different hour', () => {
+      /*
+        The case this was reported from. Both of them are on the board — one at seven, the
+        other not — so a rule about whether the partner has *any* shift does not catch it.
+        The partner is not somewhere else at seven; they are not out at seven.
+      */
+      const { here } = sameHour('fri-1900')
+      const elsewhere = fridayAssignments2025.find(
+        (a) => a.slotId !== here.slotId && a.personId !== here.personId,
+      )!
+
+      expect(splits({ people: withPartner(here.personId, elsewhere.personId) })).toEqual([])
+    })
+
+    it('says nothing when the partner never offered that hour', () => {
+      /*
+        Said in the data rather than inferred from the board: the partner signed up for the
+        six o'clock hour and nothing else, and is paired with somebody working seven. There
+        is no arrangement of the board that would satisfy a warning about it.
+      */
+      const { here } = sameHour('fri-1900')
+      const partner = fridayAssignments2025.find((a) => a.slotId === 'fri-1800')!.personId
+      const signups = [
+        {
+          id: 'su-partner', personId: partner,
+          availability: { fri: ['fri-1800'], sat: [] },
+          attendingWithYouth: true, notes: '', sourceRow: 1, importedAt: 0,
+        },
+      ]
+
+      expect(splits({ people: withPartner(here.personId, partner), signups })).toEqual([])
+    })
+
     it('says nothing when the partner has no shift at all', () => {
-      // y01 is out on the Friday; y99 is not on the board anywhere.
-      const split = run({ people: withPartner('y01', ABSENT) }).filter(
-        (i) => i.code === 'splitPair',
-      )
-      expect(split).toEqual([])
+      expect(splits({ people: withPartner('y01', ABSENT) })).toEqual([])
     })
 
     it('says nothing whichever of them the pairing was recorded on', () => {
@@ -315,15 +353,15 @@ describe('pairing', () => {
         [ABSENT, 'y01'],
       ] as const) {
         expect(
-          run({ people: withPartner(holder, partner) }).filter((i) => i.code === 'splitPair'),
+          splits({ people: withPartner(holder, partner) }),
           `${holder} -> ${partner}`,
         ).toEqual([])
       }
     })
 
     it('says nothing once per shift rather than once in total', () => {
-      // The shape of the complaint: one absent sibling, a warning against every hour the
-      // other one works. Four shifts, four lines, all about the same non-event.
+      // The shape of the complaint: one sibling who is not out this hour, and a warning
+      // against every hour the other one works.
       const busy = [
         ...fridayAssignments2025,
         { id: 'extra-1', slotId: 'fri-1900', locationId: 'kelmont', personId: 'y01',
@@ -331,27 +369,27 @@ describe('pairing', () => {
         { id: 'extra-2', slotId: 'fri-2000', locationId: 'kelmont', personId: 'y01',
           status: 'planned' as const, whereabouts: 'here' as const, checkedInAt: null, checkedOutAt: null },
       ]
-      const issues = run({ people: withPartner('y01', ABSENT), assignments: busy })
-      expect(issues.filter((i) => i.code === 'splitPair')).toEqual([])
+      expect(splits({ people: withPartner('y01', ABSENT), assignments: busy })).toEqual([])
     })
 
-    it('still warns as soon as the partner is given a shift of their own', () => {
+    it('warns the moment the two of them share an hour', () => {
       /*
         The other half of the rule, and why this is a gate rather than a deletion: two
-        people both out and not together is exactly what the warning is for.
+        people out in the same hour and not in the same place is what the warning is for.
       */
-      const scheduled = [
+      const { here } = sameHour('fri-1700')
+      const together = [
         ...fridayAssignments2025,
-        { id: 'late', slotId: 'fri-1900', locationId: 'kelmont', personId: ABSENT,
+        { id: 'late', slotId: here.slotId, locationId: 'kelmont', personId: ABSENT,
           status: 'planned' as const, whereabouts: 'here' as const, checkedInAt: null, checkedOutAt: null },
       ]
-      const split = run({
-        people: withPartner('y01', ABSENT),
-        assignments: scheduled,
-      }).filter((i) => i.code === 'splitPair')
+      const split = splits({
+        people: withPartner(here.personId, ABSENT),
+        assignments: together,
+      })
 
-      expect(split.length).toBeGreaterThan(0)
-      expect(split[0]!.personIds).toEqual(expect.arrayContaining(['y01', ABSENT]))
+      expect(split).toHaveLength(1)
+      expect(split[0]!.personIds).toEqual(expect.arrayContaining([here.personId, ABSENT]))
     })
 
     it('leaves the warning that is actually about a missing shift alone', () => {
@@ -375,28 +413,30 @@ describe('pairing', () => {
       expect(issues.filter((i) => i.code === 'noShifts')).toHaveLength(1)
     })
 
-    it('counts a shift somebody did not turn up for as being on the board', () => {
-      // A no-show was rostered: the pair really was meant to be out together, and the
+    it('counts a shift somebody did not turn up for as being out', () => {
+      // A no-show was rostered: the pair really was put in two places that hour, and the
       // board still has the row. Only a swapped-away row is gone.
+      const { here } = sameHour('fri-1700')
       const noShow = [
         ...fridayAssignments2025,
-        { id: 'absent-row', slotId: 'fri-1900', locationId: 'kelmont', personId: ABSENT,
+        { id: 'absent-row', slotId: here.slotId, locationId: 'kelmont', personId: ABSENT,
           status: 'noShow' as const, whereabouts: 'here' as const, checkedInAt: null, checkedOutAt: null },
       ]
       expect(
-        codes(run({ people: withPartner('y01', ABSENT), assignments: noShow })),
+        codes(run({ people: withPartner(here.personId, ABSENT), assignments: noShow })),
       ).toContain('splitPair')
     })
 
     it('does not count a shift handed to somebody else', () => {
       // Swapped away is not on the board — the same rule every other check here follows.
+      const { here } = sameHour('fri-1700')
       const swapped = [
         ...fridayAssignments2025,
-        { id: 'given-away', slotId: 'fri-1900', locationId: 'kelmont', personId: ABSENT,
+        { id: 'given-away', slotId: here.slotId, locationId: 'kelmont', personId: ABSENT,
           status: 'swapped' as const, whereabouts: 'here' as const, checkedInAt: null, checkedOutAt: null },
       ]
       expect(
-        codes(run({ people: withPartner('y01', ABSENT), assignments: swapped })),
+        codes(run({ people: withPartner(here.personId, ABSENT), assignments: swapped })),
       ).not.toContain('splitPair')
     })
   })
