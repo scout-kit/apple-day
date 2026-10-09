@@ -15,14 +15,18 @@ import type {
 /**
  * Every derived number the event is judged on, as pure functions over plain objects.
  *
- * Two of them are easy to get subtly wrong, and both were wrong in the spreadsheet this
- * replaces:
+ * Three of them are easy to get subtly wrong, and all three were wrong in the spreadsheet
+ * this replaces:
  *
  *  - Hours must be summed from assignment rows, each holding exactly one person. Counting
  *    filled cells makes two siblings sharing a cell into one hour.
  *  - Revenue per hour is undefined when no hours were staffed, not equal to the raw total.
  *    A location with $86.55 and no scheduled hours otherwise reports $86.55/hour and ranks
  *    fourth of twelve. Here it is surfaced as an anomaly rather than ranked.
+ *  - "Per hour" is two questions, and dividing by person-hours only answers one of them.
+ *    Send a pair to a shop and the person-hours double while the door is covered for just
+ *    as long, so the shop's rate halves for a reason that is nothing to do with the shop.
+ *    Both hours are kept, both rates are given, and either may rank.
  */
 
 const round2 = (n: number): number => Math.round(n * 100) / 100
@@ -35,8 +39,28 @@ export interface LocationMetrics {
   revenue: number
   /** Person-hours actually staffed. Two people for one hour is 2. */
   staffedHours: number
-  /** Null when nothing was staffed — never a silent fallback to `revenue`. */
+  /**
+   * Clock hours the door was covered for. Two people for one hour is 1.
+   *
+   * Never more than {@link staffedHours} and equal to it where nobody doubled up.
+   */
+  coveredHours: number
+  /**
+   * Revenue per person-hour. Null when nothing was staffed — never a silent fallback to
+   * `revenue`.
+   *
+   * What an hour of somebody's evening was worth, which is the figure for deciding how
+   * thickly to staff a place. Doubling up halves it, and that is the point of it.
+   */
   revenuePerHour: number | null
+  /**
+   * Revenue per hour the door was covered. Null on the same rows as {@link revenuePerHour}.
+   *
+   * What the door itself was worth, which is the figure for deciding whether to go back.
+   * Unmoved by how many people were sent, so a shop worked by a pair is comparable with one
+   * worked alone.
+   */
+  revenuePerCoveredHour: number | null
   /** Competition rank over locations with a non-null ratio. Null when unranked. */
   rank: number | null
   /**
@@ -70,17 +94,60 @@ export interface LocationMetricsReport {
   /** Every person-hour, base included. The figure labelled "staffed hours". */
   totalStaffedHours: number
   /**
+   * Every covered hour, base included — door-hours, summed across locations.
+   *
+   * Not the same thing as {@link SlotMoneyReport.clockHours}, which is how long the event
+   * itself ran: six doors covered for an hour is six here and one there.
+   */
+  totalCoveredHours: number
+  /**
    * Of those, the ones spent out at a shop.
    *
    * What a per-hour rate divides by. See {@link isCollecting} for why the base ones cannot.
    */
   totalCollectingHours: number
+  /** The same, in covered hours: door-hours out at the shops. */
+  totalCollectingCoveredHours: number
   /** The base's own row, when the event has one and anything landed against it. */
   base: LocationMetrics | null
 }
 
 function slotIndex(slots: Slot[]): Map<string, Slot> {
   return new Map(slots.map((s) => [s.id, s]))
+}
+
+/**
+ * How many minutes a set of stretches covers between them, counting an overlap once.
+ *
+ * Spans are half-open and may be given in any order. Two people out from five to six is
+ * one hour of cover, not two; a handover from half past five to half past six adds the
+ * half hour on the end and nothing in the middle.
+ *
+ * Callers must keep separate days apart before calling: the numbers are minutes from
+ * midnight, so five o'clock on the Friday and five o'clock on the Saturday are the same
+ * stretch as far as this is concerned.
+ */
+export function unionMinutes(spans: readonly (readonly [number, number])[]): number {
+  const ordered = [...spans].sort((a, b) => a[0] - b[0])
+
+  let covered = 0
+  let openAt: number | null = null
+  let closeAt = 0
+  for (const [start, end] of ordered) {
+    if (openAt === null) {
+      openAt = start
+      closeAt = end
+    } else if (start <= closeAt) {
+      closeAt = Math.max(closeAt, end)
+    } else {
+      covered += closeAt - openAt
+      openAt = start
+      closeAt = end
+    }
+  }
+  if (openAt !== null) covered += closeAt - openAt
+
+  return covered
 }
 
 /**
@@ -152,6 +219,51 @@ export function staffedHoursByLocation(
     const hours = counted.get(a.id)
     if (hours === undefined) continue
     totals.set(a.locationId, (totals.get(a.locationId) ?? 0) + hours)
+  }
+
+  return totals
+}
+
+/**
+ * Clock hours each location was covered for, counting an overlap once.
+ *
+ * The companion to {@link staffedHoursByLocation}, and the answer to a different question.
+ * Person-hours ask what the event spent on a door; this asks how long the door was worked.
+ * Put two siblings on the same shift at the same shop and the person-hours double while the
+ * door is covered for exactly as long — so the one rate halves and the other does not move.
+ *
+ * Overlap is resolved per location per day rather than per person, which is what separates
+ * this from `countedHours`. That one asks what one person is owed for their evening and can
+ * only credit a minute once; here the same minute at two different shops is two doors being
+ * worked, and both count it.
+ *
+ * The worked part of the block, not the whole of it: the quarter hour at the front is spent
+ * queuing for a jar at base, and no shop is being covered during it.
+ */
+export function coveredHoursByLocation(
+  assignments: Assignment[],
+  slots: Slot[],
+): Map<string, number> {
+  const bySlot = slotIndex(slots)
+  // Keyed by day as well as location, because the times are minutes from midnight.
+  const spans = new Map<string, { locationId: string; spans: [number, number][] }>()
+
+  for (const a of assignments) {
+    // A no-show covered nothing, and a swapped row was somebody else's shift.
+    if (!staffed(a)) continue
+    const slot = bySlot.get(a.slotId)
+    // No slot, no time to place — reported by `findOrphanedRecords`, not counted as an hour.
+    if (!slot) continue
+
+    const key = `${a.locationId}\u0000${slot.day}`
+    const entry = spans.get(key)
+    if (entry) entry.spans.push([slot.workStartMin, slot.endMin])
+    else spans.set(key, { locationId: a.locationId, spans: [[slot.workStartMin, slot.endMin]] })
+  }
+
+  const totals = new Map<string, number>()
+  for (const { locationId, spans: list } of spans.values()) {
+    totals.set(locationId, (totals.get(locationId) ?? 0) + unionMinutes(list) / 60)
   }
 
   return totals
@@ -451,30 +563,16 @@ export function revenueBySlot(
   const worked = slots.filter(
     (slot) => (hours.get(slot.id) ?? 0) - (atBase.get(slot.id) ?? 0) > 0,
   )
-  const clockMinutes = DAYS.reduce((total, day) => {
-    const spans = worked
-      .filter((slot) => slot.day === day)
-      .map((slot) => [slot.startMin, slot.endMin] as const)
-      .sort((a, b) => a[0] - b[0])
-
-    let covered = 0
-    let openAt: number | null = null
-    let closeAt = 0
-    for (const [start, end] of spans) {
-      if (openAt === null) {
-        openAt = start
-        closeAt = end
-      } else if (start <= closeAt) {
-        closeAt = Math.max(closeAt, end)
-      } else {
-        covered += closeAt - openAt
-        openAt = start
-        closeAt = end
-      }
-    }
-    if (openAt !== null) covered += closeAt - openAt
-    return total + covered
-  }, 0)
+  const clockMinutes = DAYS.reduce(
+    (total, day) =>
+      total +
+      unionMinutes(
+        worked
+          .filter((slot) => slot.day === day)
+          .map((slot) => [slot.startMin, slot.endMin] as const),
+      ),
+    0,
+  )
 
   const clockHours = round2(clockMinutes / 60)
   const takings = round2(rows.reduce((n, r) => n + r.revenue, 0) + unattributed)
@@ -490,7 +588,29 @@ export function revenueBySlot(
 }
 
 /**
- * Revenue, staffed hours and revenue per staffed hour for every location, ranked.
+ * Which of the two rates a location is ranked on.
+ *
+ * `personHour` is the long-standing one and stays the default: it asks what an hour of
+ * somebody's evening bought. `coveredHour` asks what the door was worth however many people
+ * were sent to it, which is the fairer comparison when some shops were worked in pairs and
+ * others alone — and the one to judge next year's list on.
+ */
+export type RateBasis = 'personHour' | 'coveredHour'
+
+export function rateOf(row: LocationMetrics, basis: RateBasis): number | null {
+  return basis === 'coveredHour' ? row.revenuePerCoveredHour : row.revenuePerHour
+}
+
+/**
+ * Revenue and hours for every location, ranked by what an hour there was worth.
+ *
+ * Hours come in two kinds and so do the rates over them. Person-hours are what the event
+ * spent; covered hours are how long the door was worked. They part company exactly where
+ * people doubled up — a shop worked by two siblings for one shift is two person-hours and
+ * one covered hour — and that is the difference between asking whether the people were well
+ * spent and asking whether the shop was worth standing at.
+ *
+ * Both are given on every row. `rankBy` decides which one orders them; see {@link RateBasis}.
  *
  * Locations are keyed by id, so a location that was written three different ways across
  * two days collapses to one row instead of appearing three times.
@@ -501,8 +621,10 @@ export function locationMetrics(
   jars: Jar[],
   slots: Slot[],
   baseLocationId?: string | null,
+  rankBy: RateBasis = 'personHour',
 ): LocationMetricsReport {
   const hours = staffedHoursByLocation(assignments, slots)
+  const covered = coveredHoursByLocation(assignments, slots)
   const revenue = revenueByLocation(jars)
   // Counts actual jars, so a location with only hand-recorded money reads as 0 jars with
   // revenue rather than claiming a jar that never existed.
@@ -519,14 +641,19 @@ export function locationMetrics(
     ...locations.map((l) => l.id),
     ...revenue.keys(),
     ...hours.keys(),
+    ...covered.keys(),
   ])
   const byId = new Map(locations.map((l) => [l.id, l]))
 
   const rows: LocationMetrics[] = [...ids].map((id) => {
     const loc = byId.get(id)
     const staffedHours = round2(hours.get(id) ?? 0)
+    const coveredHours = round2(covered.get(id) ?? 0)
     const rev = round2(revenue.get(id) ?? 0)
     const isBase = Boolean(baseLocationId) && id === baseLocationId
+    // The two go to zero together — an hour staffed is an hour covered — so no row is
+    // rankable on one rate and an anomaly on the other, whichever basis is chosen below.
+    const rateless = isBase || staffedHours === 0
     return {
       locationId: id,
       name: loc?.name ?? `(unknown location: ${id})`,
@@ -534,12 +661,14 @@ export function locationMetrics(
       priority: loc?.priority ?? Number.MAX_SAFE_INTEGER,
       revenue: rev,
       staffedHours,
+      coveredHours,
       /*
         No rate for base. Apples sold and a tap at the table are real money, and the hours
         there are real hours, but the one did not come from the other — a rate over them is
         a number with no meaning that would sit in a ranking of shops.
       */
-      revenuePerHour: isBase || staffedHours === 0 ? null : round2(rev / staffedHours),
+      revenuePerHour: rateless ? null : round2(rev / staffedHours),
+      revenuePerCoveredHour: rateless ? null : round2(rev / coveredHours),
       rank: null,
       isBase,
       jarCount: jarCounts.get(id) ?? 0,
@@ -549,18 +678,19 @@ export function locationMetrics(
 
   // Competition ranking (equal ratios share a rank) over rankable rows only.
   const rankable = rows
-    .filter((r) => r.revenuePerHour !== null)
-    .sort((a, b) => b.revenuePerHour! - a.revenuePerHour!)
+    .filter((r) => rateOf(r, rankBy) !== null)
+    .sort((a, b) => rateOf(b, rankBy)! - rateOf(a, rankBy)!)
 
   let lastValue: number | null = null
   let lastRank = 0
   rankable.forEach((row, i) => {
-    if (lastValue !== null && row.revenuePerHour === lastValue) {
+    const rate = rateOf(row, rankBy)
+    if (lastValue !== null && rate === lastValue) {
       row.rank = lastRank
     } else {
       row.rank = i + 1
       lastRank = i + 1
-      lastValue = row.revenuePerHour
+      lastValue = rate
     }
   })
 
@@ -581,8 +711,12 @@ export function locationMetrics(
       .sort((a, b) => b.staffedHours - a.staffedHours),
     totalRevenue: round2(rows.reduce((sum, r) => sum + r.revenue, 0)),
     totalStaffedHours: round2(rows.reduce((sum, r) => sum + r.staffedHours, 0)),
+    totalCoveredHours: round2(rows.reduce((sum, r) => sum + r.coveredHours, 0)),
     totalCollectingHours: round2(
       rows.filter((r) => !r.isBase).reduce((sum, r) => sum + r.staffedHours, 0),
+    ),
+    totalCollectingCoveredHours: round2(
+      rows.filter((r) => !r.isBase).reduce((sum, r) => sum + r.coveredHours, 0),
     ),
     base,
   }

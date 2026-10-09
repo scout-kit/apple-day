@@ -308,7 +308,18 @@ export function LocationScreen(): ReactNode {
           <div className="stats">
             <Stat label="shifts" value={shifts.length} />
             <Stat label="raised" value={<Money value={metrics?.revenue ?? 0} />} />
-            <Stat label="per hour" value={<Money value={metrics?.revenuePerHour ?? null} />} />
+            {/* Both rates, the same two as the money screen. Per hour is what this door was
+                worth however many people were sent to it; per person-hour is what an hour of
+                somebody's evening here bought. They differ wherever a shift was doubled up,
+                and only the second of them is moved by that decision. */}
+            <Stat
+              label="per hour"
+              value={<Money value={metrics?.revenuePerCoveredHour ?? null} />}
+            />
+            <Stat
+              label="per person-hour"
+              value={<Money value={metrics?.revenuePerHour ?? null} />}
+            />
           </div>
           {/*
             The same editor the library uses.

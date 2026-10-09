@@ -635,3 +635,31 @@ describe('the map on a location page', () => {
     expect(screen.queryByText(/Directions from/)).toBeNull()
   })
 })
+
+/**
+ * Two rates, because sending a second person changes one of them and not the other.
+ *
+ * The page showed revenue over person-hours alone, so a shop worked in pairs reported half
+ * the rate of the same shop worked alone — a fact about the staffing, read as a fact about
+ * the shop.
+ */
+describe('what an hour at this location was worth', () => {
+  const stat = (label: string): string | null | undefined =>
+    screen.getByText(label).closest('.stat')?.querySelector('.value')?.textContent
+
+  it('divides the takings by the door and by the people, and shows both', () => {
+    // Two youth on the one shift: an hour of door, two person-hours, $100 in the jar.
+    assignments = [shift('a1', 'fri-1700'), shift('a2', 'fri-1700', { personId: 'p-two' })]
+    renderFor()
+
+    expect(stat('per hour')).toBe('$100.00')
+    expect(stat('per person-hour')).toBe('$50.00')
+  })
+
+  it('agrees with itself where one person worked the shift alone', () => {
+    renderFor()
+
+    expect(stat('per hour')).toBe('$100.00')
+    expect(stat('per person-hour')).toBe('$100.00')
+  })
+})
